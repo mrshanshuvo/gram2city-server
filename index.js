@@ -17,7 +17,8 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.ezlz7xu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.ezlz7xu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const uri = `mongodb://${process.env.DB_USER}:${process.env.DB_PASSWORD}@ac-4xay6dy-shard-00-00.ezlz7xu.mongodb.net:27017,ac-4xay6dy-shard-00-01.ezlz7xu.mongodb.net:27017,ac-4xay6dy-shard-00-02.ezlz7xu.mongodb.net:27017/?tls=true&authSource=admin&retryWrites=true&w=majority&appName=Cluster0`
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -39,6 +40,8 @@ async function run() {
     const ridersCollection = db.collection("riders");
     const cashoutsCollection = db.collection("cashouts");
     const trackingCollection = db.collection("trackings");
+    const reviewsCollection = db.collection("reviews");
+    const notificationsCollection = db.collection("notifications");
 
     // custom middlewares
     const verifyFBToken = async (req, res, next) => {
@@ -74,6 +77,21 @@ async function run() {
         return res.status(403).send({ success: false, message: "Forbidden" });
       }
       next();
+    };
+
+    // helper function for adding tracking updates
+    const addTrackingUpdate = async (trackingId, status, details, location = "Primary Hub") => {
+      try {
+        await trackingCollection.insertOne({
+          trackingId,
+          status,
+          details,
+          location,
+          time: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Failed to add tracking update:", error);
+      }
     };
 
     // GET: All users
@@ -143,6 +161,26 @@ async function run() {
         }
       }
     );
+
+    // PATCH: User profile (Update name, photo, phone)
+    app.patch("/users/:email", verifyFBToken, async (req, res) => {
+      const { email } = req.params;
+      const { name, photoURL, phone, address } = req.body;
+      
+      if (req.user.email !== email) {
+        return res.status(403).send({ success: false, message: "Unauthorized" });
+      }
+
+      try {
+        const result = await usersCollection.updateOne(
+          { email },
+          { $set: { name, photoURL, phone, address } }
+        );
+        res.send({ success: true, modifiedCount: result.modifiedCount });
+      } catch (error) {
+        res.status(500).send({ success: false, error: "Failed to update profile" });
+      }
+    });
 
     // POST: User
     app.post("/users", async (req, res) => {
@@ -227,6 +265,10 @@ async function run() {
       try {
         const parcelData = req.body;
         const result = await parcelCollection.insertOne(parcelData);
+        
+        // Initial tracking update
+        await addTrackingUpdate(parcelData.trackingId, "booked", "Your parcel has been booked and is awaiting collection.");
+
         res.status(201).send({
           success: true,
           message: "Parcel created successfully",
@@ -432,6 +474,21 @@ async function run() {
         }
 
         res.send({ success: true, message: "Parcel marked as picked" });
+
+        // Notification for user
+        const parcel = await parcelCollection.findOne({ _id: new ObjectId(parcelId) });
+        if (parcel) {
+          notificationsCollection.insertOne({
+            email: parcel.created_by,
+            message: `Your parcel "${parcel.parcelName}" has been picked up by the rider and is on the way!`,
+            time: new Date().toISOString(),
+            isRead: false,
+            type: "status_update"
+          });
+          
+          // Tracking update
+          await addTrackingUpdate(parcel.trackingId, "picked_up", `The rider has picked up the parcel from ${parcel.senderAddress}.`, parcel.senderServiceCenter);
+        }
       } catch (error) {
         console.error("Error marking parcel as picked:", error);
         res.status(500).send({ success: false, message: "Server error" });
@@ -482,6 +539,32 @@ async function run() {
         );
 
         res.send({ success: true, message: "Status updated successfully" });
+
+        // Tracking update
+        if (delivery_status === "delivered") {
+          await addTrackingUpdate(parcel.trackingId, "delivered", "Parcel has been delivered successfully.", parcel.receiverServiceCenter);
+        } else if (delivery_status === "on_the_way") {
+          await addTrackingUpdate(parcel.trackingId, "on_the_way", "Parcel is on the way for delivery.", parcel.receiverServiceCenter);
+        }
+
+        // Notification for user
+        if (delivery_status === "delivered") {
+          notificationsCollection.insertOne({
+            email: parcel.created_by,
+            message: `Hooray! Your parcel "${parcel.parcelName}" has been delivered.`,
+            time: new Date().toISOString(),
+            isRead: false,
+            type: "status_update"
+          });
+        } else if (delivery_status === "on_the_way") {
+          notificationsCollection.insertOne({
+            email: parcel.created_by,
+            message: `Your parcel "${parcel.parcelName}" is now on the way!`,
+            time: new Date().toISOString(),
+            isRead: false,
+            type: "status_update"
+          });
+        }
       } catch (err) {
         res.status(500).send({ success: false, message: "Server error" });
       }
@@ -607,6 +690,30 @@ async function run() {
             message: "Rider assigned successfully",
             data: result,
           });
+
+          // Notifications
+          const parcel = await parcelCollection.findOne({ _id: new ObjectId(parcelId) });
+          if (parcel) {
+            // To User
+            notificationsCollection.insertOne({
+              email: parcel.created_by,
+              message: `A rider (${rider.name}) has been assigned to your parcel "${parcel.parcelName}".`,
+              time: new Date().toISOString(),
+              isRead: false,
+              type: "status_update"
+            });
+            // To Rider
+            notificationsCollection.insertOne({
+              email: rider.email,
+              message: `You have been assigned a new delivery: "${parcel.parcelName}".`,
+              time: new Date().toISOString(),
+              isRead: false,
+              type: "status_update"
+            });
+            
+            // Tracking update
+            await addTrackingUpdate(parcel.trackingId, "assigned", `Rider assigned: ${rider.name}.`);
+          }
         } catch (error) {
           console.error("Error assigning rider:", error);
           res.status(500).send({
@@ -658,6 +765,199 @@ async function run() {
       res.send(result);
     });
 
+    // REVIEWS API
+    app.get("/reviews/rider/:email", async (req, res) => {
+      const { email } = req.params;
+      try {
+        const reviews = await reviewsCollection
+          .find({ rider_email: email })
+          .sort({ date: -1 })
+          .toArray();
+        res.send(reviews);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to fetch reviews" });
+      }
+    });
+
+    app.post("/reviews", verifyFBToken, async (req, res) => {
+      const review = req.body;
+      review.date = new Date().toISOString();
+      try {
+        const result = await reviewsCollection.insertOne(review);
+        res.send({ success: true, data: result });
+      } catch (error) {
+        res.status(500).send({ error: "Failed to submit review" });
+      }
+    });
+
+    // NOTIFICATIONS API
+    app.get("/notifications/:email", verifyFBToken, async (req, res) => {
+      const { email } = req.params;
+      if (req.user.email !== email) {
+        return res.status(403).send({ success: false, message: "Unauthorized" });
+      }
+      try {
+        const notifications = await notificationsCollection
+          .find({ email, isRead: false })
+          .sort({ time: -1 })
+          .toArray();
+        res.send(notifications);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to fetch notifications" });
+      }
+    });
+
+    app.patch("/notifications/:id/read", verifyFBToken, async (req, res) => {
+      const { id } = req.params;
+      try {
+        const result = await notificationsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { isRead: true } }
+        );
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to mark as read" });
+      }
+    });
+
+    app.patch("/notifications/read-all/:email", verifyFBToken, async (req, res) => {
+      const { email } = req.params;
+      if (req.user.email !== email) {
+        return res.status(403).send({ success: false, message: "Unauthorized" });
+      }
+      try {
+        const result = await notificationsCollection.updateMany(
+          { email, isRead: false },
+          { $set: { isRead: true } }
+        );
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to mark all as read" });
+      }
+    });
+
+    // ADMIN STATS API
+    app.get("/admin/stats", verifyFBToken, verifyAdmin, async (req, res) => {
+      try {
+        const totalRevenueResult = await paymentCollection.aggregate([
+          { $group: { _id: null, total: { $sum: "$amount" } } }
+        ]).toArray();
+        
+        const totalRevenue = totalRevenueResult[0]?.total || 0;
+
+        const dailyBookings = await parcelCollection.aggregate([
+          {
+            $group: {
+              _id: { $dateToString: { format: "%Y-%m-%d", date: { $toDate: "$creation_date" } } },
+              count: { $sum: 1 }
+            }
+          },
+          { $sort: { _id: 1 } },
+          { $limit: 7 }
+        ]).toArray();
+
+        const parcelTypeDistribution = await parcelCollection.aggregate([
+          { $group: { _id: "$parcelType", count: { $sum: 1 } } }
+        ]).toArray();
+
+        res.send({
+          totalRevenue,
+          dailyBookings,
+          parcelTypeDistribution
+        });
+      } catch (error) {
+        res.status(500).send({ error: "Failed to fetch admin stats" });
+      }
+    });
+
+    // ADMIN ALL PARCELS API (With filtering and pagination)
+    app.get("/admin/all-parcels", verifyFBToken, verifyAdmin, async (req, res) => {
+      const page = parseInt(req.query.page) || 1;
+      const size = parseInt(req.query.size) || 10;
+      const { status, startDate, endDate } = req.query;
+
+      let query = {};
+      if (status && status !== "all") {
+        query.delivery_status = status;
+      }
+      if (startDate && endDate) {
+        query.creation_date = {
+          $gte: startDate,
+          $lte: endDate
+        };
+      }
+
+      try {
+        const parcels = await parcelCollection
+          .find(query)
+          .skip((page - 1) * size)
+          .limit(size)
+          .sort({ creation_date: -1 })
+          .toArray();
+        
+        const total = await parcelCollection.countDocuments(query);
+        res.send({ parcels, total });
+      } catch (error) {
+        res.status(500).send({ error: "Failed to fetch all parcels" });
+      }
+    });
+
+    // RIDER STATS API
+    app.get("/rider/stats/:email", verifyFBToken, async (req, res) => {
+      const { email } = req.params;
+      try {
+        const deliveryStats = await parcelCollection.aggregate([
+          { $match: { assigned_rider_email: email, delivery_status: "delivered" } },
+          {
+            $group: {
+              _id: null,
+              totalDelivered: { $sum: 1 },
+              totalEarnings: { $sum: "$rider_earning" }
+            }
+          }
+        ]).toArray();
+
+        const avgRatingResult = await reviewsCollection.aggregate([
+          { $match: { rider_email: email } },
+          { $group: { _id: null, avgRating: { $avg: "$rating" } } }
+        ]).toArray();
+
+        res.send({
+          totalDelivered: deliveryStats[0]?.totalDelivered || 0,
+          totalEarnings: deliveryStats[0]?.totalEarnings || 0,
+          avgRating: avgRatingResult[0]?.avgRating || 0
+        });
+      } catch (error) {
+        res.status(500).send({ error: "Failed to fetch rider stats" });
+      }
+    });
+
+    // USER STATS API
+    app.get("/user/stats/:email", verifyFBToken, async (req, res) => {
+      const { email } = req.params;
+      try {
+        const stats = await parcelCollection.aggregate([
+          { $match: { created_by: email } },
+          {
+            $group: {
+              _id: null,
+              totalBooked: { $sum: 1 },
+              unpaidCount: { $sum: { $cond: [{ $ne: ["$payment_status", "paid"] }, 1, 0] } },
+              totalSpent: { $sum: { $cond: [{ $eq: ["$payment_status", "paid"] }, "$cost", 0] } }
+            }
+          }
+        ]).toArray();
+
+        res.send({
+          totalBooked: stats[0]?.totalBooked || 0,
+          unpaidCount: stats[0]?.unpaidCount || 0,
+          totalSpent: stats[0]?.totalSpent || 0
+        });
+      } catch (error) {
+        res.status(500).send({ error: "Failed to fetch user stats" });
+      }
+    });
+
     // tracking API
     app.get("/trackings/:trackingId", async (req, res) => {
       const { trackingId } = req.params;
@@ -707,6 +1007,9 @@ async function run() {
           { $set: { payment_status: "paid" } }
         );
 
+        // Fetch parcel for tracking and notification
+        const parcel = await parcelCollection.findOne({ _id: new ObjectId(parcelId) });
+
         // 2. Insert into payments collection
         const paymentRecord = {
           parcelId: new ObjectId(parcelId),
@@ -729,6 +1032,29 @@ async function run() {
             parcelUpdateResult,
             paymentInsertResult,
           },
+        });
+
+        if (parcel) {
+          // Tracking update
+          await addTrackingUpdate(parcel.trackingId, "paid", `Payment received. Transaction ID: ${transactionId}`);
+
+          // Notification for user
+          notificationsCollection.insertOne({
+            email: email,
+            message: `Payment of ৳${amount / 100} for your parcel "${parcel.parcelName}" has been received successfully.`,
+            time: new Date().toISOString(),
+            isRead: false,
+            type: "payment"
+          });
+        }
+
+        // Notification for user
+        notificationsCollection.insertOne({
+          email: email,
+          message: `Payment of ৳${amount / 100} for your parcel has been received successfully.`,
+          time: new Date().toISOString(),
+          isRead: false,
+          type: "payment"
         });
       } catch (error) {
         console.error("Error in /payments:", error);
