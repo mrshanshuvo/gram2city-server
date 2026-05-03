@@ -31,95 +31,189 @@ export const swaggerSpec = {
         },
       },
     },
-    "/users": {
+    "/auth/register": {
       post: {
-        summary: "Register new user",
-        tags: ["Users"],
+        summary: "Register a new user with Image Upload (Firebase + MongoDB)",
+        tags: ["Auth"],
+        security: [],
         requestBody: {
           required: true,
           content: {
-            "application/json": {
+            "multipart/form-data": {
               schema: {
                 type: "object",
+                required: ["email", "password", "name"],
                 properties: {
-                  name: { type: "string" },
-                  photoURL: { type: "string" }
+                  email: { type: "string", example: "string" },
+                  password: { type: "string", example: "string" },
+                  name: { type: "string", example: "string" },
+                  image: { type: "string", format: "binary" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: { 
+            description: "User created successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    message: { type: "string" },
+                    token: { type: "string" },
+                    role: { type: "string" },
+                    expiresIn: { type: "string" }
+                  }
+                }
+              }
+            }
+          },
+          400: { description: "Registration failed" },
+        },
+      },
+    },
+    "/auth/login": {
+      post: {
+        summary: "Login user and get Firebase ID Token",
+        tags: ["Auth"],
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                required: ["email", "password"],
+                properties: {
+                  email: { type: "string", example: "string" },
+                  password: { type: "string", example: "string" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { 
+            description: "Login successful",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    message: { type: "string" },
+                    token: { type: "string" },
+                    role: { type: "string" },
+                    lastLogin: { type: "string", format: "date-time" },
+                    expiresIn: { type: "string" },
+                    emailVerified: { type: "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          401: { description: "Invalid credentials" },
+        },
+      },
+    },
+    "/auth/me": {
+      get: {
+        summary: "Get currently logged-in user profile",
+        tags: ["Auth"],
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { 
+            description: "User profile retrieved",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    user: { type: "object" },
+                    emailVerified: { type: "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          401: { description: "Unauthorized" },
+        },
+      },
+      delete: {
+        summary: "Delete own account (GDPR)",
+        tags: ["Auth"],
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: "Account deleted" },
+          401: { description: "Unauthorized" },
+        },
+      },
+    },
+    "/auth/send-verification": {
+      post: {
+        summary: "Send email verification link",
+        tags: ["Auth"],
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: { description: "Verification email sent" },
+          401: { description: "Unauthorized" }
+        },
+      },
+    },
+    "/auth/reset-password": {
+      post: {
+        summary: "Send password reset email",
+        tags: ["Auth"],
+        requestBody: {
+          required: true,
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                required: ["email"],
+                properties: {
+                  email: { type: "string", example: "string" }
                 }
               }
             }
           }
         },
         responses: {
-          201: { description: "Created" },
-          200: { description: "User already exists" }
+          200: { description: "Reset email sent" },
+          400: { description: "Failed to send email" }
         },
       },
     },
-    "/users/sync": {
+    "/auth/admin/create-user": {
       post: {
-        summary: "Automatic sync for every login/refresh",
-        tags: ["Users"],
+        summary: "Admin only - Onboard a new user/rider",
+        tags: ["Auth"],
+        security: [{ bearerAuth: [] }],
         requestBody: {
-          required: false,
+          required: true,
           content: {
-            "application/json": {
+            "application/x-www-form-urlencoded": {
               schema: {
                 type: "object",
+                required: ["email", "password", "name", "role"],
                 properties: {
-                  name: { type: "string" },
-                  photoURL: { type: "string" }
+                  email: { type: "string", example: "string" },
+                  password: { type: "string", example: "string" },
+                  name: { type: "string", example: "string" },
+                  role: { type: "string", enum: ["admin", "rider", "user"] }
                 }
               }
             }
           }
         },
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/users/search": {
-      get: {
-        summary: "Search users by email",
-        tags: ["Users"],
-        parameters: [{ name: "email", in: "query", required: true, schema: { type: "string" } }],
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/users/{email}/role": {
-      get: {
-        summary: "Get a user's role",
-        tags: ["Users"],
-        parameters: [{ name: "email", in: "path", required: true, schema: { type: "string" } }],
-        responses: { 200: { description: "Success" } },
-      },
-      patch: {
-        summary: "Update a user's role",
-        tags: ["Users"],
-        parameters: [{ name: "email", in: "path", required: true, schema: { type: "string" } }],
-        requestBody: {
-          required: true,
-          content: { "application/json": { schema: { type: "object", properties: { role: { type: "string", enum: ["user", "rider", "admin"] } } } } },
+        responses: {
+          201: { description: "User created" },
+          403: { description: "Forbidden" }
         },
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/users/{email}": {
-      patch: {
-        summary: "Update own profile",
-        tags: ["Users"],
-        parameters: [{ name: "email", in: "path", required: true, schema: { type: "string" } }],
-        requestBody: {
-          required: true,
-          content: { "application/json": { schema: { type: "object", properties: { name: { type: "string" }, photoURL: { type: "string" }, phone: { type: "string" }, address: { type: "string" } } } } },
-        },
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/user/stats/{email}": {
-      get: {
-        summary: "Get user stats",
-        tags: ["Users"],
-        parameters: [{ name: "email", in: "path", required: true, schema: { type: "string" } }],
-        responses: { 200: { description: "Success" } },
       },
     },
     "/parcels": {
@@ -127,154 +221,162 @@ export const swaggerSpec = {
         summary: "List parcels",
         tags: ["Parcels"],
         parameters: [
-          { name: "email", in: "query", schema: { type: "string" } },
-          { name: "payment_status", in: "query", schema: { type: "string" } },
-          { name: "delivery_status", in: "query", schema: { type: "string" } },
+          { name: "email", in: "query", schema: { type: "string", example: "string" } },
+          { name: "payment_status", in: "query", schema: { type: "string", enum: ["paid", "unpaid"] } },
+          { name: "delivery_status", in: "query", schema: { type: "string", enum: ["pending", "on_the_way", "delivered"] } },
         ],
         responses: { 200: { description: "Success" } },
       },
       post: {
         summary: "Book a new parcel",
         tags: ["Parcels"],
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object" } } } },
+        requestBody: {
+          required: true,
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                required: ["parcelName", "parcelType", "weight", "receiverName", "receiverPhone", "deliveryAddress", "receiverDistrict"],
+                properties: {
+                  parcelName: { type: "string", example: "string" },
+                  parcelType: { type: "string", example: "string" },
+                  weight: { type: "number", example: 0 },
+                  receiverName: { type: "string", example: "string" },
+                  receiverPhone: { type: "string", example: "string" },
+                  deliveryAddress: { type: "string", example: "string" },
+                  receiverDistrict: { type: "string", example: "string" },
+                  senderPhone: { type: "string", example: "string" },
+                  deliveryDate: { type: "string", format: "date", example: "string" },
+                  cost: { type: "number", example: 0 }
+                }
+              }
+            }
+          }
+        },
         responses: { 201: { description: "Created" } },
-      },
-    },
-    "/parcels/delivery/status-count": {
-      get: {
-        summary: "Count parcels grouped by delivery status",
-        tags: ["Parcels"],
-        security: [],
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/parcels/{id}": {
-      get: {
-        summary: "Get a single parcel by ID",
-        tags: ["Parcels"],
-        security: [],
-        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
-        responses: { 200: { description: "Success" } },
-      },
-      delete: {
-        summary: "Delete a parcel",
-        tags: ["Parcels"],
-        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/parcels/{id}/pick": {
-      patch: {
-        summary: "Mark parcel as picked up by rider",
-        tags: ["Parcels"],
-        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/parcels/{id}/assign": {
-      patch: {
-        summary: "Assign a rider to a parcel",
-        tags: ["Parcels"],
-        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { riderId: { type: "string" } } } } } },
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/admin/stats": {
-      get: {
-        summary: "Admin dashboard stats",
-        tags: ["Admin"],
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/admin/all-parcels": {
-      get: {
-        summary: "Paginated parcel list",
-        tags: ["Admin"],
-        parameters: [
-          { name: "page", in: "query", schema: { type: "string", default: "1" } },
-          { name: "size", in: "query", schema: { type: "string", default: "10" } },
-          { name: "status", in: "query", schema: { type: "string" } },
-          { name: "startDate", in: "query", schema: { type: "string" } },
-          { name: "endDate", in: "query", schema: { type: "string" } },
-        ],
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/riders/pending": {
-      get: {
-        summary: "List all pending rider applications",
-        tags: ["Riders"],
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/riders/approved": {
-      get: {
-        summary: "List all approved riders",
-        tags: ["Riders"],
-        responses: { 200: { description: "Success" } },
       },
     },
     "/riders": {
       get: {
         summary: "List riders",
         tags: ["Riders"],
-        parameters: [{ name: "status", in: "query", schema: { type: "string" } }],
+        parameters: [{ name: "status", in: "query", schema: { type: "string", example: "string" } }],
         responses: { 200: { description: "Success" } },
       },
       post: {
-        summary: "Create a new rider application",
+        summary: "Apply to be a rider",
         tags: ["Riders"],
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object" } } } },
+        requestBody: {
+          required: true,
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                required: ["name", "email", "phone", "district"],
+                properties: {
+                  name: { type: "string", example: "string" },
+                  email: { type: "string", example: "string" },
+                  phone: { type: "string", example: "string" },
+                  district: { type: "string", example: "string" },
+                  region: { type: "string", example: "string" }
+                }
+              }
+            }
+          }
+        },
         responses: { 200: { description: "Success" } },
       },
     },
-    "/riders/{id}/status": {
-      patch: {
-        summary: "Approve or reject a rider",
-        tags: ["Riders"],
-        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { status: { type: "string" }, email: { type: "string" } } } } } },
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/rider/parcels": {
-      get: {
-        summary: "Get parcels assigned to the logged-in rider",
-        tags: ["Riders"],
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/rider/parcels/{id}/status": {
-      patch: {
-        summary: "Update delivery status",
-        tags: ["Riders"],
-        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { delivery_status: { type: "string" } } } } } },
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/rider/stats/{email}": {
-      get: {
-        summary: "Rider stats",
-        tags: ["Riders"],
-        parameters: [{ name: "email", in: "path", required: true, schema: { type: "string" } }],
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/rider/cashout": {
+    "/reviews": {
       post: {
-        summary: "Cash out earnings for a delivered parcel",
-        tags: ["Riders"],
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { parcelId: { type: "string" } } } } } },
+        summary: "Submit a review for a rider",
+        tags: ["Reviews"],
+        requestBody: {
+          required: true,
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                required: ["rider_email", "rating", "comment"],
+                properties: {
+                  rider_email: { type: "string", example: "string" },
+                  rating: { type: "number", minimum: 1, maximum: 5, example: 0 },
+                  comment: { type: "string", example: "string" },
+                  parcelId: { type: "string", example: "string" }
+                }
+              }
+            }
+          }
+        },
         responses: { 200: { description: "Success" } },
       },
     },
-    "/cashouts": {
-      get: {
-        summary: "Get cashout history for a rider",
-        tags: ["Riders"],
-        parameters: [{ name: "rider_email", in: "query", required: true, schema: { type: "string" } }],
+    "/payments": {
+      post: {
+        summary: "Record a completed payment",
+        tags: ["Payments"],
+        requestBody: {
+          required: true,
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  parcelId: { type: "string", example: "string" },
+                  email: { type: "string", example: "string" },
+                  transactionId: { type: "string", example: "string" },
+                  amount: { type: "number", example: 0 }
+                }
+              }
+            }
+          }
+        },
+        responses: { 200: { description: "Success" } },
+      },
+    },
+    "/trackings": {
+      post: {
+        summary: "Manually insert a tracking update",
+        tags: ["Tracking"],
+        requestBody: {
+          required: true,
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  trackingId: { type: "string", example: "string" },
+                  status: { type: "string", example: "string" },
+                  details: { type: "string", example: "string" },
+                  location: { type: "string", example: "string" }
+                }
+              }
+            }
+          }
+        },
+        responses: { 201: { description: "Created" } },
+      },
+    },
+    "/users/{email}": {
+      patch: {
+        summary: "Update own profile",
+        tags: ["Users"],
+        parameters: [{ name: "email", in: "path", required: true, schema: { type: "string", example: "string" } }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string", example: "string" },
+                  phone: { type: "string", example: "string" },
+                  address: { type: "string", example: "string" }
+                }
+              }
+            }
+          }
+        },
         responses: { 200: { description: "Success" } },
       },
     },
@@ -301,81 +403,98 @@ export const swaggerSpec = {
       post: {
         summary: "Create a Stripe PaymentIntent",
         tags: ["Payments"],
-        security: [],
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { amount: { type: "number" } } } } } },
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  amount: { type: "number", example: 0 }
+                }
+              }
+            }
+          }
+        },
         responses: { 200: { description: "Success" } },
       },
     },
-    "/payments": {
+    "/rider/cashout": {
       post: {
-        summary: "Record a completed payment",
-        tags: ["Payments"],
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object" } } } },
-        responses: { 200: { description: "Success" } },
-      },
-      get: {
-        summary: "Get payment history",
-        tags: ["Payments"],
-        parameters: [{ name: "email", in: "query", schema: { type: "string" } }],
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/trackings/{trackingId}": {
-      get: {
-        summary: "Get full tracking history",
-        tags: ["Tracking"],
-        security: [],
-        parameters: [{ name: "trackingId", in: "path", required: true, schema: { type: "string" } }],
+        summary: "Cash out earnings for a delivered parcel",
+        tags: ["Riders"],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  parcelId: { type: "string", example: "string" }
+                }
+              }
+            }
+          }
+        },
         responses: { 200: { description: "Success" } },
       },
     },
-    "/trackings": {
-      post: {
-        summary: "Manually insert a tracking update",
-        tags: ["Tracking"],
-        security: [],
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object" } } } },
-        responses: { 201: { description: "Created" } },
-      },
-    },
-    "/reviews/rider/{email}": {
-      get: {
-        summary: "Get all reviews for a specific rider",
-        tags: ["Reviews"],
-        security: [],
-        parameters: [{ name: "email", in: "path", required: true, schema: { type: "string" } }],
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/reviews": {
-      post: {
-        summary: "Submit a review for a rider",
-        tags: ["Reviews"],
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object" } } } },
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/notifications/{email}": {
-      get: {
-        summary: "Get all unread notifications",
-        tags: ["Notifications"],
-        parameters: [{ name: "email", in: "path", required: true, schema: { type: "string" } }],
-        responses: { 200: { description: "Success" } },
-      },
-    },
-    "/notifications/{id}/read": {
+    "/parcels/{id}/assign": {
       patch: {
-        summary: "Mark a single notification as read",
-        tags: ["Notifications"],
-        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        summary: "Assign a rider to a parcel",
+        tags: ["Parcels"],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", example: "string" } }],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  riderId: { type: "string", example: "string" }
+                }
+              }
+            }
+          }
+        },
         responses: { 200: { description: "Success" } },
       },
     },
-    "/notifications/read-all/{email}": {
+    "/riders/{id}/status": {
       patch: {
-        summary: "Mark all notifications as read",
-        tags: ["Notifications"],
-        parameters: [{ name: "email", in: "path", required: true, schema: { type: "string" } }],
+        summary: "Approve or reject a rider",
+        tags: ["Riders"],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", example: "string" } }],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  status: { type: "string", enum: ["approved", "rejected"] },
+                  email: { type: "string", example: "string" }
+                }
+              }
+            }
+          }
+        },
+        responses: { 200: { description: "Success" } },
+      },
+    },
+    "/rider/parcels/{id}/status": {
+      patch: {
+        summary: "Update delivery status",
+        tags: ["Riders"],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", example: "string" } }],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  delivery_status: { type: "string", enum: ["on_the_way", "delivered", "pending"] }
+                }
+              }
+            }
+          }
+        },
         responses: { 200: { description: "Success" } },
       },
     },
