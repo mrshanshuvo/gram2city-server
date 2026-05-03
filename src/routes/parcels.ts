@@ -47,6 +47,41 @@ router.get("/parcels", verifyFBToken, async (req, res) => {
 
 /**
  * @swagger
+ * /parcels/stats:
+ *   get:
+ *     summary: Get my personal parcel stats and spending (Customer only)
+ *     tags: [Customer Portal]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: "Stats retrieved" }
+ */
+router.get("/parcels/stats", verifyFBToken, async (req, res) => {
+  try {
+    const email = req.user.email;
+
+    const stats = await parcelCollection.aggregate([
+      { $match: { created_by: email } },
+      { $group: { 
+          _id: null, 
+          totalSpent: { $sum: "$cost" }, 
+          totalParcels: { $sum: 1 },
+          delivered: { $sum: { $cond: [{ $eq: ["$delivery_status", "delivered"] }, 1, 0] } },
+          pending: { $sum: { $cond: [{ $eq: ["$delivery_status", "pending"] }, 1, 0] } },
+          on_the_way: { $sum: { $cond: [{ $eq: ["$delivery_status", "on_the_way"] }, 1, 0] } }
+      }}
+    ]).toArray();
+
+    res.send({ 
+      success: true, 
+      stats: stats[0] || { totalSpent: 0, totalParcels: 0, delivered: 0, pending: 0, on_the_way: 0 } 
+    });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to calculate stats." });
+  }
+});
+
+/**
+ * @swagger
  * /parcels:
  *   post:
  *     summary: Book a new parcel with dynamic cost calculation

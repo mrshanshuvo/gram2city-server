@@ -113,6 +113,32 @@ router.patch("/rider/parcels/:id/status", verifyFBToken, async (req, res) => {
 
 /**
  * @swagger
+ * /rider/reviews:
+ *   get:
+ *     summary: See all reviews and ratings left for me (Rider only)
+ *     tags: [Rider Dashboard]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: "Success" }
+ */
+router.get("/reviews", verifyFBToken, async (req, res) => {
+  try {
+    const { reviewsCollection } = require("../db");
+    const email = req.user.email;
+    
+    const reviews = await reviewsCollection
+      .find({ rider_email: email })
+      .sort({ date: -1 })
+      .toArray();
+
+    res.send({ success: true, count: reviews.length, data: reviews });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to fetch reviews." });
+  }
+});
+
+/**
+ * @swagger
  * /rider/stats:
  *   get:
  *     summary: Get my delivery performance and earnings
