@@ -33,6 +33,8 @@ export const trackingCollection = db.collection<TrackingUpdate>("trackings");
 export const reviewsCollection = db.collection<Review>("reviews");
 export const notificationsCollection =
   db.collection<Notification>("notifications");
+export const auditCollection = db.collection<any>("audit_logs");
+export const settingsCollection = db.collection<any>("system_settings");
 
 // ─── Shared Helper ────────────────────────────────────────────────────────────
 

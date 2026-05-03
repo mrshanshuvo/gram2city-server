@@ -308,5 +308,63 @@ export const swaggerSpec = {
         responses: { 201: { description: "Created" } },
       },
     },
+    "/admin/audit-logs": {
+      get: {
+        summary: "View administrative audit logs",
+        tags: ["Admin Panel"],
+        security: [{ bearerAuth: [] }],
+        responses: { 200: { description: "Success" } },
+      },
+    },
+    "/admin/settings": {
+      get: {
+        summary: "Get global system settings",
+        tags: ["Admin Panel"],
+        security: [{ bearerAuth: [] }],
+        responses: { 200: { description: "Success" } },
+      },
+      patch: {
+        summary: "Update global system settings",
+        tags: ["Admin Panel"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  base_delivery_fee: { type: "number", example: 50 },
+                  cost_per_kg: { type: "number", example: 20 },
+                  rider_commission_percentage: { type: "number", example: 15 }
+                }
+              }
+            }
+          }
+        },
+        responses: { 200: { description: "Success" } },
+      },
+    },
+    "/admin/users/{email}/status": {
+      patch: {
+        summary: "Suspend or activate a user account",
+        tags: ["Admin Panel"],
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: "email", in: "path", required: true, schema: { type: "string", example: "string" } }],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                required: ["status"],
+                properties: {
+                  status: { type: "string", enum: ["active", "suspended"] }
+                }
+              }
+            }
+          }
+        },
+        responses: { 200: { description: "Success" } },
+      },
+    },
   },
 };

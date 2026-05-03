@@ -70,8 +70,10 @@ import notificationsRouter from "./routes/notifications";
 import cashoutsRouter from "./routes/cashouts";
 import uploadsRouter from "./routes/uploads";
 import authRouter from "./routes/auth";
+import adminRouter from "./routes/admin";
 
 app.get("/", (_req, res) => res.send("Parcel website server is running"));
+app.use("/admin", adminRouter);
 app.use("/", usersRouter);
 app.use("/", parcelsRouter);
 app.use("/", ridersRouter);
