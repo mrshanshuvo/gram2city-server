@@ -2,6 +2,8 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import admin from "firebase-admin";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./swagger";
 
 // ─── Env Validation ───────────────────────────────────────────────────────────
 const REQUIRED_ENV = [
@@ -46,6 +48,9 @@ app.use("/", trackingsRouter);
 app.use("/", reviewsRouter);
 app.use("/", notificationsRouter);
 app.use("/", cashoutsRouter);
+
+// ─── Swagger Documentation ────────────────────────────────────────────────────
+app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
