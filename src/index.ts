@@ -1,27 +1,50 @@
-require("dotenv").config();
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-const express = require("express");
-const cors = require("cors");
-const admin = require("firebase-admin");
+import "dotenv/config";
+import { MongoClient, ServerApiVersion, ObjectId } from "mongodb";
+import express, { Request, Response, NextFunction } from "express";
+import cors from "cors";
+import admin from "firebase-admin";
+import Stripe from "stripe";
+import type {
+  User,
+  Parcel,
+  Rider,
+  Payment,
+  Cashout,
+  TrackingUpdate,
+  Review,
+  Notification,
+} from "./types";
 
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+// ─── Env Validation ──────────────────────────────────────────────────────────
+const REQUIRED_ENV = [
+  "MONGODB_URI",
+  "DB_NAME",
+  "FB_SERVICE_KEY",
+  "STRIPE_SECRET_KEY",
+  "STRIPE_CURRENCY",
+  "CLIENT_URL",
+] as const;
+for (const key of REQUIRED_ENV) {
+  if (!process.env[key]) throw new Error(`Missing required env var: ${key}`);
+}
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: process.env.CLIENT_URL }));
 app.use(express.json());
 
-const decodedBase64Key = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8');
+const decodedBase64Key = Buffer.from(
+  process.env.FB_SERVICE_KEY as string,
+  "base64",
+).toString("utf8");
 const serviceAccount = JSON.parse(decodedBase64Key);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.ezlz7xu.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-const uri = `mongodb://${process.env.DB_USER}:${process.env.DB_PASSWORD}@ac-4xay6dy-shard-00-00.ezlz7xu.mongodb.net:27017,ac-4xay6dy-shard-00-01.ezlz7xu.mongodb.net:27017,ac-4xay6dy-shard-00-02.ezlz7xu.mongodb.net:27017/?tls=true&authSource=admin&retryWrites=true&w=majority&appName=Cluster0`
-
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
-const client = new MongoClient(uri, {
+const client = new MongoClient(process.env.MONGODB_URI as string, {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
@@ -33,29 +56,32 @@ async function run() {
   try {
     // await client.connect();
 
-    const db = client.db("parcelDB");
-    const usersCollection = db.collection("users");
-    const parcelCollection = db.collection("parcels");
-    const paymentCollection = db.collection("payments");
-    const ridersCollection = db.collection("riders");
-    const cashoutsCollection = db.collection("cashouts");
-    const trackingCollection = db.collection("trackings");
-    const reviewsCollection = db.collection("reviews");
-    const notificationsCollection = db.collection("notifications");
+    const db = client.db(process.env.DB_NAME as string);
+    const usersCollection = db.collection<User>("users");
+    const parcelCollection = db.collection<Parcel>("parcels");
+    const paymentCollection = db.collection<Payment>("payments");
+    const ridersCollection = db.collection<Rider>("riders");
+    const cashoutsCollection = db.collection<Cashout>("cashouts");
+    const trackingCollection = db.collection<TrackingUpdate>("trackings");
+    const reviewsCollection = db.collection<Review>("reviews");
+    const notificationsCollection =
+      db.collection<Notification>("notifications");
 
     // custom middlewares
-    const verifyFBToken = async (req, res, next) => {
+    const verifyFBToken = async (
+      req: Request,
+      res: Response,
+      next: NextFunction,
+    ): Promise<void> => {
       const authHeader = req.headers.authorization;
       if (!authHeader) {
-        return res
-          .status(401)
-          .send({ success: false, message: "Unauthorized" });
+        res.status(401).send({ success: false, message: "Unauthorized" });
+        return;
       }
       const token = authHeader.split(" ")[1];
       if (!token) {
-        return res
-          .status(401)
-          .send({ success: false, message: "Unauthorized" });
+        res.status(401).send({ success: false, message: "Unauthorized" });
+        return;
       }
       try {
         const decoded = await admin.auth().verifyIdToken(token);
@@ -63,31 +89,39 @@ async function run() {
         next();
       } catch (error) {
         console.error(error);
-        return res
-          .status(401)
-          .send({ success: false, message: "Unauthorized" });
+        res.status(401).send({ success: false, message: "Unauthorized" });
       }
     };
 
     // admin middleware
-    const verifyAdmin = async (req, res, next) => {
+    const verifyAdmin = async (
+      req: Request,
+      res: Response,
+      next: NextFunction,
+    ): Promise<void> => {
       const email = req.user.email;
       const user = await usersCollection.findOne({ email: email });
       if (user?.role !== "admin") {
-        return res.status(403).send({ success: false, message: "Forbidden" });
+        res.status(403).send({ success: false, message: "Forbidden" });
+        return;
       }
       next();
     };
 
     // helper function for adding tracking updates
-    const addTrackingUpdate = async (trackingId, status, details, location = "Primary Hub") => {
+    const addTrackingUpdate = async (
+      trackingId: string,
+      status: string,
+      details: string,
+      location = "Primary Hub",
+    ): Promise<void> => {
       try {
         await trackingCollection.insertOne({
           trackingId,
           status,
           details,
           location,
-          time: new Date().toISOString()
+          time: new Date().toISOString(),
         });
       } catch (error) {
         console.error("Failed to add tracking update:", error);
@@ -96,7 +130,7 @@ async function run() {
 
     // GET: All users
     app.get("/users/search", verifyFBToken, verifyAdmin, async (req, res) => {
-      const emailQuery = req.query.email;
+      const emailQuery = req.query.email as string | undefined;
 
       if (!emailQuery)
         return res.status(400).send({ error: "Email query is required" });
@@ -123,7 +157,7 @@ async function run() {
       try {
         const user = await usersCollection.findOne(
           { email },
-          { projection: { role: 1 } }
+          { projection: { role: 1 } },
         );
 
         if (!user) {
@@ -151,7 +185,7 @@ async function run() {
         try {
           const result = await usersCollection.updateOne(
             { email },
-            { $set: { role } }
+            { $set: { role } },
           );
           res.send({ success: true, modifiedCount: result.modifiedCount });
         } catch (error) {
@@ -159,26 +193,30 @@ async function run() {
             .status(500)
             .send({ success: false, error: "Failed to update role" });
         }
-      }
+      },
     );
 
     // PATCH: User profile (Update name, photo, phone)
     app.patch("/users/:email", verifyFBToken, async (req, res) => {
       const { email } = req.params;
       const { name, photoURL, phone, address } = req.body;
-      
+
       if (req.user.email !== email) {
-        return res.status(403).send({ success: false, message: "Unauthorized" });
+        return res
+          .status(403)
+          .send({ success: false, message: "Unauthorized" });
       }
 
       try {
         const result = await usersCollection.updateOne(
           { email },
-          { $set: { name, photoURL, phone, address } }
+          { $set: { name, photoURL, phone, address } },
         );
         res.send({ success: true, modifiedCount: result.modifiedCount });
       } catch (error) {
-        res.status(500).send({ success: false, error: "Failed to update profile" });
+        res
+          .status(500)
+          .send({ success: false, error: "Failed to update profile" });
       }
     });
 
@@ -202,7 +240,7 @@ async function run() {
       const result = await usersCollection.updateOne(
         { email: email },
         updateDoc,
-        { upsert: true }
+        { upsert: true },
       );
 
       res.send(result);
@@ -211,24 +249,26 @@ async function run() {
     // GET: All parcels OR parcels by user (created_by), sorted by latest
     app.get("/parcels", verifyFBToken, async (req, res) => {
       try {
-        const { email, payment_status, delivery_status } = req.query;
-        let query = {};
+        const email = req.query.email as string | undefined;
+        const payment_status = req.query.payment_status as string | undefined;
+        const delivery_status = req.query.delivery_status as string | undefined;
+        const query: Record<string, unknown> = {};
         if (email) {
-          query = { created_by: email };
+          query["created_by"] = email;
         }
 
         if (payment_status) {
-          query.payment_status = payment_status;
+          query["payment_status"] = payment_status;
         }
 
         if (delivery_status) {
-          query.delivery_status = delivery_status;
+          query["delivery_status"] = delivery_status;
         }
 
-        const options = {
-          sort: { createdAt: -1 }, // Newest first
-        };
-        const parcels = await parcelCollection.find(query, options).toArray();
+        const parcels = await parcelCollection
+          .find(query)
+          .sort({ createdAt: -1 as const })
+          .toArray();
         res.send(parcels);
       } catch (error) {
         console.error("Error fetching parcels:", error);
@@ -242,7 +282,7 @@ async function run() {
         const id = req.params.id;
 
         const parcel = await parcelCollection.findOne({
-          _id: new ObjectId(id),
+          _id: new ObjectId(id as string),
         });
 
         if (!parcel) {
@@ -265,9 +305,13 @@ async function run() {
       try {
         const parcelData = req.body;
         const result = await parcelCollection.insertOne(parcelData);
-        
+
         // Initial tracking update
-        await addTrackingUpdate(parcelData.trackingId, "booked", "Your parcel has been booked and is awaiting collection.");
+        await addTrackingUpdate(
+          parcelData.trackingId,
+          "booked",
+          "Your parcel has been booked and is awaiting collection.",
+        );
 
         res.status(201).send({
           success: true,
@@ -289,7 +333,7 @@ async function run() {
         const id = req.params.id;
 
         const result = await parcelCollection.deleteOne({
-          _id: new ObjectId(id),
+          _id: new ObjectId(id as string),
         });
 
         res.send(result);
@@ -336,7 +380,10 @@ async function run() {
           .toArray();
         res.send(pendingRiders);
       } catch (error) {
-        console.error("Error fetching pending riders:", error.message);
+        console.error(
+          "Error fetching pending riders:",
+          (error as Error).message,
+        );
         res.status(500).send({ error: "Internal Server Error" });
       }
     });
@@ -355,7 +402,7 @@ async function run() {
         } catch (error) {
           res.status(500).json({ error: "Internal Server Error" });
         }
-      }
+      },
     );
 
     // GET /riders?status=available - Get available riders
@@ -401,8 +448,8 @@ async function run() {
             status: "$_id",
             count: 1,
             _id: 0, // Exclude the _id field from the output
-          }
-        }
+          },
+        },
       ];
 
       try {
@@ -457,13 +504,13 @@ async function run() {
       try {
         const parcelId = req.params.id;
         const result = await parcelCollection.updateOne(
-          { _id: new ObjectId(parcelId) },
+          { _id: new ObjectId(parcelId as string) },
           {
             $set: {
               picked_at: new Date().toISOString(),
               delivery_status: "on_the_way",
             },
-          }
+          },
         );
 
         if (result.modifiedCount === 0) {
@@ -476,18 +523,25 @@ async function run() {
         res.send({ success: true, message: "Parcel marked as picked" });
 
         // Notification for user
-        const parcel = await parcelCollection.findOne({ _id: new ObjectId(parcelId) });
+        const parcel = await parcelCollection.findOne({
+          _id: new ObjectId(parcelId as string),
+        });
         if (parcel) {
           notificationsCollection.insertOne({
             email: parcel.created_by,
             message: `Your parcel "${parcel.parcelName}" has been picked up by the rider and is on the way!`,
             time: new Date().toISOString(),
             isRead: false,
-            type: "status_update"
+            type: "status_update",
           });
-          
+
           // Tracking update
-          await addTrackingUpdate(parcel.trackingId, "picked_up", `The rider has picked up the parcel from ${parcel.senderAddress}.`, parcel.senderServiceCenter);
+          await addTrackingUpdate(
+            parcel.trackingId,
+            "picked_up",
+            `The rider has picked up the parcel from ${parcel.senderAddress}.`,
+            parcel.senderServiceCenter,
+          );
         }
       } catch (error) {
         console.error("Error marking parcel as picked:", error);
@@ -509,7 +563,7 @@ async function run() {
             .send({ success: false, message: "Rider not found" });
 
         const parcel = await parcelCollection.findOne({
-          _id: new ObjectId(id),
+          _id: new ObjectId(id as string),
           assigned_rider_id: new ObjectId(rider._id),
         });
         if (!parcel)
@@ -519,32 +573,42 @@ async function run() {
           });
 
         // Prepare update fields
-        const updateFields = { delivery_status };
+        const updateFields: Record<string, unknown> = { delivery_status };
 
         if (delivery_status === "delivered") {
-          updateFields.delivered_at = new Date().toISOString();
+          updateFields["delivered_at"] = new Date().toISOString();
 
           // Earning calculation
           const isSameDistrict =
             parcel.senderDistrict === parcel.receiverDistrict;
           const rate = isSameDistrict ? 0.8 : 0.3;
-          const earning = parcel.cost * rate;
+          const earning = (parcel.cost as number) * rate;
 
-          updateFields.rider_earning = earning;
+          updateFields["rider_earning"] = earning;
         }
 
         await parcelCollection.updateOne(
-          { _id: new ObjectId(id) },
-          { $set: updateFields }
+          { _id: new ObjectId(id as string) },
+          { $set: updateFields },
         );
 
         res.send({ success: true, message: "Status updated successfully" });
 
         // Tracking update
         if (delivery_status === "delivered") {
-          await addTrackingUpdate(parcel.trackingId, "delivered", "Parcel has been delivered successfully.", parcel.receiverServiceCenter);
+          await addTrackingUpdate(
+            parcel.trackingId,
+            "delivered",
+            "Parcel has been delivered successfully.",
+            parcel.receiverServiceCenter,
+          );
         } else if (delivery_status === "on_the_way") {
-          await addTrackingUpdate(parcel.trackingId, "on_the_way", "Parcel is on the way for delivery.", parcel.receiverServiceCenter);
+          await addTrackingUpdate(
+            parcel.trackingId,
+            "on_the_way",
+            "Parcel is on the way for delivery.",
+            parcel.receiverServiceCenter,
+          );
         }
 
         // Notification for user
@@ -554,7 +618,7 @@ async function run() {
             message: `Hooray! Your parcel "${parcel.parcelName}" has been delivered.`,
             time: new Date().toISOString(),
             isRead: false,
-            type: "status_update"
+            type: "status_update",
           });
         } else if (delivery_status === "on_the_way") {
           notificationsCollection.insertOne({
@@ -562,7 +626,7 @@ async function run() {
             message: `Your parcel "${parcel.parcelName}" is now on the way!`,
             time: new Date().toISOString(),
             isRead: false,
-            type: "status_update"
+            type: "status_update",
           });
         }
       } catch (err) {
@@ -605,7 +669,7 @@ async function run() {
         const riderEmail = req.user.email;
 
         const parcel = await parcelCollection.findOne({
-          _id: new ObjectId(parcelId),
+          _id: new ObjectId(parcelId as string),
           assigned_rider_email: riderEmail,
           delivery_status: "delivered",
         });
@@ -630,10 +694,10 @@ async function run() {
 
         // Insert into cashouts with additional info
         await cashoutsCollection.insertOne({
-          parcel_id: parcel._id,
-          rider_email: riderEmail,
+          parcel_id: parcel._id!,
+          rider_email: riderEmail!,
           rider_name: parcel.assigned_rider_name,
-          earning: parcel.rider_earning,
+          earning: parcel.rider_earning ?? 0,
           cashed_out_at: new Date().toISOString(),
           trackingId: parcel.trackingId,
           parcel_name: parcel.parcelName, // ✅ Add this field
@@ -661,7 +725,7 @@ async function run() {
 
           // Get rider details
           const rider = await ridersCollection.findOne({
-            _id: new ObjectId(riderId),
+            _id: new ObjectId(riderId as string),
           });
 
           if (!rider) {
@@ -673,16 +737,16 @@ async function run() {
 
           // Update parcel with rider info
           const result = await parcelCollection.updateOne(
-            { _id: new ObjectId(parcelId) },
+            { _id: new ObjectId(parcelId as string) },
             {
               $set: {
-                assigned_rider_id: new ObjectId(riderId),
+                assigned_rider_id: new ObjectId(riderId as string),
                 assigned_rider_name: rider.name,
                 assigned_rider_email: rider.email,
                 assigned_rider_phone: rider.phone,
                 delivery_status: "assigned",
               },
-            }
+            },
           );
 
           res.send({
@@ -692,7 +756,9 @@ async function run() {
           });
 
           // Notifications
-          const parcel = await parcelCollection.findOne({ _id: new ObjectId(parcelId) });
+          const parcel = await parcelCollection.findOne({
+            _id: new ObjectId(parcelId as string),
+          });
           if (parcel) {
             // To User
             notificationsCollection.insertOne({
@@ -700,7 +766,7 @@ async function run() {
               message: `A rider (${rider.name}) has been assigned to your parcel "${parcel.parcelName}".`,
               time: new Date().toISOString(),
               isRead: false,
-              type: "status_update"
+              type: "status_update",
             });
             // To Rider
             notificationsCollection.insertOne({
@@ -708,11 +774,15 @@ async function run() {
               message: `You have been assigned a new delivery: "${parcel.parcelName}".`,
               time: new Date().toISOString(),
               isRead: false,
-              type: "status_update"
+              type: "status_update",
             });
-            
+
             // Tracking update
-            await addTrackingUpdate(parcel.trackingId, "assigned", `Rider assigned: ${rider.name}.`);
+            await addTrackingUpdate(
+              parcel.trackingId,
+              "assigned",
+              `Rider assigned: ${rider.name}.`,
+            );
           }
         } catch (error) {
           console.error("Error assigning rider:", error);
@@ -721,7 +791,7 @@ async function run() {
             message: "Internal server error",
           });
         }
-      }
+      },
     );
 
     // PATCH /riders
@@ -732,7 +802,7 @@ async function run() {
       async (req, res) => {
         const { id } = req.params;
         const { status, email } = req.body;
-        const query = { _id: new ObjectId(id) };
+        const query = { _id: new ObjectId(id as string) };
         const updateDoc = {
           $set: { status },
         };
@@ -743,11 +813,11 @@ async function run() {
           if (status === "approved") {
             const userQuery = { email };
             const userUpdateDoc = {
-              $set: { role: "rider" },
+              $set: { role: "rider" as User["role"] },
             };
             const userResult = await usersCollection.updateOne(
               userQuery,
-              userUpdateDoc
+              userUpdateDoc,
             );
             console.log("User role updated:", userResult.modifiedCount);
           }
@@ -755,7 +825,7 @@ async function run() {
         } catch (error) {
           res.status(500).send({ error: "Internal Server Error" });
         }
-      }
+      },
     );
 
     // POST /riders
@@ -794,7 +864,9 @@ async function run() {
     app.get("/notifications/:email", verifyFBToken, async (req, res) => {
       const { email } = req.params;
       if (req.user.email !== email) {
-        return res.status(403).send({ success: false, message: "Unauthorized" });
+        return res
+          .status(403)
+          .send({ success: false, message: "Unauthorized" });
       }
       try {
         const notifications = await notificationsCollection
@@ -811,8 +883,8 @@ async function run() {
       const { id } = req.params;
       try {
         const result = await notificationsCollection.updateOne(
-          { _id: new ObjectId(id) },
-          { $set: { isRead: true } }
+          { _id: new ObjectId(id as string) },
+          { $set: { isRead: true } },
         );
         res.send(result);
       } catch (error) {
@@ -820,50 +892,63 @@ async function run() {
       }
     });
 
-    app.patch("/notifications/read-all/:email", verifyFBToken, async (req, res) => {
-      const { email } = req.params;
-      if (req.user.email !== email) {
-        return res.status(403).send({ success: false, message: "Unauthorized" });
-      }
-      try {
-        const result = await notificationsCollection.updateMany(
-          { email, isRead: false },
-          { $set: { isRead: true } }
-        );
-        res.send(result);
-      } catch (error) {
-        res.status(500).send({ error: "Failed to mark all as read" });
-      }
-    });
+    app.patch(
+      "/notifications/read-all/:email",
+      verifyFBToken,
+      async (req, res) => {
+        const { email } = req.params;
+        if (req.user.email !== email) {
+          return res
+            .status(403)
+            .send({ success: false, message: "Unauthorized" });
+        }
+        try {
+          const result = await notificationsCollection.updateMany(
+            { email, isRead: false },
+            { $set: { isRead: true } },
+          );
+          res.send(result);
+        } catch (error) {
+          res.status(500).send({ error: "Failed to mark all as read" });
+        }
+      },
+    );
 
     // ADMIN STATS API
     app.get("/admin/stats", verifyFBToken, verifyAdmin, async (req, res) => {
       try {
-        const totalRevenueResult = await paymentCollection.aggregate([
-          { $group: { _id: null, total: { $sum: "$amount" } } }
-        ]).toArray();
-        
+        const totalRevenueResult = await paymentCollection
+          .aggregate([{ $group: { _id: null, total: { $sum: "$amount" } } }])
+          .toArray();
+
         const totalRevenue = totalRevenueResult[0]?.total || 0;
 
-        const dailyBookings = await parcelCollection.aggregate([
-          {
-            $group: {
-              _id: { $dateToString: { format: "%Y-%m-%d", date: { $toDate: "$creation_date" } } },
-              count: { $sum: 1 }
-            }
-          },
-          { $sort: { _id: 1 } },
-          { $limit: 7 }
-        ]).toArray();
+        const dailyBookings = await parcelCollection
+          .aggregate([
+            {
+              $group: {
+                _id: {
+                  $dateToString: {
+                    format: "%Y-%m-%d",
+                    date: { $toDate: "$creation_date" },
+                  },
+                },
+                count: { $sum: 1 },
+              },
+            },
+            { $sort: { _id: 1 } },
+            { $limit: 7 },
+          ])
+          .toArray();
 
-        const parcelTypeDistribution = await parcelCollection.aggregate([
-          { $group: { _id: "$parcelType", count: { $sum: 1 } } }
-        ]).toArray();
+        const parcelTypeDistribution = await parcelCollection
+          .aggregate([{ $group: { _id: "$parcelType", count: { $sum: 1 } } }])
+          .toArray();
 
         res.send({
           totalRevenue,
           dailyBookings,
-          parcelTypeDistribution
+          parcelTypeDistribution,
         });
       } catch (error) {
         res.status(500).send({ error: "Failed to fetch admin stats" });
@@ -871,61 +956,77 @@ async function run() {
     });
 
     // ADMIN ALL PARCELS API (With filtering and pagination)
-    app.get("/admin/all-parcels", verifyFBToken, verifyAdmin, async (req, res) => {
-      const page = parseInt(req.query.page) || 1;
-      const size = parseInt(req.query.size) || 10;
-      const { status, startDate, endDate } = req.query;
+    app.get(
+      "/admin/all-parcels",
+      verifyFBToken,
+      verifyAdmin,
+      async (req, res) => {
+        const page = parseInt(req.query.page as string) || 1;
+        const size = parseInt(req.query.size as string) || 10;
+        const status = req.query.status as string | undefined;
+        const startDate = req.query.startDate as string | undefined;
+        const endDate = req.query.endDate as string | undefined;
 
-      let query = {};
-      if (status && status !== "all") {
-        query.delivery_status = status;
-      }
-      if (startDate && endDate) {
-        query.creation_date = {
-          $gte: startDate,
-          $lte: endDate
-        };
-      }
+        const query: Record<string, unknown> = {};
+        if (status && status !== "all") {
+          query["delivery_status"] = status;
+        }
+        if (startDate && endDate) {
+          query["creation_date"] = {
+            $gte: startDate,
+            $lte: endDate,
+          };
+        }
 
-      try {
-        const parcels = await parcelCollection
-          .find(query)
-          .skip((page - 1) * size)
-          .limit(size)
-          .sort({ creation_date: -1 })
-          .toArray();
-        
-        const total = await parcelCollection.countDocuments(query);
-        res.send({ parcels, total });
-      } catch (error) {
-        res.status(500).send({ error: "Failed to fetch all parcels" });
-      }
-    });
+        try {
+          const parcels = await parcelCollection
+            .find(query)
+            .skip((page - 1) * size)
+            .limit(size)
+            .sort({ creation_date: -1 })
+            .toArray();
+
+          const total = await parcelCollection.countDocuments(query);
+          res.send({ parcels, total });
+        } catch (error) {
+          res.status(500).send({ error: "Failed to fetch all parcels" });
+        }
+      },
+    );
 
     // RIDER STATS API
     app.get("/rider/stats/:email", verifyFBToken, async (req, res) => {
       const { email } = req.params;
       try {
-        const deliveryStats = await parcelCollection.aggregate([
-          { $match: { assigned_rider_email: email, delivery_status: "delivered" } },
-          {
-            $group: {
-              _id: null,
-              totalDelivered: { $sum: 1 },
-              totalEarnings: { $sum: "$rider_earning" }
-            }
-          }
-        ]).toArray();
+        const deliveryStats = await parcelCollection
+          .aggregate([
+            {
+              $match: {
+                assigned_rider_email: email,
+                delivery_status: "delivered",
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                totalDelivered: { $sum: 1 },
+                totalEarnings: { $sum: "$rider_earning" },
+              },
+            },
+          ])
+          .toArray();
 
-        const avgRatingResult = await reviewsCollection.aggregate([
-          { $match: { rider_email: email } },
-          { $group: { _id: null, avgRating: { $avg: "$rating" } } }
-        ]).toArray();
+        const avgRatingResult = await reviewsCollection
+          .aggregate([
+            { $match: { rider_email: email } },
+            { $group: { _id: null, avgRating: { $avg: "$rating" } } },
+          ])
+          .toArray();
 
         res.send({
           totalDelivered: deliveryStats[0]?.totalDelivered || 0,
           totalEarnings: deliveryStats[0]?.totalEarnings || 0,
-          avgRating: avgRatingResult[0]?.avgRating || 0
+          avgRating: avgRatingResult[0]?.avgRating || 0,
         });
       } catch (error) {
         res.status(500).send({ error: "Failed to fetch rider stats" });
@@ -936,22 +1037,30 @@ async function run() {
     app.get("/user/stats/:email", verifyFBToken, async (req, res) => {
       const { email } = req.params;
       try {
-        const stats = await parcelCollection.aggregate([
-          { $match: { created_by: email } },
-          {
-            $group: {
-              _id: null,
-              totalBooked: { $sum: 1 },
-              unpaidCount: { $sum: { $cond: [{ $ne: ["$payment_status", "paid"] }, 1, 0] } },
-              totalSpent: { $sum: { $cond: [{ $eq: ["$payment_status", "paid"] }, "$cost", 0] } }
-            }
-          }
-        ]).toArray();
+        const stats = await parcelCollection
+          .aggregate([
+            { $match: { created_by: email } },
+            {
+              $group: {
+                _id: null,
+                totalBooked: { $sum: 1 },
+                unpaidCount: {
+                  $sum: { $cond: [{ $ne: ["$payment_status", "paid"] }, 1, 0] },
+                },
+                totalSpent: {
+                  $sum: {
+                    $cond: [{ $eq: ["$payment_status", "paid"] }, "$cost", 0],
+                  },
+                },
+              },
+            },
+          ])
+          .toArray();
 
         res.send({
           totalBooked: stats[0]?.totalBooked || 0,
           unpaidCount: stats[0]?.unpaidCount || 0,
-          totalSpent: stats[0]?.totalSpent || 0
+          totalSpent: stats[0]?.totalSpent || 0,
         });
       } catch (error) {
         res.status(500).send({ error: "Failed to fetch user stats" });
@@ -1003,16 +1112,18 @@ async function run() {
 
         // 1. Update the parcel's payment_status to "paid"
         const parcelUpdateResult = await parcelCollection.updateOne(
-          { _id: new ObjectId(parcelId) },
-          { $set: { payment_status: "paid" } }
+          { _id: new ObjectId(parcelId as string) },
+          { $set: { payment_status: "paid" } },
         );
 
         // Fetch parcel for tracking and notification
-        const parcel = await parcelCollection.findOne({ _id: new ObjectId(parcelId) });
+        const parcel = await parcelCollection.findOne({
+          _id: new ObjectId(parcelId as string),
+        });
 
         // 2. Insert into payments collection
         const paymentRecord = {
-          parcelId: new ObjectId(parcelId),
+          parcelId: new ObjectId(parcelId as string),
           email, // could be same as created_by
           transactionId,
           amount: amount / 100,
@@ -1021,9 +1132,8 @@ async function run() {
           payment_time: paymentTime || new Date().toISOString(), // fallback to server time
         };
 
-        const paymentInsertResult = await paymentCollection.insertOne(
-          paymentRecord
-        );
+        const paymentInsertResult =
+          await paymentCollection.insertOne(paymentRecord);
 
         res.send({
           success: true,
@@ -1036,7 +1146,11 @@ async function run() {
 
         if (parcel) {
           // Tracking update
-          await addTrackingUpdate(parcel.trackingId, "paid", `Payment received. Transaction ID: ${transactionId}`);
+          await addTrackingUpdate(
+            parcel.trackingId,
+            "paid",
+            `Payment received. Transaction ID: ${transactionId}`,
+          );
 
           // Notification for user
           notificationsCollection.insertOne({
@@ -1044,7 +1158,7 @@ async function run() {
             message: `Payment of ৳${amount / 100} for your parcel "${parcel.parcelName}" has been received successfully.`,
             time: new Date().toISOString(),
             isRead: false,
-            type: "payment"
+            type: "payment",
           });
         }
 
@@ -1054,7 +1168,7 @@ async function run() {
           message: `Payment of ৳${amount / 100} for your parcel has been received successfully.`,
           time: new Date().toISOString(),
           isRead: false,
-          type: "payment"
+          type: "payment",
         });
       } catch (error) {
         console.error("Error in /payments:", error);
@@ -1070,7 +1184,7 @@ async function run() {
       try {
         const paymentIntent = await stripe.paymentIntents.create({
           amount: Math.round(amount * 100),
-          currency: "bdt",
+          currency: process.env.STRIPE_CURRENCY as string,
           payment_method_types: ["card"],
         });
 
@@ -1096,5 +1210,5 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port http://localhost:${PORT}`);
 });
