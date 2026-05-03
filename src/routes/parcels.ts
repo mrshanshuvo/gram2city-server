@@ -4,230 +4,175 @@ import {
   parcelCollection,
   notificationsCollection,
   addTrackingUpdate,
+  settingsCollection,
 } from "../db";
-import { verifyFBToken, verifyAdmin } from "../middleware/auth";
+import { verifyFBToken } from "../middleware/auth";
+import { Parcel, SystemSettings } from "../types";
 
 const router = Router();
 
-// GET /parcels  (all or filtered by user/status)
+/**
+ * @swagger
+ * /parcels:
+ *   get:
+ *     summary: Get my booked parcels (Customer only)
+ *     tags: [Customer Portal]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - name: payment_status
+ *         in: query
+ *         schema: { type: string, enum: [paid, unpaid] }
+ *     responses:
+ *       200: { description: "Success" }
+ */
 router.get("/parcels", verifyFBToken, async (req, res) => {
   try {
-    const email = req.query.email as string | undefined;
-    const payment_status = req.query.payment_status as string | undefined;
-    const delivery_status = req.query.delivery_status as string | undefined;
-    const query: Record<string, unknown> = {};
-    if (email) query["created_by"] = email;
-    if (payment_status) query["payment_status"] = payment_status;
-    if (delivery_status) query["delivery_status"] = delivery_status;
+    const email = req.user.email;
+    const { payment_status, delivery_status } = req.query;
+
+    const query: any = { created_by: email };
+    if (payment_status) query.payment_status = payment_status;
+    if (delivery_status) query.delivery_status = delivery_status;
+
     const parcels = await parcelCollection
       .find(query)
-      .sort({ createdAt: -1 as const })
+      .sort({ createdAt: -1 })
       .toArray();
-    res.send(parcels);
-  } catch {
-    res.status(500).send({ message: "Failed to get parcels" });
+
+    res.send({ success: true, count: parcels.length, data: parcels });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to fetch your parcels." });
   }
 });
 
-// GET /parcels/delivery/status-count  (must be before /:id)
-router.get("/parcels/delivery/status-count", async (_req, res) => {
-  try {
-    const result = await parcelCollection
-      .aggregate([
-        { $group: { _id: "$delivery_status", count: { $sum: 1 } } },
-        { $project: { status: "$_id", count: 1, _id: 0 } },
-      ])
-      .toArray();
-    res.send(result);
-  } catch {
-    res.status(500).send({ error: "Internal Server Error" });
-  }
-});
-
-// GET /parcels/:id
-router.get("/parcels/:id", async (req, res) => {
-  try {
-    const parcel = await parcelCollection.findOne({
-      _id: new ObjectId(req.params.id as string),
-    });
-    if (!parcel)
-      return res.status(404).send({ success: false, message: "Parcel not found" });
-    res.send({ success: true, data: parcel });
-  } catch {
-    res.status(500).send({ success: false, message: "Failed to fetch parcel" });
-  }
-});
-
-// POST /parcels
+/**
+ * @swagger
+ * /parcels:
+ *   post:
+ *     summary: Book a new parcel with dynamic cost calculation
+ *     tags: [Customer Portal]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             required: [parcelName, weight, receiverName, receiverPhone, deliveryAddress, receiverDistrict]
+ *             properties:
+ *               parcelName: { type: string, example: "Laptop" }
+ *               parcelType: { type: string, example: "Electronics" }
+ *               weight: { type: number, example: 2 }
+ *               receiverName: { type: string, example: "John Doe" }
+ *               receiverPhone: { type: string, example: "01700000000" }
+ *               deliveryAddress: { type: string, example: "123 Street, Dhaka" }
+ *               receiverDistrict: { type: string, example: "Dhaka" }
+ *               senderPhone: { type: string, example: "01800000000" }
+ *               deliveryDate: { type: string, format: date }
+ *     responses:
+ *       201: { description: "Parcel Booked" }
+ */
 router.post("/parcels", verifyFBToken, async (req, res) => {
   try {
-    const parcelData = req.body;
-    const result = await parcelCollection.insertOne(parcelData);
+    const { 
+      parcelName, parcelType, weight, receiverName, 
+      receiverPhone, deliveryAddress, receiverDistrict, 
+      senderPhone, deliveryDate 
+    } = req.body;
+
+    if (!parcelName || !weight || !receiverName || !receiverPhone || !deliveryAddress || !receiverDistrict) {
+      return res.status(400).send({ success: false, message: "Missing required fields." });
+    }
+
+    // 1. Fetch System Settings for cost calculation
+    const settings = await settingsCollection.findOne({}) as SystemSettings;
+    const baseFee = settings?.base_delivery_fee || 50;
+    const costPerKg = settings?.cost_per_kg || 20;
+    const riderCommissionPct = settings?.rider_commission_percentage || 15;
+
+    // 2. Intelligent Cost Calculation
+    const weightNum = Number(weight);
+    const totalCost = baseFee + (weightNum > 1 ? (weightNum - 1) * costPerKg : 0);
+    const riderEarning = (totalCost * riderCommissionPct) / 100;
+    const adminProfit = totalCost - riderEarning;
+
+    // 3. Create Professional Parcel Object
+    const trackingId = `G2C-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const newParcel: Parcel = {
+      trackingId,
+      parcelName,
+      parcelType,
+      created_by: req.user.email as string,
+      creation_date: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      weight: weightNum,
+      receiverName,
+      receiverPhone,
+      deliveryAddress,
+      receiverDistrict,
+      senderPhone,
+      deliveryDate,
+      cost: totalCost,
+      rider_earning: riderEarning,
+      admin_profit: adminProfit,
+      payment_status: "unpaid",
+      delivery_status: "pending"
+    };
+
+    const result = await parcelCollection.insertOne(newParcel);
+
+    // 4. Tracking & Notification
     await addTrackingUpdate(
-      parcelData.trackingId,
+      trackingId,
       "booked",
-      "Your parcel has been booked and is awaiting collection.",
+      "Your parcel has been booked and is awaiting collection."
     );
-    res.status(201).send({ success: true, message: "Parcel created successfully", data: result });
-  } catch {
-    res.status(500).send({ success: false, message: "Failed to create parcel" });
+
+    res.status(201).send({ 
+      success: true, 
+      message: "Parcel booked successfully!", 
+      trackingId,
+      cost: totalCost,
+      id: result.insertedId 
+    });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to book parcel." });
   }
 });
 
-// DELETE /parcels/:id
+/**
+ * @swagger
+ * /parcels/{id}:
+ *   delete:
+ *     summary: Cancel a parcel (Only if pending)
+ *     tags: [Customer Portal]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ name: "id", in: path, required: true, schema: { type: string } }]
+ *     responses:
+ *       200: { description: "Cancelled" }
+ */
 router.delete("/parcels/:id", verifyFBToken, async (req, res) => {
   try {
-    const result = await parcelCollection.deleteOne({
-      _id: new ObjectId(req.params.id as string),
-    });
-    res.send(result);
-  } catch {
-    res.status(500).send({ success: false, message: "Failed to delete parcel" });
-  }
-});
+    const { id } = req.params;
+    const email = req.user.email;
 
-// PATCH /parcels/:id/pick  (rider picks up parcel)
-router.patch("/parcels/:id/pick", verifyFBToken, async (req, res) => {
-  try {
-    const parcelId = req.params.id as string;
-    const result = await parcelCollection.updateOne(
-      { _id: new ObjectId(parcelId) },
-      { $set: { picked_at: new Date().toISOString(), delivery_status: "on_the_way" } },
-    );
-    if (result.modifiedCount === 0)
-      return res.status(404).send({ success: false, message: "Parcel not found or already picked" });
-
-    res.send({ success: true, message: "Parcel marked as picked" });
-
-    const parcel = await parcelCollection.findOne({ _id: new ObjectId(parcelId) });
-    if (parcel) {
-      notificationsCollection.insertOne({
-        email: parcel.created_by,
-        message: `Your parcel "${parcel.parcelName}" has been picked up by the rider and is on the way!`,
-        time: new Date().toISOString(),
-        isRead: false,
-        type: "status_update",
-      });
-      await addTrackingUpdate(
-        parcel.trackingId,
-        "picked_up",
-        `The rider has picked up the parcel from ${parcel.senderAddress}.`,
-        parcel.senderServiceCenter,
-      );
+    const parcel = await parcelCollection.findOne({ _id: new ObjectId(String(id)) });
+    
+    if (!parcel) return res.status(404).send({ success: false, message: "Parcel not found." });
+    
+    // Security: Only owner can delete
+    if (parcel.created_by !== email) {
+      return res.status(403).send({ success: false, message: "Unauthorized to cancel this parcel." });
     }
-  } catch {
-    res.status(500).send({ success: false, message: "Server error" });
-  }
-});
 
-// PATCH /parcels/:id/assign  (admin assigns rider)
-router.patch(
-  "/parcels/:id/assign",
-  verifyFBToken,
-  verifyAdmin,
-  async (req, res) => {
-    try {
-      const parcelId = req.params.id as string;
-      const { riderId } = req.body;
-
-      const { ridersCollection } = await import("../db");
-      const rider = await ridersCollection.findOne({ _id: new ObjectId(riderId as string) });
-      if (!rider)
-        return res.status(404).send({ success: false, message: "Rider not found" });
-
-      const result = await parcelCollection.updateOne(
-        { _id: new ObjectId(parcelId) },
-        {
-          $set: {
-            assigned_rider_id: new ObjectId(riderId as string),
-            assigned_rider_name: rider.name,
-            assigned_rider_email: rider.email,
-            assigned_rider_phone: rider.phone,
-            delivery_status: "assigned",
-          },
-        },
-      );
-
-      res.send({ success: true, message: "Rider assigned successfully", data: result });
-
-      const parcel = await parcelCollection.findOne({ _id: new ObjectId(parcelId) });
-      if (parcel) {
-        notificationsCollection.insertOne({
-          email: parcel.created_by,
-          message: `A rider (${rider.name}) has been assigned to your parcel "${parcel.parcelName}".`,
-          time: new Date().toISOString(),
-          isRead: false,
-          type: "status_update",
-        });
-        notificationsCollection.insertOne({
-          email: rider.email,
-          message: `You have been assigned a new delivery: "${parcel.parcelName}".`,
-          time: new Date().toISOString(),
-          isRead: false,
-          type: "status_update",
-        });
-        await addTrackingUpdate(parcel.trackingId, "assigned", `Rider assigned: ${rider.name}.`);
-      }
-    } catch {
-      res.status(500).send({ success: false, message: "Internal server error" });
+    // Business Logic: Can only cancel if pending
+    if (parcel.delivery_status !== "pending") {
+      return res.status(400).send({ success: false, message: "Cannot cancel a parcel that is already assigned or in transit." });
     }
-  },
-);
 
-// GET /admin/stats
-router.get("/admin/stats", verifyFBToken, verifyAdmin, async (_req, res) => {
-  try {
-    const totalRevenueResult = await (await import("../db")).paymentCollection
-      .aggregate([{ $group: { _id: null, total: { $sum: "$amount" } } }])
-      .toArray();
-    const totalRevenue = totalRevenueResult[0]?.total || 0;
-
-    const dailyBookings = await parcelCollection
-      .aggregate([
-        {
-          $group: {
-            _id: { $dateToString: { format: "%Y-%m-%d", date: { $toDate: "$creation_date" } } },
-            count: { $sum: 1 },
-          },
-        },
-        { $sort: { _id: 1 } },
-        { $limit: 7 },
-      ])
-      .toArray();
-
-    const parcelTypeDistribution = await parcelCollection
-      .aggregate([{ $group: { _id: "$parcelType", count: { $sum: 1 } } }])
-      .toArray();
-
-    res.send({ totalRevenue, dailyBookings, parcelTypeDistribution });
-  } catch {
-    res.status(500).send({ error: "Failed to fetch admin stats" });
-  }
-});
-
-// GET /admin/all-parcels  (paginated + filtered)
-router.get("/admin/all-parcels", verifyFBToken, verifyAdmin, async (req, res) => {
-  const page = parseInt(req.query.page as string) || 1;
-  const size = parseInt(req.query.size as string) || 10;
-  const status = req.query.status as string | undefined;
-  const startDate = req.query.startDate as string | undefined;
-  const endDate = req.query.endDate as string | undefined;
-
-  const query: Record<string, unknown> = {};
-  if (status && status !== "all") query["delivery_status"] = status;
-  if (startDate && endDate) query["creation_date"] = { $gte: startDate, $lte: endDate };
-
-  try {
-    const parcels = await parcelCollection
-      .find(query)
-      .skip((page - 1) * size)
-      .limit(size)
-      .sort({ creation_date: -1 })
-      .toArray();
-    const total = await parcelCollection.countDocuments(query);
-    res.send({ parcels, total });
-  } catch {
-    res.status(500).send({ error: "Failed to fetch all parcels" });
+    await parcelCollection.deleteOne({ _id: new ObjectId(String(id)) });
+    res.send({ success: true, message: "Parcel cancelled successfully." });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to cancel parcel." });
   }
 });
 

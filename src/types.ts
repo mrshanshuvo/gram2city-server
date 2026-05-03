@@ -23,13 +23,19 @@ export interface Parcel {
   parcelName: string;
   parcelType?: string;
   created_by: string; // User Email
+  weight: number; // Added: For cost calculation
   creation_date?: string;
   createdAt?: string;
 
   senderAddress?: string;
+  senderPhone?: string; // Added: Mandatory sender contact
   senderDistrict?: string;
   senderServiceCenter?: string;
+  deliveryDate?: string; // Added: Requested delivery date
 
+  receiverName: string; // Added: Mandatory receiver info
+  receiverPhone: string; // Added: Mandatory receiver info
+  deliveryAddress: string; // Added: Mandatory receiver info
   receiverDistrict?: string;
   receiverServiceCenter?: string;
 
