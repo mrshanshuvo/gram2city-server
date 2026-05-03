@@ -297,6 +297,27 @@ export const swaggerSpec = {
         responses: { 200: { description: "Success" } },
       },
     },
+    "/admin/announce": {
+      post: {
+        summary: "Send a notification to all users and riders",
+        tags: ["Admin Panel"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                required: ["message"],
+                properties: {
+                  message: { type: "string", example: "System maintenance tonight at 2 AM." }
+                }
+              }
+            }
+          }
+        },
+        responses: { 200: { description: "Announcement sent" } },
+      },
+    },
     "/auth/admin/create-user": {
       post: {
         summary: "Onboard new Admin/Rider manually",

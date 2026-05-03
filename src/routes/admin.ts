@@ -29,6 +29,104 @@ router.get("/audit-logs", async (req, res) => {
 
 /**
  * @swagger
+ * /admin/stats:
+ *   get:
+ *     summary: Get high-level platform statistics and revenue data
+ *     tags: [Admin Panel]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: "Stats retrieved" }
+ */
+router.get("/stats", async (req, res) => {
+  try {
+    const { parcelCollection, paymentCollection, ridersCollection } = require("../db");
+    
+    // 1. Parcel Stats
+    const totalParcels = await parcelCollection.countDocuments();
+    const pendingParcels = await parcelCollection.countDocuments({ delivery_status: "pending" });
+    const deliveredParcels = await parcelCollection.countDocuments({ delivery_status: "delivered" });
+
+    // 2. Financial Stats (Aggregation)
+    const revenueData = await paymentCollection.aggregate([
+      { $group: { _id: null, totalRevenue: { $sum: "$amount" } } }
+    ]).toArray();
+    
+    const profitData = await parcelCollection.aggregate([
+      { $group: { _id: null, totalProfit: { $sum: "$admin_profit" } } }
+    ]).toArray();
+
+    // 3. User Stats
+    const totalUsers = await usersCollection.countDocuments({ role: "user" });
+    const totalRiders = await ridersCollection.countDocuments();
+
+    res.send({
+      success: true,
+      stats: {
+        parcels: { total: totalParcels, pending: pendingParcels, delivered: deliveredParcels },
+        revenue: revenueData[0]?.totalRevenue || 0,
+        profit: profitData[0]?.totalProfit || 0,
+        users: { customers: totalUsers, riders: totalRiders }
+      }
+    });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to aggregate stats" });
+  }
+});
+
+/**
+ * @swagger
+ * /admin/announce:
+ *   post:
+ *     summary: Send a notification to all users and riders
+ *     tags: [Admin Panel]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             required: [message]
+ *             properties:
+ *               message: { type: string, example: "System maintenance tonight at 2 AM." }
+ *     responses:
+ *       200: { description: "Announcement sent" }
+ */
+router.post("/announce", async (req, res) => {
+  const { message } = req.body;
+  try {
+    const { notificationsCollection } = require("../db");
+    
+    // Fetch all user emails
+    const users = await usersCollection.find({}, { projection: { email: 1 } }).toArray();
+    
+    const notifications = users.map(u => ({
+      email: u.email,
+      message: `ANNOUNCEMENT: ${message}`,
+      time: new Date().toISOString(),
+      isRead: false,
+      type: "admin_alert"
+    }));
+
+    if (notifications.length > 0) {
+      await notificationsCollection.insertMany(notifications);
+    }
+
+    // Log the announcement
+    await auditCollection.insertOne({
+      admin_email: req.user.email,
+      action: "BULK_ANNOUNCEMENT",
+      details: `Sent announcement: ${message}`,
+      timestamp: new Date().toISOString()
+    });
+
+    res.send({ success: true, message: `Announcement sent to ${users.length} users.` });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to send announcement" });
+  }
+});
+
+/**
+ * @swagger
  * /admin/settings:
  *   get:
  *     summary: Get global system settings
