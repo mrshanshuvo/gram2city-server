@@ -13,6 +13,7 @@ const REQUIRED_ENV = [
   "STRIPE_SECRET_KEY",
   "STRIPE_CURRENCY",
   "CLIENT_URL",
+  "IMGBB_API_KEY",
 ] as const;
 for (const key of REQUIRED_ENV) {
   if (!process.env[key]) throw new Error(`Missing required env var: ${key}`);
@@ -38,6 +39,7 @@ import trackingsRouter from "./routes/trackings";
 import reviewsRouter from "./routes/reviews";
 import notificationsRouter from "./routes/notifications";
 import cashoutsRouter from "./routes/cashouts";
+import uploadsRouter from "./routes/uploads";
 
 app.get("/", (_req, res) => res.send("Parcel website server is running"));
 app.use("/", usersRouter);
@@ -48,6 +50,7 @@ app.use("/", trackingsRouter);
 app.use("/", reviewsRouter);
 app.use("/", notificationsRouter);
 app.use("/", cashoutsRouter);
+app.use("/", uploadsRouter);
 
 // ─── Swagger Documentation ────────────────────────────────────────────────────
 app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

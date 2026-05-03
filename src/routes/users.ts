@@ -76,24 +76,38 @@ router.patch("/users/:email", verifyFBToken, async (req, res) => {
 });
 
 // POST /users  (upsert on login)
-router.post("/users", async (req, res) => {
-  const email = req.body.email;
+router.post("/users", verifyFBToken, async (req, res) => {
+  const email = req.user.email;
+  if (!email) {
+    return res.status(400).send({ success: false, message: "Email not found in token" });
+  }
+
   const user = req.body;
   const updateDoc = {
     $setOnInsert: {
       name: user.name,
       photoURL: user.photoURL,
-      role: user.role,
-      created_at: user.created_at,
+      role: "user" as const,
+      created_at: new Date().toISOString(),
     },
-    $set: { last_login: user.last_login },
+    $set: {
+      last_login: new Date().toISOString(),
+      ...(user.name && { name: user.name }),
+      ...(user.photoURL && { photoURL: user.photoURL }),
+    },
   };
-  const result = await usersCollection.updateOne(
-    { email },
-    updateDoc,
-    { upsert: true },
-  );
-  res.send(result);
+
+  try {
+    const result = await usersCollection.updateOne(
+      { email },
+      updateDoc,
+      { upsert: true },
+    );
+    res.send({ success: true, ...result });
+  } catch (error) {
+    console.error("Error upserting user:", error);
+    res.status(500).send({ success: false, message: "Internal Server Error" });
+  }
 });
 
 // GET /user/stats/:email
