@@ -84,7 +84,15 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 });
 
 // ─── Swagger Documentation ────────────────────────────────────────────────────
-app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+const CSS_URL = "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css";
+app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: ".swagger-ui .topbar { display: none }",
+  customCssUrl: CSS_URL,
+  customJs: [
+    "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.js"
+  ]
+}));
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
