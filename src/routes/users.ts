@@ -82,18 +82,21 @@ router.post("/users", verifyFBToken, async (req, res) => {
     return res.status(400).send({ success: false, message: "Email not found in token" });
   }
 
-  const user = req.body;
+  // Pull from body (if provided) or fallback to decoded token claims
+  const name = req.body.name || req.user.name;
+  const photoURL = req.body.photoURL || req.user.picture;
+
   const updateDoc = {
     $setOnInsert: {
-      name: user.name,
-      photoURL: user.photoURL,
+      name,
+      photoURL,
       role: "user" as const,
       created_at: new Date().toISOString(),
     },
     $set: {
       last_login: new Date().toISOString(),
-      ...(user.name && { name: user.name }),
-      ...(user.photoURL && { photoURL: user.photoURL }),
+      ...(name && { name }),
+      ...(photoURL && { photoURL }),
     },
   };
 
