@@ -34,7 +34,16 @@ admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const app = express();
 
 // ─── Professional Middlewares ────────────────────────────────────────────────
-app.use(helmet()); // Security headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "script-src": ["'self'", "'unsafe-inline'", "cdnjs.cloudflare.com"],
+      "style-src": ["'self'", "'unsafe-inline'", "cdnjs.cloudflare.com", "fonts.googleapis.com"],
+      "img-src": ["'self'", "data:", "validator.swagger.io"],
+    },
+  },
+})); 
 app.use(morgan("dev")); // Request logging
 app.use(compression()); // Gzip compression
 app.use(cors({ origin: process.env.CLIENT_URL }));
