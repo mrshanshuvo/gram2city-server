@@ -75,40 +75,77 @@ router.patch("/users/:email", verifyFBToken, async (req, res) => {
   }
 });
 
-// POST /users  (upsert on login)
+// POST /users (Register new user)
 router.post("/users", verifyFBToken, async (req, res) => {
   const email = req.user.email;
   if (!email) {
     return res.status(400).send({ success: false, message: "Email not found in token" });
   }
 
-  // Pull from body (if provided) or fallback to decoded token claims
+  // Check if user already exists
+  const existingUser = await usersCollection.findOne({ email });
+  if (existingUser) {
+    return res.status(200).send({ success: true, message: "User already exists", existing: true });
+  }
+
   const name = req.body.name || req.user.name;
   const photoURL = req.body.photoURL || req.user.picture;
 
-  const updateDoc = {
+  const newUser: User = {
+    email,
+    name,
+    photoURL,
+    role: "user",
+    created_at: new Date().toISOString(),
+    last_login: new Date().toISOString(),
+  };
+
+  try {
+    const result = await usersCollection.insertOne(newUser);
+    res.status(201).send({ success: true, insertedId: result.insertedId });
+  } catch (error) {
+    console.error("Error registering user:", error);
+    res.status(500).send({ success: false, message: "Internal Server Error" });
+  }
+});
+
+// POST /users/sync (Automatic sync for every login/refresh)
+router.post("/users/sync", verifyFBToken, async (req, res) => {
+  const email = req.user.email;
+  if (!email) return res.status(401).send({ success: false, message: "Unauthorized" });
+
+  const name = req.body.name || req.user.name;
+  const photoURL = req.body.photoURL || req.user.picture;
+
+  const updateDoc: any = {
     $setOnInsert: {
-      name,
-      photoURL,
-      role: "user" as const,
+      email,
+      role: "user",
       created_at: new Date().toISOString(),
     },
     $set: {
       last_login: new Date().toISOString(),
-      ...(name && { name }),
-      ...(photoURL && { photoURL }),
     },
   };
+
+  if (name) {
+    updateDoc.$setOnInsert.name = name;
+    updateDoc.$set.name = name;
+  }
+  if (photoURL) {
+    updateDoc.$setOnInsert.photoURL = photoURL;
+    updateDoc.$set.photoURL = photoURL;
+  }
 
   try {
     const result = await usersCollection.updateOne(
       { email },
       updateDoc,
-      { upsert: true },
+      { upsert: true }
     );
     res.send({ success: true, ...result });
   } catch (error) {
-    console.error("Error upserting user:", error);
+    console.error("Error syncing user:", error);
     res.status(500).send({ success: false, message: "Internal Server Error" });
   }
 });

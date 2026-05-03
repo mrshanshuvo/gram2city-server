@@ -33,12 +33,45 @@ export const swaggerSpec = {
     },
     "/users": {
       post: {
-        summary: "Upsert user on login",
+        summary: "Register new user",
         tags: ["Users"],
-        security: [],
         requestBody: {
           required: true,
-          content: { "application/json": { schema: { type: "object", properties: { email: { type: "string" }, name: { type: "string" }, photoURL: { type: "string" }, role: { type: "string" }, created_at: { type: "string" }, last_login: { type: "string" } } } } },
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  photoURL: { type: "string" }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          201: { description: "Created" },
+          200: { description: "User already exists" }
+        },
+      },
+    },
+    "/users/sync": {
+      post: {
+        summary: "Automatic sync for every login/refresh",
+        tags: ["Users"],
+        requestBody: {
+          required: false,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  photoURL: { type: "string" }
+                }
+              }
+            }
+          }
         },
         responses: { 200: { description: "Success" } },
       },
@@ -242,6 +275,25 @@ export const swaggerSpec = {
         summary: "Get cashout history for a rider",
         tags: ["Riders"],
         parameters: [{ name: "rider_email", in: "query", required: true, schema: { type: "string" } }],
+        responses: { 200: { description: "Success" } },
+      },
+    },
+    "/upload": {
+      post: {
+        summary: "Upload an image to ImgBB",
+        tags: ["Uploads"],
+        requestBody: {
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                properties: {
+                  image: { type: "string", format: "binary" }
+                }
+              }
+            }
+          }
+        },
         responses: { 200: { description: "Success" } },
       },
     },
