@@ -13,10 +13,43 @@ router.get("/users/search", verifyFBToken, verifyAdmin, async (req, res) => {
   try {
     const users = await usersCollection
       .find({ email: { $regex: emailQuery, $options: "i" } })
-      .project({ email: 1, createdAt: 1, role: 1 })
+      .project({ email: 1, createdAt: 1, role: 1, name: 1, photoURL: 1 })
       .limit(10)
       .toArray();
     res.send(users);
+  } catch {
+    res.status(500).send({ error: "Internal Server Error" });
+  }
+});
+
+// GET /users/staff (List all admins)
+router.get("/users/staff", verifyFBToken, verifyAdmin, async (req, res) => {
+  try {
+    const staff = await usersCollection
+      .find({ role: { $in: ["admin", "superAdmin"] } })
+      .project({ email: 1, role: 1, name: 1, last_login: 1 })
+      .toArray();
+    res.send(staff);
+  } catch {
+    res.status(500).send({ error: "Internal Server Error" });
+  }
+});
+
+// GET /users/summary (Role distribution)
+router.get("/users/summary", verifyFBToken, verifyAdmin, async (req, res) => {
+  try {
+    const summary = await usersCollection.aggregate([
+      { $group: { _id: "$role", count: { $sum: 1 } } }
+    ]).toArray();
+    
+    const counts = {
+      admin: summary.find(s => s._id === "admin")?.count || 0,
+      superAdmin: summary.find(s => s._id === "superAdmin")?.count || 0,
+      user: summary.find(s => s._id === "user")?.count || 0,
+      rider: summary.find(s => s._id === "rider")?.count || 0,
+    };
+    
+    res.send(counts);
   } catch {
     res.status(500).send({ error: "Internal Server Error" });
   }

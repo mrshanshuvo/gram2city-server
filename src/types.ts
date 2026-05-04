@@ -8,7 +8,7 @@ export interface User {
   email: string;
   name?: string;
   photoURL?: string;
-  role?: "user" | "admin" | "rider";
+  role?: "user" | "admin" | "rider" | "superAdmin";
   phone?: string;
   address?: string;
   status?: "active" | "suspended" | "pending"; // Added: User status management
