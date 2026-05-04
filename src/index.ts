@@ -81,6 +81,8 @@ import cashoutsRouter from "./routes/cashouts";
 import uploadsRouter from "./routes/uploads";
 import authRouter from "./routes/auth";
 import adminRouter from "./routes/admin";
+import messagesRouter from "./routes/messages";
+import feedbackRouter from "./routes/feedback";
 
 app.get("/", (_req, res) => res.send("Parcel website server is running"));
 app.use("/admin", adminRouter);
@@ -94,6 +96,8 @@ app.use("/", notificationsRouter);
 app.use("/", cashoutsRouter);
 app.use("/", uploadsRouter);
 app.use("/", authRouter);
+app.use("/", messagesRouter);
+app.use("/", feedbackRouter);
 
 // ─── Centralized Error Handler ───────────────────────────────────────────────
 app.use(

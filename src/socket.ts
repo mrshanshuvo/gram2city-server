@@ -1,5 +1,7 @@
 import { Server } from "socket.io";
 import type { Server as HttpServer } from "http";
+import { messagesCollection } from "./db";
+import { ChatMessage } from "./types";
 
 export let io: Server;
 

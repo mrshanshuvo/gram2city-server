@@ -147,6 +147,17 @@ export interface AuditLog {
   ip_address?: string;
 }
 
+export interface Feedback {
+  _id?: ObjectId;
+  userEmail: string;
+  userName: string;
+  rating: number; // 1-5
+  comment: string;
+  category: "service" | "app" | "rider" | "other";
+  timestamp: string;
+  isResolved?: boolean;
+}
+
 export interface SystemSettings {
   _id?: ObjectId;
   base_delivery_fee: number;
@@ -154,6 +165,19 @@ export interface SystemSettings {
   rider_commission_percentage: number;
   updated_at: string;
   updated_by: string;
+}
+
+export interface ChatMessage {
+  _id?: ObjectId;
+  senderEmail: string;
+  senderName: string;
+  senderRole: string;
+  receiverEmail: string;
+  message: string;
+  imageUrl?: string; // Added for image sharing
+  timestamp: string;
+  isRead: boolean;
+  conversationId: string; // Combination of sorted emails (e.g. "email1_email2")
 }
 
 // ─── Express Request Augmentation ───────────────────────────────────────────
