@@ -167,6 +167,24 @@ export interface SystemSettings {
   updated_by: string;
 }
 
+export interface FAQ {
+  _id?: ObjectId;
+  question: string;
+  answer: string;
+  order?: number;
+  category?: string;
+  isActive: boolean;
+  helpfulCount: number;
+  createdAt: string;
+}
+
+export interface FAQVote {
+  _id?: ObjectId;
+  faqId: ObjectId;
+  identifier: string; // IP or Email
+  timestamp: string;
+}
+
 export interface ChatMessage {
   _id?: ObjectId;
   senderEmail: string;

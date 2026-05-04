@@ -10,6 +10,8 @@ import type {
   Notification,
   ChatMessage,
   Feedback,
+  FAQ,
+  FAQVote,
 } from "./types";
 
 // ─── MongoDB Client ───────────────────────────────────────────────────────────
@@ -39,6 +41,8 @@ export const auditCollection = db.collection<any>("audit_logs");
 export const settingsCollection = db.collection<any>("system_settings");
 export const messagesCollection = db.collection<ChatMessage>("messages");
 export const feedbackCollection = db.collection<Feedback>("feedback");
+export const faqsCollection = db.collection<FAQ>("faqs");
+export const faqVotesCollection = db.collection<FAQVote>("faq_votes");
 
 // ─── Shared Helper ────────────────────────────────────────────────────────────
 
