@@ -118,6 +118,38 @@ export const swaggerSpec = {
         responses: { 200: { description: "Success" } },
       },
     },
+    "/users/sync": {
+      post: {
+        summary: "Sync user session and get role",
+        tags: ["Authentication"],
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: {
+            description: "Success",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    user: {
+                      type: "object",
+                      properties: {
+                        email: { type: "string" },
+                        name: { type: "string" },
+                        role: { type: "string", enum: ["user", "rider", "admin"] },
+                        photoURL: { type: "string" },
+                        last_login: { type: "string" },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
 
     // ─── CUSTOMER PORTAL ──────────────────────────────────────────────────────
     "/parcels": {
