@@ -36,7 +36,7 @@ router.get("/users/staff", verifyFBToken, verifyAdmin, async (req, res) => {
 });
 
 // GET /users/summary (Role distribution)
-router.get("/summary", verifyFBToken, verifyAdmin, async (req, res) => {
+router.get("/users/summary", verifyFBToken, verifyAdmin, async (req, res) => {
   try {
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -225,6 +225,20 @@ router.get("/user/stats/:email", verifyFBToken, async (req, res) => {
     });
   } catch {
     res.status(500).send({ error: "Failed to fetch user stats" });
+  }
+});
+
+// GET /users/:email
+router.get("/users/:email", verifyFBToken, async (req, res) => {
+  const { email } = req.params;
+  try {
+    const user = await usersCollection.findOne({ email });
+    if (!user) {
+      return res.status(404).send({ success: false, message: "User not found" });
+    }
+    res.send(user);
+  } catch {
+    res.status(500).send({ success: false, message: "Internal Server Error" });
   }
 });
 
