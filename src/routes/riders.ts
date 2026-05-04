@@ -24,22 +24,59 @@ const router = Router();
  *       - name: status
  *         in: query
  *         schema: { type: string, enum: [available, pending, approved] }
+ *       - name: page
+ *         in: query
+ *         schema: { type: integer, default: 1 }
+ *       - name: size
+ *         in: query
+ *         schema: { type: integer, default: 50 }
  *     responses:
- *       200: { description: "Success" }
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 total: { type: integer }
+ *                 page: { type: integer }
+ *                 size: { type: integer }
+ *                 riders: { type: array, items: { $ref: '#/components/schemas/Rider' } }
  */
 router.get("/riders", verifyFBToken, async (req, res) => {
   try {
     const { status } = req.query;
+    const pageNum = parseInt(req.query.page as string) || 1;
+    const sizeNum = parseInt(req.query.size as string) || 50; // Increased default for riders
+
     const query: any = {};
     if (status === "available") {
-      query.status = "approved"; // Only approved riders can be available
-      // query.is_available = true; // Optional: if you track real-time availability
+      query.status = "approved";
     } else if (status) {
       query.status = status;
     }
 
-    const riders = await ridersCollection.find(query).toArray();
-    res.send(riders);
+    const totalItems = await ridersCollection.countDocuments(query);
+    const totalPages = Math.ceil(totalItems / sizeNum);
+    const riders = await ridersCollection
+      .find(query)
+      .skip((pageNum - 1) * sizeNum)
+      .limit(sizeNum)
+      .toArray();
+
+    res.send({
+      status: "success",
+      data: riders,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: pageNum,
+        limit: sizeNum,
+        hasNextPage: pageNum < totalPages,
+        hasPrevPage: pageNum > 1,
+      },
+    });
   } catch (error) {
     res.status(500).send({ success: false, message: "Failed to fetch riders" });
   }

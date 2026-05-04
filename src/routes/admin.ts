@@ -39,7 +39,26 @@ router.get("/audit-logs", async (req, res) => {
  *     tags: [Admin Panel]
  *     security: [{ bearerAuth: [] }]
  *     responses:
- *       200: { description: "Stats retrieved" }
+ *       200:
+ *         description: Stats retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 stats:
+ *                   type: object
+ *                   properties:
+ *                     parcels: { type: object }
+ *                     revenue: { type: number }
+ *                     profit: { type: number }
+ *                     users: { type: object }
+ *                     dailyBookings: { type: array }
+ *                     parcelTypeDistribution: { type: array }
+ *                     avgDeliveryTime: { type: number }
+ *                     riderLeaderboard: { type: array }
+ *                     districtDistribution: { type: array }
  */
 router.get("/stats", async (req, res) => {
   try {
@@ -434,6 +453,9 @@ router.get("/all-parcels", async (req, res) => {
       if (endDate) query.creation_date.$lte = new Date(endDate as string).toISOString();
     }
 
+    const totalItems = await parcelCollection.countDocuments(query);
+    const totalPages = Math.ceil(totalItems / size);
+
     const parcels = await parcelCollection
       .find(query)
       .sort({ createdAt: -1 })
@@ -441,14 +463,17 @@ router.get("/all-parcels", async (req, res) => {
       .limit(size)
       .toArray();
 
-    const totalCount = await parcelCollection.countDocuments();
-
     res.send({
-      success: true,
-      parcels: parcels,
-      total: totalCount,
-      page,
-      size,
+      status: "success",
+      data: parcels,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        limit: size,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
     });
   } catch (error) {
     res.status(500).send({ success: false, message: "Failed to fetch all parcels" });
