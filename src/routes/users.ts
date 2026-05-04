@@ -36,22 +36,47 @@ router.get("/users/staff", verifyFBToken, verifyAdmin, async (req, res) => {
 });
 
 // GET /users/summary (Role distribution)
-router.get("/users/summary", verifyFBToken, verifyAdmin, async (req, res) => {
+router.get("/summary", verifyFBToken, verifyAdmin, async (req, res) => {
   try {
-    const summary = await usersCollection.aggregate([
-      { $group: { _id: "$role", count: { $sum: 1 } } }
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const startOfToday = new Date(now.setHours(0, 0, 0, 0));
+
+    const stats = await usersCollection.aggregate([
+      {
+        $facet: {
+          roleCounts: [
+            { $group: { _id: "$role", count: { $sum: 1 } } }
+          ],
+          recentlyJoined: [
+            { $match: { created_at: { $gte: sevenDaysAgo.toISOString() } } },
+            { $count: "count" }
+          ],
+          activeToday: [
+            { $match: { last_login: { $gte: startOfToday.toISOString() } } },
+            { $count: "count" }
+          ]
+        }
+      }
     ]).toArray();
-    
-    const counts = {
-      admin: summary.find(s => s._id === "admin")?.count || 0,
-      superAdmin: summary.find(s => s._id === "superAdmin")?.count || 0,
-      user: summary.find(s => s._id === "user")?.count || 0,
-      rider: summary.find(s => s._id === "rider")?.count || 0,
-    };
-    
-    res.send(counts);
-  } catch {
-    res.status(500).send({ error: "Internal Server Error" });
+
+    const roleMap = stats[0].roleCounts.reduce((acc: any, curr: any) => {
+      acc[curr._id] = curr.count;
+      return acc;
+    }, {});
+
+    res.send({
+      success: true,
+      superAdmin: roleMap.superAdmin || 0,
+      admin: roleMap.admin || 0,
+      user: roleMap.user || 0,
+      rider: roleMap.rider || 0,
+      recentlyJoined: stats[0].recentlyJoined[0]?.count || 0,
+      activeToday: stats[0].activeToday[0]?.count || 0,
+      total: (roleMap.user || 0) + (roleMap.admin || 0) + (roleMap.superAdmin || 0) + (roleMap.rider || 0)
+    });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to fetch summary" });
   }
 });
 

@@ -129,9 +129,17 @@ app.use(
 );
 
 // ─── Start ────────────────────────────────────────────────────────────────────
+import { createServer } from "http";
+import { initSocket } from "./socket";
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port http://localhost:${PORT}`);
+const httpServer = createServer(app);
+
+// Initialize Real-time Engine
+initSocket(httpServer);
+
+httpServer.listen(PORT, () => {
+  console.log(`🚀 Gram2City Real-time Engine running on http://localhost:${PORT}`);
 });
 
 export default app;

@@ -8,6 +8,7 @@ import {
 } from "../db";
 import { verifyFBToken } from "../middleware/auth";
 import { Parcel, SystemSettings } from "../types";
+import { io } from "../socket";
 
 const router = Router();
 
@@ -208,6 +209,16 @@ router.post("/parcels", verifyFBToken, async (req, res) => {
       "booked",
       "Your parcel has been booked and is awaiting collection.",
     );
+    
+    // 5. Broadcast to Admins
+    if (io) {
+      io.emit("new_parcel", {
+        trackingId,
+        sender: newParcel.senderName,
+        destination: newParcel.receiverDistrict,
+        cost: totalCost
+      });
+    }
 
     res.status(201).send({
       success: true,

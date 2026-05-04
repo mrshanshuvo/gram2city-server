@@ -10,8 +10,44 @@ import {
 } from "../db";
 import { verifyFBToken } from "../middleware/auth";
 import { Rider, SystemSettings, Parcel } from "../types";
+import { io } from "../socket";
 
 const router = Router();
+
+/**
+ * @swagger
+ * /riders:
+ *   post:
+ *     summary: Apply to become a rider
+ *     tags: [Rider Dashboard]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       201: { description: "Application Submitted" }
+ */
+router.post("/riders", verifyFBToken, async (req, res) => {
+  try {
+    const application = {
+      ...req.body,
+      status: "pending",
+      createdAt: new Date().toISOString()
+    };
+
+    const result = await ridersCollection.insertOne(application);
+
+    // Broadcast to Admins
+    if (io) {
+      io.emit("new_rider_application", {
+        name: application.name,
+        email: application.email,
+        district: application.district
+      });
+    }
+
+    res.status(201).send({ success: true, insertedId: result.insertedId });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to submit application" });
+  }
+});
 
 /**
  * @swagger
