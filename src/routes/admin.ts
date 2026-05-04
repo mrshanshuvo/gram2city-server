@@ -20,7 +20,11 @@ router.use(verifyFBToken, verifyAdmin);
  */
 router.get("/audit-logs", async (req, res) => {
   try {
-    const logs = await auditCollection.find().sort({ timestamp: -1 }).limit(100).toArray();
+    const logs = await auditCollection
+      .find()
+      .sort({ timestamp: -1 })
+      .limit(100)
+      .toArray();
     res.send({ success: true, logs });
   } catch (error) {
     res.status(500).send({ success: false, message: "Failed to fetch logs" });
@@ -39,21 +43,31 @@ router.get("/audit-logs", async (req, res) => {
  */
 router.get("/stats", async (req, res) => {
   try {
-    const { parcelCollection, paymentCollection, ridersCollection } = require("../db");
-    
+    const {
+      parcelCollection,
+      paymentCollection,
+      ridersCollection,
+    } = require("../db");
+
     // 1. Parcel Stats
     const totalParcels = await parcelCollection.countDocuments();
-    const pendingParcels = await parcelCollection.countDocuments({ delivery_status: "pending" });
-    const deliveredParcels = await parcelCollection.countDocuments({ delivery_status: "delivered" });
+    const pendingParcels = await parcelCollection.countDocuments({
+      delivery_status: "pending",
+    });
+    const deliveredParcels = await parcelCollection.countDocuments({
+      delivery_status: "delivered",
+    });
 
     // 2. Financial Stats (Aggregation)
-    const revenueData = await paymentCollection.aggregate([
-      { $group: { _id: null, totalRevenue: { $sum: "$amount" } } }
-    ]).toArray();
-    
-    const profitData = await parcelCollection.aggregate([
-      { $group: { _id: null, totalProfit: { $sum: "$admin_profit" } } }
-    ]).toArray();
+    const revenueData = await paymentCollection
+      .aggregate([{ $group: { _id: null, totalRevenue: { $sum: "$amount" } } }])
+      .toArray();
+
+    const profitData = await parcelCollection
+      .aggregate([
+        { $group: { _id: null, totalProfit: { $sum: "$admin_profit" } } },
+      ])
+      .toArray();
 
     // 3. User Stats
     const totalUsers = await usersCollection.countDocuments({ role: "user" });
@@ -62,14 +76,20 @@ router.get("/stats", async (req, res) => {
     res.send({
       success: true,
       stats: {
-        parcels: { total: totalParcels, pending: pendingParcels, delivered: deliveredParcels },
+        parcels: {
+          total: totalParcels,
+          pending: pendingParcels,
+          delivered: deliveredParcels,
+        },
         revenue: revenueData[0]?.totalRevenue || 0,
         profit: profitData[0]?.totalProfit || 0,
-        users: { customers: totalUsers, riders: totalRiders }
-      }
+        users: { customers: totalUsers, riders: totalRiders },
+      },
     });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to aggregate stats" });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to aggregate stats" });
   }
 });
 
@@ -95,16 +115,18 @@ router.post("/announce", async (req, res) => {
   const { message } = req.body;
   try {
     const { notificationsCollection } = require("../db");
-    
+
     // Fetch all user emails
-    const users = await usersCollection.find({}, { projection: { email: 1 } }).toArray();
-    
-    const notifications = users.map(u => ({
+    const users = await usersCollection
+      .find({}, { projection: { email: 1 } })
+      .toArray();
+
+    const notifications = users.map((u) => ({
       email: u.email,
       message: `ANNOUNCEMENT: ${message}`,
       time: new Date().toISOString(),
       isRead: false,
-      type: "admin_alert"
+      type: "admin_alert",
     }));
 
     if (notifications.length > 0) {
@@ -116,12 +138,17 @@ router.post("/announce", async (req, res) => {
       admin_email: req.user.email,
       action: "BULK_ANNOUNCEMENT",
       details: `Sent announcement: ${message}`,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
-    res.send({ success: true, message: `Announcement sent to ${users.length} users.` });
+    res.send({
+      success: true,
+      message: `Announcement sent to ${users.length} users.`,
+    });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to send announcement" });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to send announcement" });
   }
 });
 
@@ -138,19 +165,19 @@ router.post("/announce", async (req, res) => {
 router.get("/settings", async (req, res) => {
   try {
     let settings = await settingsCollection.findOne({});
-    
+
     if (!settings) {
       const defaultSettings: SystemSettings = {
         base_delivery_fee: 50,
         cost_per_kg: 20,
         rider_commission_percentage: 15,
         updated_at: new Date().toISOString(),
-        updated_by: "system"
+        updated_by: "system",
       };
       await settingsCollection.insertOne(defaultSettings);
       settings = defaultSettings;
     }
-    
+
     res.send({ success: true, settings });
   } catch (error) {
     res.status(500).send({ success: false, message: "Server error" });
@@ -177,30 +204,41 @@ router.get("/settings", async (req, res) => {
  *       200: { description: "Settings updated" }
  */
 router.patch("/settings", async (req, res) => {
-  const { base_delivery_fee, cost_per_kg, rider_commission_percentage } = req.body;
+  const { base_delivery_fee, cost_per_kg, rider_commission_percentage } =
+    req.body;
   try {
     const updateData: any = {
       updated_at: new Date().toISOString(),
-      updated_by: req.user.email
+      updated_by: req.user.email,
     };
 
-    if (base_delivery_fee) updateData.base_delivery_fee = Number(base_delivery_fee);
+    if (base_delivery_fee)
+      updateData.base_delivery_fee = Number(base_delivery_fee);
     if (cost_per_kg) updateData.cost_per_kg = Number(cost_per_kg);
-    if (rider_commission_percentage) updateData.rider_commission_percentage = Number(rider_commission_percentage);
+    if (rider_commission_percentage)
+      updateData.rider_commission_percentage = Number(
+        rider_commission_percentage,
+      );
 
-    await settingsCollection.updateOne({}, { $set: updateData }, { upsert: true });
+    await settingsCollection.updateOne(
+      {},
+      { $set: updateData },
+      { upsert: true },
+    );
 
     const log: AuditLog = {
       admin_email: req.user.email as string,
       action: "UPDATE_SETTINGS",
       details: `Updated system settings: ${JSON.stringify(updateData)}`,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
     await auditCollection.insertOne(log);
 
     res.send({ success: true, message: "Settings updated and logged." });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to update settings" });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to update settings" });
   }
 });
 
@@ -234,13 +272,18 @@ router.patch("/users/:email/status", async (req, res) => {
       action: "USER_STATUS_CHANGE",
       target_id: email,
       details: `Changed user ${email} status to ${status}`,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
     await auditCollection.insertOne(log);
 
-    res.send({ success: true, message: `User account ${status} successfully.` });
+    res.send({
+      success: true,
+      message: `User account ${status} successfully.`,
+    });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to update user status" });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to update user status" });
   }
 });
 

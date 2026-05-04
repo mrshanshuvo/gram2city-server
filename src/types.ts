@@ -43,7 +43,13 @@ export interface Parcel {
   rider_earning?: number;
   admin_profit?: number; // Added: Platform revenue tracking
   payment_status?: "paid" | "unpaid";
-  delivery_status?: "pending" | "assigned" | "on_the_way" | "delivered" | "cancelled" | "returned"; // Added: Terminal states
+  delivery_status?:
+    | "pending"
+    | "assigned"
+    | "on_the_way"
+    | "delivered"
+    | "cancelled"
+    | "returned"; // Added: Terminal states
 
   assigned_rider_id?: ObjectId;
   assigned_rider_name?: string;
@@ -65,7 +71,7 @@ export interface Rider {
   district?: string;
   region?: string;
   status: "pending" | "approved" | "rejected";
-  
+
   // Rider Metrics (Added for Admin Dashboard)
   average_rating?: number;
   total_delivered?: number;

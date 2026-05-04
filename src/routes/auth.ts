@@ -48,14 +48,15 @@ router.post("/auth/register", upload.single("image"), async (req, res) => {
         const imgRes = await axios.post(
           `https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`,
           formData,
-          { headers: formData.getHeaders() }
+          { headers: formData.getHeaders() },
         );
         photoURL = imgRes.data.data.display_url;
       } catch (imgError) {
         console.error("ImgBB Upload Error:", imgError);
         return res.status(400).send({
           success: false,
-          message: "Failed to upload profile image. Please try a different file.",
+          message:
+            "Failed to upload profile image. Please try a different file.",
         });
       }
     }
@@ -66,20 +67,24 @@ router.post("/auth/register", upload.single("image"), async (req, res) => {
     try {
       const fbRes = await axios.post(
         `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}`,
-        { email, password, returnSecureToken: true }
+        { email, password, returnSecureToken: true },
       );
       idToken = fbRes.data.idToken;
       expiresIn = fbRes.data.expiresIn;
     } catch (fbError: any) {
       const fbErrMsg = fbError.response?.data?.error?.message || "";
       console.error("Firebase Registration Error Raw:", fbErrMsg);
-      
+
       let message = "Authentication failed.";
 
-      if (fbErrMsg.includes("EMAIL_EXISTS")) message = "This email is already registered.";
-      else if (fbErrMsg.includes("INVALID_EMAIL")) message = "Please provide a valid email address.";
-      else if (fbErrMsg.includes("WEAK_PASSWORD")) message = "Password should be at least 6 characters.";
-      else if (fbErrMsg.includes("TOO_MANY_ATTEMPTS")) message = "Too many attempts. Please try again later.";
+      if (fbErrMsg.includes("EMAIL_EXISTS"))
+        message = "This email is already registered.";
+      else if (fbErrMsg.includes("INVALID_EMAIL"))
+        message = "Please provide a valid email address.";
+      else if (fbErrMsg.includes("WEAK_PASSWORD"))
+        message = "Password should be at least 6 characters.";
+      else if (fbErrMsg.includes("TOO_MANY_ATTEMPTS"))
+        message = "Too many attempts. Please try again later.";
 
       return res.status(400).send({ success: false, message });
     }
@@ -95,23 +100,29 @@ router.post("/auth/register", upload.single("image"), async (req, res) => {
         last_login: new Date().toISOString(),
       };
       await usersCollection.insertOne(newUser);
-      res.status(201).send({ 
-        success: true, 
+      res.status(201).send({
+        success: true,
         message: "Registration successful! Welcome to Gram2City.",
-        token: idToken, 
+        token: idToken,
         role: newUser.role,
-        expiresIn 
+        expiresIn,
       });
     } catch (dbError) {
       console.error("MongoDB Save Error:", dbError);
       res.status(500).send({
         success: false,
-        message: "Account created in Firebase, but failed to save profile to database.",
+        message:
+          "Account created in Firebase, but failed to save profile to database.",
       });
     }
   } catch (error: any) {
     console.error("Unexpected Register Error:", error);
-    res.status(500).send({ success: false, message: "An unexpected error occurred during registration." });
+    res
+      .status(500)
+      .send({
+        success: false,
+        message: "An unexpected error occurred during registration.",
+      });
   }
 });
 
@@ -144,7 +155,7 @@ router.post("/auth/login", async (req, res) => {
     // 1. Login to Firebase
     const fbRes = await axios.post(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}`,
-      { email, password, returnSecureToken: true }
+      { email, password, returnSecureToken: true },
     );
 
     const { idToken, expiresIn } = fbRes.data;
@@ -155,7 +166,8 @@ router.post("/auth/login", async (req, res) => {
     if (!user) {
       return res.status(404).send({
         success: false,
-        message: "Authenticated in Firebase, but user record not found in database.",
+        message:
+          "Authenticated in Firebase, but user record not found in database.",
       });
     }
 
@@ -166,23 +178,26 @@ router.post("/auth/login", async (req, res) => {
     const lastLogin = new Date().toISOString();
     await usersCollection.updateOne(
       { email },
-      { $set: { last_login: lastLogin } }
+      { $set: { last_login: lastLogin } },
     );
 
-    res.send({ 
-      success: true, 
+    res.send({
+      success: true,
       message: "Login successful",
-      token: idToken, 
-      role: user.role, 
+      token: idToken,
+      role: user.role,
       lastLogin,
       expiresIn,
-      emailVerified: fbUser.emailVerified
+      emailVerified: fbUser.emailVerified,
     });
   } catch (error: any) {
     const fbErrMsg = error.response?.data?.error?.message || "";
     let message = "Login failed.";
 
-    if (fbErrMsg.includes("EMAIL_NOT_FOUND") || fbErrMsg.includes("INVALID_PASSWORD")) {
+    if (
+      fbErrMsg.includes("EMAIL_NOT_FOUND") ||
+      fbErrMsg.includes("INVALID_PASSWORD")
+    ) {
       message = "Invalid email or password.";
     } else if (fbErrMsg.includes("USER_DISABLED")) {
       message = "This account has been disabled.";
@@ -214,15 +229,17 @@ router.get("/auth/me", verifyFBToken, async (req, res) => {
     const user = await usersCollection.findOne({ email });
 
     if (!user) {
-      return res.status(404).send({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .send({ success: false, message: "User not found" });
     }
 
-    res.send({ 
-      success: true, 
+    res.send({
+      success: true,
       user: {
         ...user,
-        emailVerified: req.user?.email_verified || false
-      }
+        emailVerified: req.user?.email_verified || false,
+      },
     });
   } catch (error) {
     res.status(500).send({ success: false, message: "Server error" });
@@ -244,17 +261,22 @@ router.get("/auth/me", verifyFBToken, async (req, res) => {
 router.post("/auth/send-verification", verifyFBToken, async (req, res) => {
   try {
     const idToken = req.headers.authorization?.replace(/^Bearer\s+/i, "");
-    
+
     await axios.post(
       `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${API_KEY}`,
-      { requestType: "VERIFY_EMAIL", idToken }
+      { requestType: "VERIFY_EMAIL", idToken },
     );
-    
-    res.send({ success: true, message: "Verification email sent. Please check your inbox." });
+
+    res.send({
+      success: true,
+      message: "Verification email sent. Please check your inbox.",
+    });
   } catch (error: any) {
-    res.status(400).send({ 
-      success: false, 
-      message: error.response?.data?.error?.message || "Failed to send verification email." 
+    res.status(400).send({
+      success: false,
+      message:
+        error.response?.data?.error?.message ||
+        "Failed to send verification email.",
     });
   }
 });
@@ -285,7 +307,9 @@ router.delete("/auth/me", verifyFBToken, async (req, res) => {
     res.send({ success: true, message: "Account deleted successfully." });
   } catch (error) {
     console.error("Delete Error:", error);
-    res.status(500).send({ success: false, message: "Failed to delete account." });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to delete account." });
   }
 });
 
@@ -310,20 +334,28 @@ router.delete("/auth/me", verifyFBToken, async (req, res) => {
  */
 router.post("/auth/reset-password", async (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).send({ success: false, message: "Email is required." });
+  if (!email)
+    return res
+      .status(400)
+      .send({ success: false, message: "Email is required." });
 
   try {
     await axios.post(
       `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${API_KEY}`,
-      { requestType: "PASSWORD_RESET", email }
+      { requestType: "PASSWORD_RESET", email },
     );
-    res.send({ success: true, message: "A password reset link has been sent to your email." });
+    res.send({
+      success: true,
+      message: "A password reset link has been sent to your email.",
+    });
   } catch (error: any) {
     const fbErrMsg = error.response?.data?.error?.message || "";
     let message = "Failed to send reset email.";
 
-    if (fbErrMsg.includes("EMAIL_NOT_FOUND")) message = "No account found with this email address.";
-    else if (fbErrMsg.includes("INVALID_EMAIL")) message = "Please enter a valid email address.";
+    if (fbErrMsg.includes("EMAIL_NOT_FOUND"))
+      message = "No account found with this email address.";
+    else if (fbErrMsg.includes("INVALID_EMAIL"))
+      message = "Please enter a valid email address.";
 
     res.status(400).send({ success: false, message });
   }
@@ -355,46 +387,59 @@ import { verifyAdmin } from "../middleware/auth";
  *       201:
  *         description: User created
  */
-router.post("/auth/admin/create-user", verifyFBToken, verifyAdmin, async (req, res) => {
-  const { email, password, name, role } = req.body;
+router.post(
+  "/auth/admin/create-user",
+  verifyFBToken,
+  verifyAdmin,
+  async (req, res) => {
+    const { email, password, name, role } = req.body;
 
-  if (!email || !password || !name || !role) {
-    return res.status(400).send({ success: false, message: "All fields (email, password, name, role) are required." });
-  }
+    if (!email || !password || !name || !role) {
+      return res
+        .status(400)
+        .send({
+          success: false,
+          message: "All fields (email, password, name, role) are required.",
+        });
+    }
 
-  try {
-    // 1. Create in Firebase
-    const fbUser = await admin.auth().createUser({
-      email,
-      password,
-      displayName: name,
-    });
+    try {
+      // 1. Create in Firebase
+      const fbUser = await admin.auth().createUser({
+        email,
+        password,
+        displayName: name,
+      });
 
-    // 2. Save to MongoDB
-    const newUser: User = {
-      email,
-      name,
-      photoURL: "",
-      role: role as any,
-      created_at: new Date().toISOString(),
-      last_login: "",
-    };
-    await usersCollection.insertOne(newUser);
+      // 2. Save to MongoDB
+      const newUser: User = {
+        email,
+        name,
+        photoURL: "",
+        role: role as any,
+        created_at: new Date().toISOString(),
+        last_login: "",
+      };
+      await usersCollection.insertOne(newUser);
 
-    res.status(201).send({ 
-      success: true, 
-      message: `Successfully onboarded new ${role}: ${name}`, 
-      uid: fbUser.uid 
-    });
-  } catch (error: any) {
-    let message = "Failed to create user.";
-    
-    if (error.code === "auth/email-already-exists") message = "This email is already registered.";
-    else if (error.code === "auth/invalid-password") message = "Password must be at least 6 characters.";
-    else if (error.code === "auth/invalid-email") message = "The email address is badly formatted.";
+      res.status(201).send({
+        success: true,
+        message: `Successfully onboarded new ${role}: ${name}`,
+        uid: fbUser.uid,
+      });
+    } catch (error: any) {
+      let message = "Failed to create user.";
 
-    res.status(400).send({ success: false, message });
-  }
-});
+      if (error.code === "auth/email-already-exists")
+        message = "This email is already registered.";
+      else if (error.code === "auth/invalid-password")
+        message = "Password must be at least 6 characters.";
+      else if (error.code === "auth/invalid-email")
+        message = "The email address is badly formatted.";
+
+      res.status(400).send({ success: false, message });
+    }
+  },
+);
 
 export default router;

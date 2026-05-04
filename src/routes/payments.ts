@@ -31,7 +31,9 @@ router.get("/payments", verifyFBToken, async (req, res) => {
       .toArray();
     res.send({ success: true, data: payments });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch payment history" });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch payment history" });
   }
 });
 
@@ -58,23 +60,34 @@ router.post("/create-payment-intent", verifyFBToken, async (req, res) => {
   const { amount, parcelId } = req.body;
   try {
     // Security: Verify parcel ownership
-    const parcel = await parcelCollection.findOne({ 
+    const parcel = await parcelCollection.findOne({
       _id: new ObjectId(parcelId as string),
-      created_by: req.user.email 
+      created_by: req.user.email,
     });
 
-    if (!parcel) return res.status(403).send({ success: false, message: "Unauthorized: You do not own this parcel." });
+    if (!parcel)
+      return res
+        .status(403)
+        .send({
+          success: false,
+          message: "Unauthorized: You do not own this parcel.",
+        });
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(Number(amount) * 100),
       currency: process.env.STRIPE_CURRENCY || "usd",
       payment_method_types: ["card"],
-      metadata: { parcelId: parcelId.toString(), userEmail: req.user.email as string }
+      metadata: {
+        parcelId: parcelId.toString(),
+        userEmail: req.user.email as string,
+      },
     });
 
     res.json({ clientSecret: paymentIntent.client_secret });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to create payment intent." });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to create payment intent." });
   }
 });
 
@@ -104,22 +117,33 @@ router.post("/payments", verifyFBToken, async (req, res) => {
     const email = req.user.email;
 
     if (!parcelId || !transactionId || !amount) {
-      return res.status(400).send({ success: false, message: "Missing payment information" });
+      return res
+        .status(400)
+        .send({ success: false, message: "Missing payment information" });
     }
 
     // 1. Verify Ownership & Eligibility
     const parcel = await parcelCollection.findOne({
       _id: new ObjectId(parcelId as string),
-      created_by: email
+      created_by: email,
     });
 
-    if (!parcel) return res.status(403).send({ success: false, message: "Unauthorized: Parcel not found or not yours." });
-    if (parcel.payment_status === "paid") return res.status(400).send({ success: false, message: "Parcel is already paid." });
+    if (!parcel)
+      return res
+        .status(403)
+        .send({
+          success: false,
+          message: "Unauthorized: Parcel not found or not yours.",
+        });
+    if (parcel.payment_status === "paid")
+      return res
+        .status(400)
+        .send({ success: false, message: "Parcel is already paid." });
 
     // 2. Mark Parcel as Paid
     await parcelCollection.updateOne(
       { _id: new ObjectId(parcelId as string) },
-      { $set: { payment_status: "paid" } }
+      { $set: { payment_status: "paid" } },
     );
 
     // 3. Record Payment Transaction
@@ -139,7 +163,7 @@ router.post("/payments", verifyFBToken, async (req, res) => {
     await addTrackingUpdate(
       parcel.trackingId,
       "paid",
-      `Payment received. Transaction ID: ${transactionId}`
+      `Payment received. Transaction ID: ${transactionId}`,
     );
 
     notificationsCollection.insertOne({

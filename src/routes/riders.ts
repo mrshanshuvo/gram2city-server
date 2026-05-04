@@ -27,8 +27,11 @@ router.get("/rider/parcels", verifyFBToken, async (req, res) => {
   try {
     const riderEmail = req.user.email;
     const rider = await ridersCollection.findOne({ email: riderEmail });
-    
-    if (!rider) return res.status(404).send({ success: false, message: "Rider profile not found." });
+
+    if (!rider)
+      return res
+        .status(404)
+        .send({ success: false, message: "Rider profile not found." });
 
     const parcels = await parcelCollection
       .find({
@@ -40,7 +43,9 @@ router.get("/rider/parcels", verifyFBToken, async (req, res) => {
 
     res.send({ success: true, count: parcels.length, data: parcels });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch assigned parcels." });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch assigned parcels." });
   }
 });
 
@@ -70,33 +75,49 @@ router.patch("/rider/parcels/:id/status", verifyFBToken, async (req, res) => {
     const riderEmail = req.user.email;
 
     const rider = await ridersCollection.findOne({ email: riderEmail });
-    if (!rider) return res.status(404).send({ success: false, message: "Rider not found." });
+    if (!rider)
+      return res
+        .status(404)
+        .send({ success: false, message: "Rider not found." });
 
     const parcel = await parcelCollection.findOne({
       _id: new ObjectId(String(id)),
       assigned_rider_id: rider._id,
     });
 
-    if (!parcel) return res.status(404).send({ success: false, message: "Parcel not assigned to you." });
+    if (!parcel)
+      return res
+        .status(404)
+        .send({ success: false, message: "Parcel not assigned to you." });
 
     const updateFields: any = { delivery_status };
 
     if (delivery_status === "delivered") {
       updateFields.delivered_at = new Date().toISOString();
-      
+
       // Update Rider Performance Metrics
       await ridersCollection.updateOne(
         { _id: rider._id },
-        { $inc: { total_delivered: 1 } }
+        { $inc: { total_delivered: 1 } },
       );
     }
 
-    await parcelCollection.updateOne({ _id: new ObjectId(String(id)) }, { $set: updateFields });
+    await parcelCollection.updateOne(
+      { _id: new ObjectId(String(id)) },
+      { $set: updateFields },
+    );
 
     // Tracking & Notifications
-    const statusMsg = delivery_status === "delivered" ? "delivered successfully" : "now on the way";
-    await addTrackingUpdate(parcel.trackingId, delivery_status, `Parcel has been ${statusMsg}.`);
-    
+    const statusMsg =
+      delivery_status === "delivered"
+        ? "delivered successfully"
+        : "now on the way";
+    await addTrackingUpdate(
+      parcel.trackingId,
+      delivery_status,
+      `Parcel has been ${statusMsg}.`,
+    );
+
     notificationsCollection.insertOne({
       email: parcel.created_by,
       message: `Status Update: Your parcel "${parcel.parcelName}" is ${statusMsg}!`,
@@ -105,9 +126,14 @@ router.patch("/rider/parcels/:id/status", verifyFBToken, async (req, res) => {
       type: "status_update",
     });
 
-    res.send({ success: true, message: `Status updated to ${delivery_status}.` });
+    res.send({
+      success: true,
+      message: `Status updated to ${delivery_status}.`,
+    });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to update status." });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to update status." });
   }
 });
 
@@ -125,7 +151,7 @@ router.get("/reviews", verifyFBToken, async (req, res) => {
   try {
     const { reviewsCollection } = require("../db");
     const email = req.user.email;
-    
+
     const reviews = await reviewsCollection
       .find({ rider_email: email })
       .sort({ date: -1 })
@@ -133,7 +159,9 @@ router.get("/reviews", verifyFBToken, async (req, res) => {
 
     res.send({ success: true, count: reviews.length, data: reviews });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch reviews." });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch reviews." });
   }
 });
 
@@ -150,11 +178,19 @@ router.get("/reviews", verifyFBToken, async (req, res) => {
 router.get("/rider/stats", verifyFBToken, async (req, res) => {
   try {
     const email = req.user.email;
-    
+
     const deliveryStats = await parcelCollection
       .aggregate([
-        { $match: { assigned_rider_email: email, delivery_status: "delivered" } },
-        { $group: { _id: null, totalEarnings: { $sum: "$rider_earning" }, totalDelivered: { $sum: 1 } } },
+        {
+          $match: { assigned_rider_email: email, delivery_status: "delivered" },
+        },
+        {
+          $group: {
+            _id: null,
+            totalEarnings: { $sum: "$rider_earning" },
+            totalDelivered: { $sum: 1 },
+          },
+        },
       ])
       .toArray();
 
@@ -164,9 +200,10 @@ router.get("/rider/stats", verifyFBToken, async (req, res) => {
       success: true,
       stats: {
         totalEarnings: deliveryStats[0]?.totalEarnings || 0,
-        totalDelivered: rider?.total_delivered || deliveryStats[0]?.totalDelivered || 0,
-        averageRating: rider?.average_rating || 0
-      }
+        totalDelivered:
+          rider?.total_delivered || deliveryStats[0]?.totalDelivered || 0,
+        averageRating: rider?.average_rating || 0,
+      },
     });
   } catch (error) {
     res.status(500).send({ success: false, message: "Failed to fetch stats." });

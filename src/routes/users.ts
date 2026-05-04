@@ -31,7 +31,9 @@ router.get("/users/:email/role", verifyFBToken, async (req, res) => {
       { projection: { role: 1 } },
     );
     if (!user)
-      return res.status(404).send({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .send({ success: false, message: "User not found" });
     res.send({ success: true, role: user.role || "user" });
   } catch {
     res.status(500).send({ success: false, error: "Internal Server Error" });
@@ -79,13 +81,17 @@ router.patch("/users/:email", verifyFBToken, async (req, res) => {
 router.post("/users", verifyFBToken, async (req, res) => {
   const email = req.user.email;
   if (!email) {
-    return res.status(400).send({ success: false, message: "Email not found in token" });
+    return res
+      .status(400)
+      .send({ success: false, message: "Email not found in token" });
   }
 
   // Check if user already exists
   const existingUser = await usersCollection.findOne({ email });
   if (existingUser) {
-    return res.status(200).send({ success: true, message: "User already exists", existing: true });
+    return res
+      .status(200)
+      .send({ success: true, message: "User already exists", existing: true });
   }
 
   const name = req.body.name || req.user.name;
@@ -112,7 +118,8 @@ router.post("/users", verifyFBToken, async (req, res) => {
 // POST /users/sync (Automatic sync for every login/refresh)
 router.post("/users/sync", verifyFBToken, async (req, res) => {
   const email = req.user.email;
-  if (!email) return res.status(401).send({ success: false, message: "Unauthorized" });
+  if (!email)
+    return res.status(401).send({ success: false, message: "Unauthorized" });
 
   const name = req.body.name || req.user.name;
   const photoURL = req.body.photoURL || req.user.picture;
@@ -138,11 +145,9 @@ router.post("/users/sync", verifyFBToken, async (req, res) => {
   }
 
   try {
-    const result = await usersCollection.updateOne(
-      { email },
-      updateDoc,
-      { upsert: true }
-    );
+    const result = await usersCollection.updateOne({ email }, updateDoc, {
+      upsert: true,
+    });
     res.send({ success: true, ...result });
   } catch (error) {
     console.error("Error syncing user:", error);

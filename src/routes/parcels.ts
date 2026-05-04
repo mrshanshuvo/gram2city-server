@@ -41,7 +41,9 @@ router.get("/parcels", verifyFBToken, async (req, res) => {
 
     res.send({ success: true, count: parcels.length, data: parcels });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch your parcels." });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch your parcels." });
   }
 });
 
@@ -59,24 +61,46 @@ router.get("/parcels/stats", verifyFBToken, async (req, res) => {
   try {
     const email = req.user.email;
 
-    const stats = await parcelCollection.aggregate([
-      { $match: { created_by: email } },
-      { $group: { 
-          _id: null, 
-          totalSpent: { $sum: "$cost" }, 
-          totalParcels: { $sum: 1 },
-          delivered: { $sum: { $cond: [{ $eq: ["$delivery_status", "delivered"] }, 1, 0] } },
-          pending: { $sum: { $cond: [{ $eq: ["$delivery_status", "pending"] }, 1, 0] } },
-          on_the_way: { $sum: { $cond: [{ $eq: ["$delivery_status", "on_the_way"] }, 1, 0] } }
-      }}
-    ]).toArray();
+    const stats = await parcelCollection
+      .aggregate([
+        { $match: { created_by: email } },
+        {
+          $group: {
+            _id: null,
+            totalSpent: { $sum: "$cost" },
+            totalParcels: { $sum: 1 },
+            delivered: {
+              $sum: {
+                $cond: [{ $eq: ["$delivery_status", "delivered"] }, 1, 0],
+              },
+            },
+            pending: {
+              $sum: { $cond: [{ $eq: ["$delivery_status", "pending"] }, 1, 0] },
+            },
+            on_the_way: {
+              $sum: {
+                $cond: [{ $eq: ["$delivery_status", "on_the_way"] }, 1, 0],
+              },
+            },
+          },
+        },
+      ])
+      .toArray();
 
-    res.send({ 
-      success: true, 
-      stats: stats[0] || { totalSpent: 0, totalParcels: 0, delivered: 0, pending: 0, on_the_way: 0 } 
+    res.send({
+      success: true,
+      stats: stats[0] || {
+        totalSpent: 0,
+        totalParcels: 0,
+        delivered: 0,
+        pending: 0,
+        on_the_way: 0,
+      },
     });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to calculate stats." });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to calculate stats." });
   }
 });
 
@@ -108,25 +132,41 @@ router.get("/parcels/stats", verifyFBToken, async (req, res) => {
  */
 router.post("/parcels", verifyFBToken, async (req, res) => {
   try {
-    const { 
-      parcelName, parcelType, weight, receiverName, 
-      receiverPhone, deliveryAddress, receiverDistrict, 
-      senderPhone, deliveryDate 
+    const {
+      parcelName,
+      parcelType,
+      weight,
+      receiverName,
+      receiverPhone,
+      deliveryAddress,
+      receiverDistrict,
+      senderPhone,
+      deliveryDate,
     } = req.body;
 
-    if (!parcelName || !weight || !receiverName || !receiverPhone || !deliveryAddress || !receiverDistrict) {
-      return res.status(400).send({ success: false, message: "Missing required fields." });
+    if (
+      !parcelName ||
+      !weight ||
+      !receiverName ||
+      !receiverPhone ||
+      !deliveryAddress ||
+      !receiverDistrict
+    ) {
+      return res
+        .status(400)
+        .send({ success: false, message: "Missing required fields." });
     }
 
     // 1. Fetch System Settings for cost calculation
-    const settings = await settingsCollection.findOne({}) as SystemSettings;
+    const settings = (await settingsCollection.findOne({})) as SystemSettings;
     const baseFee = settings?.base_delivery_fee || 50;
     const costPerKg = settings?.cost_per_kg || 20;
     const riderCommissionPct = settings?.rider_commission_percentage || 15;
 
     // 2. Intelligent Cost Calculation
     const weightNum = Number(weight);
-    const totalCost = baseFee + (weightNum > 1 ? (weightNum - 1) * costPerKg : 0);
+    const totalCost =
+      baseFee + (weightNum > 1 ? (weightNum - 1) * costPerKg : 0);
     const riderEarning = (totalCost * riderCommissionPct) / 100;
     const adminProfit = totalCost - riderEarning;
 
@@ -150,7 +190,7 @@ router.post("/parcels", verifyFBToken, async (req, res) => {
       rider_earning: riderEarning,
       admin_profit: adminProfit,
       payment_status: "unpaid",
-      delivery_status: "pending"
+      delivery_status: "pending",
     };
 
     const result = await parcelCollection.insertOne(newParcel);
@@ -159,15 +199,15 @@ router.post("/parcels", verifyFBToken, async (req, res) => {
     await addTrackingUpdate(
       trackingId,
       "booked",
-      "Your parcel has been booked and is awaiting collection."
+      "Your parcel has been booked and is awaiting collection.",
     );
 
-    res.status(201).send({ 
-      success: true, 
-      message: "Parcel booked successfully!", 
+    res.status(201).send({
+      success: true,
+      message: "Parcel booked successfully!",
       trackingId,
       cost: totalCost,
-      id: result.insertedId 
+      id: result.insertedId,
     });
   } catch (error) {
     res.status(500).send({ success: false, message: "Failed to book parcel." });
@@ -190,24 +230,42 @@ router.delete("/parcels/:id", verifyFBToken, async (req, res) => {
     const { id } = req.params;
     const email = req.user.email;
 
-    const parcel = await parcelCollection.findOne({ _id: new ObjectId(String(id)) });
-    
-    if (!parcel) return res.status(404).send({ success: false, message: "Parcel not found." });
-    
+    const parcel = await parcelCollection.findOne({
+      _id: new ObjectId(String(id)),
+    });
+
+    if (!parcel)
+      return res
+        .status(404)
+        .send({ success: false, message: "Parcel not found." });
+
     // Security: Only owner can delete
     if (parcel.created_by !== email) {
-      return res.status(403).send({ success: false, message: "Unauthorized to cancel this parcel." });
+      return res
+        .status(403)
+        .send({
+          success: false,
+          message: "Unauthorized to cancel this parcel.",
+        });
     }
 
     // Business Logic: Can only cancel if pending
     if (parcel.delivery_status !== "pending") {
-      return res.status(400).send({ success: false, message: "Cannot cancel a parcel that is already assigned or in transit." });
+      return res
+        .status(400)
+        .send({
+          success: false,
+          message:
+            "Cannot cancel a parcel that is already assigned or in transit.",
+        });
     }
 
     await parcelCollection.deleteOne({ _id: new ObjectId(String(id)) });
     res.send({ success: true, message: "Parcel cancelled successfully." });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to cancel parcel." });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to cancel parcel." });
   }
 });
 

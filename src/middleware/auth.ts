@@ -11,15 +11,22 @@ export const verifyFBToken = async (
 ): Promise<void> => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
-    res.status(401).send({ success: false, message: "Unauthorized: No token provided" });
+    res
+      .status(401)
+      .send({ success: false, message: "Unauthorized: No token provided" });
     return;
   }
 
   // Robust token extraction: Remove "Bearer" (case-insensitive) and any leading/trailing spaces
-  const token = authHeader.replace(/^Bearer\s+/i, "").replace(/^Bearer\s+/i, "").trim();
+  const token = authHeader
+    .replace(/^Bearer\s+/i, "")
+    .replace(/^Bearer\s+/i, "")
+    .trim();
 
   if (!token) {
-    res.status(401).send({ success: false, message: "Unauthorized: Invalid token format" });
+    res
+      .status(401)
+      .send({ success: false, message: "Unauthorized: Invalid token format" });
     return;
   }
   try {
