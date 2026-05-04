@@ -23,25 +23,31 @@ export interface Parcel {
   parcelName: string;
   parcelType?: string;
   created_by: string; // User Email
-  weight: number; // Added: For cost calculation
+  weight: number; 
+  parcelWeight?: number; // Alias for weight used in frontend
   creation_date?: string;
   createdAt?: string;
 
+  senderName?: string; // Added: For UI display
   senderAddress?: string;
-  senderPhone?: string; // Added: Mandatory sender contact
+  senderPhone?: string;
+  senderContact?: string; // Alias for senderPhone used in frontend
   senderDistrict?: string;
+  senderRegion?: string; // Alias for senderDistrict used in frontend
   senderServiceCenter?: string;
-  deliveryDate?: string; // Added: Requested delivery date
+  deliveryDate?: string;
 
-  receiverName: string; // Added: Mandatory receiver info
-  receiverPhone: string; // Added: Mandatory receiver info
-  deliveryAddress: string; // Added: Mandatory receiver info
+  receiverName: string;
+  receiverPhone: string;
+  receiverPhoneNumber?: string; // Alias for receiverPhone used in frontend
+  deliveryAddress: string;
   receiverDistrict?: string;
+  receiverRegion?: string; // Alias for receiverDistrict used in frontend
   receiverServiceCenter?: string;
 
   cost: number;
   rider_earning?: number;
-  admin_profit?: number; // Added: Platform revenue tracking
+  admin_profit?: number;
   payment_status?: "paid" | "unpaid";
   delivery_status?:
     | "pending"
@@ -49,7 +55,7 @@ export interface Parcel {
     | "on_the_way"
     | "delivered"
     | "cancelled"
-    | "returned"; // Added: Terminal states
+    | "returned";
 
   assigned_rider_id?: ObjectId;
   assigned_rider_name?: string;
@@ -58,8 +64,8 @@ export interface Parcel {
 
   picked_at?: string;
   delivered_at?: string;
-  cancelled_at?: string; // Added: Cancellation tracking
-  return_reason?: string; // Added: For failed deliveries
+  cancelled_at?: string;
+  return_reason?: string;
 }
 
 export interface Rider {

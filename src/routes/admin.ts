@@ -52,7 +52,7 @@ router.get("/stats", async (req, res) => {
     // 1. Parcel Stats
     const totalParcels = await parcelCollection.countDocuments();
     const pendingParcels = await parcelCollection.countDocuments({
-      delivery_status: "pending",
+      delivery_status: { $in: ["pending", "assigned", "not_collected", "picked_up"] },
     });
     const deliveredParcels = await parcelCollection.countDocuments({
       delivery_status: "delivered",
@@ -65,7 +65,14 @@ router.get("/stats", async (req, res) => {
 
     const profitData = await parcelCollection
       .aggregate([
-        { $group: { _id: null, totalProfit: { $sum: "$admin_profit" } } },
+        {
+          $group: {
+            _id: null,
+            totalProfit: {
+              $sum: { $ifNull: ["$admin_profit", { $multiply: ["$cost", 0.85] }] },
+            },
+          },
+        },
       ])
       .toArray();
 
@@ -284,6 +291,125 @@ router.patch("/users/:email/status", async (req, res) => {
     res
       .status(500)
       .send({ success: false, message: "Failed to update user status" });
+  }
+});
+
+/**
+ * @swagger
+ * /admin/all-parcels:
+ *   get:
+ *     summary: Manage all platform parcels (Admin only)
+ *     tags: [Admin Panel]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         schema: { type: string, default: "1" }
+ *       - name: size
+ *         in: query
+ *         schema: { type: string, default: "10" }
+ *     responses:
+ *       200: { description: "Success" }
+ */
+router.get("/all-parcels", async (req, res) => {
+  try {
+    const { parcelCollection } = require("../db");
+    const { delivery_status, startDate, endDate } = req.query;
+    const page = parseInt(req.query.page as string) || 1;
+    const size = parseInt(req.query.size as string) || 10;
+    const skip = (page - 1) * size;
+
+    const query: any = {};
+    if (delivery_status && delivery_status !== "all") {
+      query.delivery_status = delivery_status;
+    }
+    if (startDate || endDate) {
+      query.creation_date = {};
+      if (startDate) query.creation_date.$gte = new Date(startDate as string).toISOString();
+      if (endDate) query.creation_date.$lte = new Date(endDate as string).toISOString();
+    }
+
+    const parcels = await parcelCollection
+      .find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(size)
+      .toArray();
+
+    const totalCount = await parcelCollection.countDocuments();
+
+    res.send({
+      success: true,
+      parcels: parcels,
+      total: totalCount,
+      page,
+      size,
+    });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to fetch all parcels" });
+  }
+});
+
+/**
+ * @swagger
+ * /parcels/{id}/assign:
+ *   patch:
+ *     summary: Assign a rider to a parcel (Admin only)
+ *     tags: [Admin Panel]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ name: "id", in: path, required: true, schema: { type: string } }]
+ *     requestBody:
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             required: [riderId]
+ *             properties:
+ *               riderId: { type: string, example: "60d...123" }
+ *     responses:
+ *       200: { description: "Rider Assigned" }
+ */
+router.patch("/parcels/:id/assign", async (req, res) => {
+  const { id } = req.params;
+  const { riderId } = req.body;
+  try {
+    const { parcelCollection, ridersCollection, addTrackingUpdate } = require("../db");
+    const { ObjectId } = require("mongodb");
+
+    const rider = await ridersCollection.findOne({ _id: new ObjectId(String(riderId)) });
+    if (!rider) return res.status(404).send({ success: false, message: "Rider not found" });
+
+    const result = await parcelCollection.updateOne(
+      { _id: new ObjectId(String(id)) },
+      {
+        $set: {
+          assigned_rider_id: rider._id,
+          assigned_rider_name: rider.name,
+          assigned_rider_email: rider.email,
+          assigned_rider_phone: rider.phone,
+          delivery_status: "assigned",
+        },
+      },
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).send({ success: false, message: "Parcel not found or already updated" });
+    }
+
+    // Add tracking update
+    const parcel = await parcelCollection.findOne({ _id: new ObjectId(String(id)) });
+    if (parcel) {
+      await addTrackingUpdate(
+        parcel.trackingId,
+        "assigned",
+        `Parcel assigned to rider ${rider.name}`,
+        "Admin Dashboard"
+      );
+    }
+
+    res.send({ success: true, message: "Rider assigned successfully" });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to assign rider" });
   }
 });
 

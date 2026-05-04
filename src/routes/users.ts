@@ -119,11 +119,9 @@ router.post("/users/sync", verifyFBToken, async (req, res) => {
   };
 
   if (name) {
-    updateDoc.$setOnInsert.name = name;
     updateDoc.$set.name = name;
   }
   if (photoURL) {
-    updateDoc.$setOnInsert.photoURL = photoURL;
     updateDoc.$set.photoURL = photoURL;
   }
 

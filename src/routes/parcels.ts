@@ -180,11 +180,18 @@ router.post("/parcels", verifyFBToken, async (req, res) => {
       creation_date: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       weight: weightNum,
+      parcelWeight: weightNum, // Alias for frontend
       receiverName,
       receiverPhone,
+      receiverPhoneNumber: receiverPhone, // Alias for frontend
       deliveryAddress,
       receiverDistrict,
+      receiverRegion: receiverDistrict, // Alias for frontend
       senderPhone,
+      senderContact: senderPhone, // Alias for frontend
+      senderDistrict: req.body.senderDistrict || "",
+      senderRegion: req.body.senderDistrict || "", // Alias for frontend
+      senderName: req.body.senderName || req.user.name || "Anonymous",
       deliveryDate,
       cost: totalCost,
       rider_earning: riderEarning,
@@ -266,6 +273,52 @@ router.delete("/parcels/:id", verifyFBToken, async (req, res) => {
     res
       .status(500)
       .send({ success: false, message: "Failed to cancel parcel." });
+  }
+});
+
+/**
+ * @swagger
+ * /parcels/{id}/pick:
+ *   patch:
+ *     summary: Mark parcel as picked up (Rider only)
+ *     tags: [Rider Dashboard]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ name: "id", in: path, required: true, schema: { type: string } }]
+ *     responses:
+ *       200: { description: "Picked up" }
+ */
+router.patch("/parcels/:id/pick", verifyFBToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { addTrackingUpdate } = require("../db");
+
+    const result = await parcelCollection.updateOne(
+      { _id: new ObjectId(String(id)) },
+      {
+        $set: {
+          delivery_status: "on_the_way",
+          picked_at: new Date().toISOString(),
+        },
+      },
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).send({ success: false, message: "Parcel not found" });
+    }
+
+    const parcel = await parcelCollection.findOne({ _id: new ObjectId(String(id)) });
+    if (parcel) {
+      await addTrackingUpdate(
+        parcel.trackingId,
+        "on_the_way",
+        "Parcel has been picked up and is on the way.",
+        "Pickup Point"
+      );
+    }
+
+    res.send({ success: true, message: "Parcel picked up successfully." });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to mark as picked" });
   }
 });
 

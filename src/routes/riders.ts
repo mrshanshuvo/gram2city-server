@@ -15,6 +15,38 @@ const router = Router();
 
 /**
  * @swagger
+ * /riders:
+ *   get:
+ *     summary: List all riders (Admin only)
+ *     tags: [Admin Panel]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - name: status
+ *         in: query
+ *         schema: { type: string, enum: [available, pending, approved] }
+ *     responses:
+ *       200: { description: "Success" }
+ */
+router.get("/riders", verifyFBToken, async (req, res) => {
+  try {
+    const { status } = req.query;
+    const query: any = {};
+    if (status === "available") {
+      query.status = "approved"; // Only approved riders can be available
+      // query.is_available = true; // Optional: if you track real-time availability
+    } else if (status) {
+      query.status = status;
+    }
+
+    const riders = await ridersCollection.find(query).toArray();
+    res.send(riders);
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to fetch riders" });
+  }
+});
+
+/**
+ * @swagger
  * /rider/parcels:
  *   get:
  *     summary: Get parcels assigned to me (Rider only)
