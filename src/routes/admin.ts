@@ -80,6 +80,106 @@ router.get("/stats", async (req, res) => {
     const totalUsers = await usersCollection.countDocuments({ role: "user" });
     const totalRiders = await ridersCollection.countDocuments();
 
+    // 4. Daily Bookings (Last 7 Days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const dailyBookings = await parcelCollection
+      .aggregate([
+        {
+          $match: {
+            $or: [
+              { creation_date: { $gte: sevenDaysAgo.toISOString() } },
+              { createdAt: { $gte: sevenDaysAgo.toISOString() } },
+            ],
+          },
+        },
+        {
+          $group: {
+            _id: {
+              $substr: [{ $ifNull: ["$creation_date", "$createdAt"] }, 0, 10],
+            },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ])
+      .toArray();
+
+    // 5. Parcel Type Distribution
+    const typeDistribution = await parcelCollection
+      .aggregate([{ $group: { _id: "$parcelType", count: { $sum: 1 } } }])
+      .toArray();
+
+    // 6. Average Delivery Time (in hours)
+    const deliveryTimeData = await parcelCollection
+      .aggregate([
+        {
+          $match: {
+            delivery_status: "delivered",
+            delivered_at: { $exists: true },
+          },
+        },
+        {
+          $project: {
+            duration: {
+              $divide: [
+                {
+                  $subtract: [
+                    { $toDate: "$delivered_at" },
+                    { $toDate: { $ifNull: ["$creation_date", "$createdAt"] } },
+                  ],
+                },
+                3600000, // Convert ms to hours
+              ],
+            },
+          },
+        },
+        { $group: { _id: null, avgHours: { $avg: "$duration" } } },
+      ])
+      .toArray();
+
+    // 7. Rider Leaderboard (Top 5 by Deliveries)
+    const riderLeaderboard = await parcelCollection
+      .aggregate([
+        { $match: { delivery_status: "delivered", assigned_rider_id: { $exists: true } } },
+        {
+          $group: {
+            _id: "$assigned_rider_id",
+            deliveredCount: { $sum: 1 },
+            avgRating: { $first: "$assigned_rider_rating" }, // If we store rating per parcel
+          },
+        },
+        {
+          $lookup: {
+            from: "riders",
+            localField: "_id",
+            foreignField: "_id",
+            as: "riderDetails",
+          },
+        },
+        { $unwind: "$riderDetails" },
+        {
+          $project: {
+            name: "$riderDetails.name",
+            email: "$riderDetails.email",
+            deliveredCount: 1,
+            rating: { $ifNull: ["$riderDetails.average_rating", 0] },
+          },
+        },
+        { $sort: { deliveredCount: -1 } },
+        { $limit: 5 },
+      ])
+      .toArray();
+
+    // 8. Geographic Distribution (by District)
+    const districtDistribution = await parcelCollection
+      .aggregate([
+        { $group: { _id: "$receiverDistrict", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 },
+      ])
+      .toArray();
+
     res.send({
       success: true,
       stats: {
@@ -91,6 +191,11 @@ router.get("/stats", async (req, res) => {
         revenue: revenueData[0]?.totalRevenue || 0,
         profit: profitData[0]?.totalProfit || 0,
         users: { customers: totalUsers, riders: totalRiders },
+        dailyBookings,
+        parcelTypeDistribution: typeDistribution,
+        avgDeliveryTime: deliveryTimeData[0]?.avgHours || 0,
+        riderLeaderboard,
+        districtDistribution,
       },
     });
   } catch (error) {
