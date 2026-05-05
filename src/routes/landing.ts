@@ -7,6 +7,8 @@ import {
   processStepsCollection,
   landingConfigCollection,
   testimonialsCollection,
+  warehousesCollection,
+  newsletterCollection,
 } from "../db";
 import { verifyFBToken, verifyAdmin } from "../middleware/auth";
 import { ObjectId } from "mongodb";
@@ -144,6 +146,40 @@ router.get("/testimonials", async (req, res) => {
     res.send({ success: true, data: testimonials });
   } catch (error) {
     res.status(500).send({ success: false, message: "Server error" });
+  }
+});
+
+// ─── WAREHOUSES (Public) ──────────────────────────────────────────────────
+// ─── NEWSLETTER (Public) ──────────────────────────────────────────────────
+router.post("/subscribe", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || !email.includes("@")) {
+      return res.status(400).send({ success: false, message: "Invalid email address" });
+    }
+
+    const existing = await newsletterCollection.findOne({ email });
+    if (existing) {
+      return res.status(400).send({ success: false, message: "Already subscribed!" });
+    }
+
+    await newsletterCollection.insertOne({ 
+      email, 
+      subscribedAt: new Date().toISOString() 
+    });
+    
+    res.send({ success: true, message: "Welcome to the family!" });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Subscription failed" });
+  }
+});
+
+router.get("/warehouses", async (_req, res) => {
+  try {
+    const data = await warehousesCollection.find({}).toArray();
+    res.send({ success: true, data });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Error fetching warehouses" });
   }
 });
 

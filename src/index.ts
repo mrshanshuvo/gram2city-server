@@ -54,7 +54,8 @@ app.use(
 );
 app.use(morgan("dev")); // Request logging
 app.use(compression()); // Gzip compression
-app.use(cors({ origin: process.env.CLIENT_URL }));
+const clientOrigins = process.env.CLIENT_URL?.split(",") || [];
+app.use(cors({ origin: clientOrigins }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -149,7 +150,9 @@ const httpServer = createServer(app);
 initSocket(httpServer);
 
 httpServer.listen(PORT, () => {
-  console.log(`🚀 Gram2City Real-time Engine running on http://localhost:${PORT}`);
+  console.log(
+    `🚀 Gram2City Real-time Engine running on http://localhost:${PORT}`,
+  );
 });
 
 export default app;
