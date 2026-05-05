@@ -5,7 +5,8 @@ import {
   featuresCollection,
   partnersCollection,
   processStepsCollection,
-  landingConfigCollection
+  landingConfigCollection,
+  testimonialsCollection,
 } from "../db";
 import { verifyFBToken, verifyAdmin } from "../middleware/auth";
 import { ObjectId } from "mongodb";
@@ -127,11 +128,28 @@ router.get("/partners", async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /landing/testimonials:
+ *   get:
+ *     summary: Get all active testimonials
+ *     tags: [Landing Page]
+ */
+router.get("/testimonials", async (req, res) => {
+  try {
+    const testimonials = await testimonialsCollection
+      .find({ isActive: true })
+      .sort({ createdAt: -1 })
+      .toArray();
+    res.send({ success: true, data: testimonials });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Server error" });
+  }
+});
+
 // ─── ADMIN ROUTES (Management) ──────────────────────────────────────────────
 
 router.use(verifyFBToken, verifyAdmin);
-
-// ─── ADMIN ROUTES (Management) ──────────────────────────────────────────────
 
 /**
  * @swagger
@@ -144,10 +162,16 @@ router.patch("/config", async (req, res) => {
   try {
     const update = req.body;
     delete update._id;
-    await landingConfigCollection.updateOne({}, { $set: update }, { upsert: true });
+    await landingConfigCollection.updateOne(
+      {},
+      { $set: update },
+      { upsert: true },
+    );
     res.send({ success: true, message: "Configuration updated" });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to update config" });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to update config" });
   }
 });
 
@@ -161,7 +185,9 @@ const handleCRUD = (collection: any, name: string) => {
       const result = await collection.insertOne(item);
       res.send({ success: true, data: { ...item, _id: result.insertedId } });
     } catch (error) {
-      res.status(500).send({ success: false, message: `Failed to create ${name}` });
+      res
+        .status(500)
+        .send({ success: false, message: `Failed to create ${name}` });
     }
   });
 
@@ -172,12 +198,15 @@ const handleCRUD = (collection: any, name: string) => {
       delete update._id;
       const result = await collection.updateOne(
         { _id: new ObjectId(id) },
-        { $set: update }
+        { $set: update },
       );
-      if (result.matchedCount === 0) return res.status(404).send({ success: false, message: "Not found" });
+      if (result.matchedCount === 0)
+        return res.status(404).send({ success: false, message: "Not found" });
       res.send({ success: true, message: `${name} updated` });
     } catch (error) {
-      res.status(500).send({ success: false, message: `Failed to update ${name}` });
+      res
+        .status(500)
+        .send({ success: false, message: `Failed to update ${name}` });
     }
   });
 
@@ -185,10 +214,13 @@ const handleCRUD = (collection: any, name: string) => {
     try {
       const { id } = req.params;
       const result = await collection.deleteOne({ _id: new ObjectId(id) });
-      if (result.deletedCount === 0) return res.status(404).send({ success: false, message: "Not found" });
+      if (result.deletedCount === 0)
+        return res.status(404).send({ success: false, message: "Not found" });
       res.send({ success: true, message: `${name} deleted` });
     } catch (error) {
-      res.status(500).send({ success: false, message: `Failed to delete ${name}` });
+      res
+        .status(500)
+        .send({ success: false, message: `Failed to delete ${name}` });
     }
   });
 };
@@ -198,5 +230,6 @@ handleCRUD(servicesCollection, "services");
 handleCRUD(featuresCollection, "features");
 handleCRUD(partnersCollection, "partners");
 handleCRUD(processStepsCollection, "process-steps");
+handleCRUD(testimonialsCollection, "testimonials");
 
 export default router;
