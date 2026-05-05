@@ -198,6 +198,80 @@ export interface ChatMessage {
   conversationId: string; // Combination of sorted emails (e.g. "email1_email2")
 }
 
+// ─── LANDING PAGE CONTENT ────────────────────────────────────────────────────
+
+export interface BannerSlide {
+  _id?: ObjectId;
+  image: string;
+  title: string;
+  subtitle: string;
+  ctaText: string;
+  ctaLink: string;
+  icon?: string; // Icon name from Lucide
+  isActive: boolean;
+  order: number;
+}
+
+export interface ServiceItem {
+  _id?: ObjectId;
+  title: string;
+  description: string;
+  icon: string;
+  color?: string;
+  isActive: boolean;
+  order: number;
+}
+
+export interface FeatureItem {
+  _id?: ObjectId;
+  title: string;
+  description: string;
+  image: string;
+  icon: string;
+  isActive: boolean;
+  order: number;
+}
+
+export interface PartnerLogo {
+  _id?: ObjectId;
+  name: string;
+  logo: string;
+  isActive: boolean;
+  order: number;
+}
+
+export interface ProcessStep {
+  _id?: ObjectId;
+  title: string;
+  description: string;
+  icon: string;
+  steps: string[]; // Added sub-steps
+  isActive: boolean;
+  order: number;
+}
+
+export interface LandingConfig {
+  _id?: ObjectId;
+  merchantSection: {
+    title: string;
+    description: string;
+    benefits: string[];
+    ctaText: string;
+    ctaLink: string;
+  };
+  contactInfo: {
+    address: string;
+    email: string;
+    phone: string;
+    socials: {
+      facebook?: string;
+      twitter?: string;
+      instagram?: string;
+      linkedin?: string;
+    };
+  };
+}
+
 // ─── Express Request Augmentation ───────────────────────────────────────────
 
 declare global {

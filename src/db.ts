@@ -12,6 +12,12 @@ import type {
   Feedback,
   FAQ,
   FAQVote,
+  BannerSlide,
+  ServiceItem,
+  FeatureItem,
+  PartnerLogo,
+  ProcessStep,
+  LandingConfig,
 } from "./types";
 
 // ─── MongoDB Client ───────────────────────────────────────────────────────────
@@ -43,6 +49,12 @@ export const messagesCollection = db.collection<ChatMessage>("messages");
 export const feedbackCollection = db.collection<Feedback>("feedback");
 export const faqsCollection = db.collection<FAQ>("faqs");
 export const faqVotesCollection = db.collection<FAQVote>("faq_votes");
+export const bannersCollection = db.collection<BannerSlide>("banners");
+export const servicesCollection = db.collection<ServiceItem>("services");
+export const featuresCollection = db.collection<FeatureItem>("features");
+export const partnersCollection = db.collection<PartnerLogo>("partners");
+export const processStepsCollection = db.collection<ProcessStep>("process_steps");
+export const landingConfigCollection = db.collection<LandingConfig>("landing_config");
 
 // ─── Shared Helper ────────────────────────────────────────────────────────────
 
