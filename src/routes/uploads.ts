@@ -5,7 +5,22 @@ import FormData from "form-data";
 import { verifyFBToken } from "../middleware/auth";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+
+// Professional Multer Configuration
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB Limit
+  },
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPEG, PNG, and WebP images are allowed"));
+    }
+  },
+});
 
 /**
  * @swagger
@@ -42,10 +57,15 @@ router.post(
   verifyFBToken,
   upload.single("image"),
   async (req, res) => {
+    // Check for Multer errors (like size limit)
+    if (req.file === undefined && req.body.image === undefined) {
+       // This handles the case where multer might have rejected the file
+    }
+
     if (!req.file) {
       return res
         .status(400)
-        .send({ success: false, message: "No file uploaded" });
+        .send({ success: false, message: "No file uploaded or file type not supported" });
     }
 
     try {
@@ -75,5 +95,18 @@ router.post(
     }
   },
 );
+
+// Global Multer Error Handler for this router
+router.use((err: any, _req: any, res: any, next: any) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).send({ success: false, message: "File too large. Max limit is 5MB." });
+    }
+    return res.status(400).send({ success: false, message: err.message });
+  } else if (err) {
+    return res.status(400).send({ success: false, message: err.message });
+  }
+  next();
+});
 
 export default router;

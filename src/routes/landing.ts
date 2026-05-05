@@ -131,6 +131,8 @@ router.get("/partners", async (req, res) => {
 
 router.use(verifyFBToken, verifyAdmin);
 
+// ─── ADMIN ROUTES (Management) ──────────────────────────────────────────────
+
 /**
  * @swagger
  * /landing/config:
@@ -141,6 +143,7 @@ router.use(verifyFBToken, verifyAdmin);
 router.patch("/config", async (req, res) => {
   try {
     const update = req.body;
+    delete update._id;
     await landingConfigCollection.updateOne({}, { $set: update }, { upsert: true });
     res.send({ success: true, message: "Configuration updated" });
   } catch (error) {
@@ -148,32 +151,52 @@ router.patch("/config", async (req, res) => {
   }
 });
 
-// Generic function to handle landing page CRUD can be added here
-// For now, providing basic management routes
+// Helper for Generic CRUD
+const handleCRUD = (collection: any, name: string) => {
+  router.post(`/${name}`, async (req, res) => {
+    try {
+      const item = req.body;
+      item.isActive = true;
+      item.createdAt = new Date().toISOString();
+      const result = await collection.insertOne(item);
+      res.send({ success: true, data: { ...item, _id: result.insertedId } });
+    } catch (error) {
+      res.status(500).send({ success: false, message: `Failed to create ${name}` });
+    }
+  });
 
-router.post("/banners", async (req, res) => {
-  try {
-    const banner = req.body;
-    banner.isActive = true;
-    banner.createdAt = new Date().toISOString();
-    const result = await bannersCollection.insertOne(banner);
-    res.send({ success: true, data: result });
-  } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to create banner" });
-  }
-});
+  router.patch(`/${name}/:id`, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const update = req.body;
+      delete update._id;
+      const result = await collection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: update }
+      );
+      if (result.matchedCount === 0) return res.status(404).send({ success: false, message: "Not found" });
+      res.send({ success: true, message: `${name} updated` });
+    } catch (error) {
+      res.status(500).send({ success: false, message: `Failed to update ${name}` });
+    }
+  });
 
-router.patch("/banners/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const update = req.body;
-    await bannersCollection.updateOne({ _id: new ObjectId(id) }, { $set: update });
-    res.send({ success: true, message: "Banner updated" });
-  } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to update banner" });
-  }
-});
+  router.delete(`/${name}/:id`, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = await collection.deleteOne({ _id: new ObjectId(id) });
+      if (result.deletedCount === 0) return res.status(404).send({ success: false, message: "Not found" });
+      res.send({ success: true, message: `${name} deleted` });
+    } catch (error) {
+      res.status(500).send({ success: false, message: `Failed to delete ${name}` });
+    }
+  });
+};
 
-// Similarly for services, features, and partners...
+handleCRUD(bannersCollection, "banners");
+handleCRUD(servicesCollection, "services");
+handleCRUD(featuresCollection, "features");
+handleCRUD(partnersCollection, "partners");
+handleCRUD(processStepsCollection, "process-steps");
 
 export default router;
