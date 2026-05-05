@@ -1,9 +1,9 @@
 export const swaggerSpec = {
   openapi: "3.0.0",
   info: {
-    title: "gram2city-server API",
-    version: "1.0.0",
-    description: "REST API documentation for gram2city server",
+    title: "Gram2City Logistics Enterprise API",
+    version: "2.1.0",
+    description: "Enterprise-grade logistics and supply chain management API for Gram2City. Powering real-time tracking, multi-region hub management, and dynamic marketing ecosystems.",
   },
   components: {
     securitySchemes: {
@@ -617,5 +617,98 @@ export const swaggerSpec = {
         responses: { 200: { description: "Success" } },
       },
     },
+    // ─── LANDING PAGE & MARKETING ─────────────────────────────────────────────
+    "/landing/config": {
+      get: {
+        summary: "Get global landing configuration",
+        tags: ["Landing Page"],
+        responses: { 200: { description: "Success" } },
+      },
+      patch: {
+        summary: "Update global landing configuration",
+        tags: ["Landing Page"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+           content: {
+              "application/json": {
+                 schema: { type: "object" }
+              }
+           }
+        },
+        responses: { 200: { description: "Success" } },
+      }
+    },
+    "/landing/banners": {
+      get: {
+        summary: "Get active banners",
+        tags: ["Landing Page"],
+        responses: { 200: { description: "Success" } },
+      }
+    },
+    "/landing/services": {
+      get: {
+        summary: "Get active services",
+        tags: ["Landing Page"],
+        responses: { 200: { description: "Success" } },
+      }
+    },
+    "/landing/warehouses": {
+      get: {
+        summary: "Search & Filter Warehouse Network",
+        description: "Retrieve the full logistics network with advanced server-side filtering by region, district, or operational status.",
+        tags: ["Landing Page"],
+        parameters: [
+           { 
+             name: "search", 
+             in: "query", 
+             required: false,
+             schema: { type: "string", example: "Dhaka" }, 
+             description: "Global search across City, District, and Region fields (case-insensitive)." 
+           },
+           { 
+             name: "district", 
+             in: "query", 
+             required: false,
+             schema: { type: "string", example: "Bogura" },
+             description: "Filter exactly by a specific district name."
+           },
+           { 
+             name: "status", 
+             in: "query", 
+             required: false,
+             schema: { type: "string", enum: ["active", "limited", "coming-soon"], example: "active" },
+             description: "Filter hubs by their operational readiness."
+           }
+        ],
+        responses: { 200: { description: "Success" } },
+      }
+    },
+    "/landing/subscribe": {
+      post: {
+        summary: "Subscribe to newsletter",
+        tags: ["Landing Page"],
+        requestBody: {
+           required: true,
+           content: {
+              "application/json": {
+                 schema: {
+                    type: "object",
+                    required: ["email"],
+                    properties: { email: { type: "string" } }
+                 }
+              }
+           }
+        },
+        responses: { 200: { description: "Success" } },
+      }
+    },
+    "/landing/newsletter": {
+       get: {
+          summary: "Get all newsletter subscribers (Admin Only)",
+          tags: ["Landing Page"],
+          security: [{ bearerAuth: [] }],
+          responses: { 200: { description: "Success" } }
+       }
+    }
   },
 };

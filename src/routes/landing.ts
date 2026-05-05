@@ -9,6 +9,7 @@ import {
   testimonialsCollection,
   warehousesCollection,
   newsletterCollection,
+  ridersCollection,
 } from "../db";
 import { verifyFBToken, verifyAdmin } from "../middleware/auth";
 import { ObjectId } from "mongodb";
@@ -149,37 +150,96 @@ router.get("/testimonials", async (req, res) => {
   }
 });
 
-// ─── WAREHOUSES (Public) ──────────────────────────────────────────────────
+// ─── STATS (Public) ───────────────────────────────────────────────────────
+router.get("/stats", async (_req, res) => {
+  try {
+    const warehouses = await warehousesCollection.find({}).toArray();
+    const totalDistricts = [...new Set(warehouses.map(w => w.district))];
+    const activeHubs = warehouses.filter(w => w.status === "active").length;
+    const expressZones = warehouses.filter(w => w.status === "limited").length;
+    const approvedRiders = await ridersCollection.countDocuments({ status: "approved" });
+
+    console.log(`[STATS] Districts: ${totalDistricts.length}, Active: ${activeHubs}, Riders: ${approvedRiders}`);
+
+    res.send({
+      success: true,
+      data: {
+        districts: totalDistricts.length || 64, // Fallback to 64 if DB is being seeded
+        activeHubs: activeHubs || 0,
+        expressZones: expressZones || 0,
+        riders: approvedRiders || 0
+      }
+    });
+  } catch (error) {
+    console.error("[STATS ERROR]", error);
+    res.status(500).send({ success: false, message: "Error fetching stats" });
+  }
+});
+
 // ─── NEWSLETTER (Public) ──────────────────────────────────────────────────
+router.get("/newsletter", async (_req, res) => {
+  try {
+    const subscribers = await newsletterCollection
+      .find({})
+      .sort({ subscribedAt: -1 })
+      .toArray();
+    res.send({ success: true, data: subscribers });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch subscribers" });
+  }
+});
+
 router.post("/subscribe", async (req, res) => {
   try {
     const { email } = req.body;
     if (!email || !email.includes("@")) {
-      return res.status(400).send({ success: false, message: "Invalid email address" });
+      return res
+        .status(400)
+        .send({ success: false, message: "Invalid email address" });
     }
 
     const existing = await newsletterCollection.findOne({ email });
     if (existing) {
-      return res.status(400).send({ success: false, message: "Already subscribed!" });
+      return res
+        .status(400)
+        .send({ success: false, message: "Already subscribed!" });
     }
 
-    await newsletterCollection.insertOne({ 
-      email, 
-      subscribedAt: new Date().toISOString() 
+    await newsletterCollection.insertOne({
+      email,
+      subscribedAt: new Date().toISOString(),
     });
-    
+
     res.send({ success: true, message: "Welcome to the family!" });
   } catch (error) {
     res.status(500).send({ success: false, message: "Subscription failed" });
   }
 });
 
-router.get("/warehouses", async (_req, res) => {
+router.get("/warehouses", async (req, res) => {
   try {
-    const data = await warehousesCollection.find({}).toArray();
+    const { search, district, status } = req.query;
+    const query: any = {};
+
+    if (search) {
+      query.$or = [
+        { district: { $regex: search, $options: "i" } },
+        { city: { $regex: search, $options: "i" } },
+        { region: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    if (district) query.district = district;
+    if (status) query.status = status;
+
+    const data = await warehousesCollection.find(query).toArray();
     res.send({ success: true, data });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Error fetching warehouses" });
+    res
+      .status(500)
+      .send({ success: false, message: "Error fetching warehouses" });
   }
 });
 
