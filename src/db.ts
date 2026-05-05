@@ -18,6 +18,7 @@ import type {
   PartnerLogo,
   ProcessStep,
   LandingConfig,
+  Avatar,
 } from "./types";
 
 // ─── MongoDB Client ───────────────────────────────────────────────────────────
@@ -55,6 +56,7 @@ export const featuresCollection = db.collection<FeatureItem>("features");
 export const partnersCollection = db.collection<PartnerLogo>("partners");
 export const processStepsCollection = db.collection<ProcessStep>("process_steps");
 export const landingConfigCollection = db.collection<LandingConfig>("landing_config");
+export const avatarsCollection = db.collection<Avatar>("avatars");
 
 // ─── Shared Helper ────────────────────────────────────────────────────────────
 

@@ -13,6 +13,7 @@ export interface User {
   address?: string;
   status?: "active" | "suspended" | "pending"; // Added: User status management
   emailVerified?: boolean; // Added: Synced from Firebase
+  isProfileComplete?: boolean;
   created_at?: string;
   last_login?: string;
 }
@@ -270,6 +271,15 @@ export interface LandingConfig {
       linkedin?: string;
     };
   };
+}
+
+export interface Avatar {
+  _id?: ObjectId;
+  url: string;
+  name?: string;
+  category?: string;
+  isActive: boolean;
+  createdAt: string;
 }
 
 // ─── Express Request Augmentation ───────────────────────────────────────────

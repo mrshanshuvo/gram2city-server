@@ -108,11 +108,22 @@ router.patch("/users/:email", verifyFBToken, async (req, res) => {
   if (req.user.email !== email)
     return res.status(403).send({ success: false, message: "Unauthorized" });
   try {
+    // Check if profile is complete (needs name, phone, and address)
+    const isComplete = !!(name && phone && address);
+
     const result = await usersCollection.updateOne(
       { email },
-      { $set: { name, photoURL, phone, address } },
+      { 
+        $set: { 
+          name, 
+          photoURL, 
+          phone, 
+          address,
+          isProfileComplete: isComplete 
+        } 
+      },
     );
-    res.send({ success: true, modifiedCount: result.modifiedCount });
+    res.send({ success: true, modifiedCount: result.modifiedCount, isProfileComplete: isComplete });
   } catch {
     res.status(500).send({ success: false, error: "Failed to update profile" });
   }
@@ -143,6 +154,7 @@ router.post("/users", verifyFBToken, async (req, res) => {
     name,
     photoURL,
     role: "user",
+    isProfileComplete: false, // Always starts incomplete
     created_at: new Date().toISOString(),
     last_login: new Date().toISOString(),
   };
