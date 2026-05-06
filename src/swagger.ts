@@ -2,8 +2,9 @@ export const swaggerSpec = {
   openapi: "3.0.0",
   info: {
     title: "Gram2City Logistics Enterprise API",
-    version: "2.1.0",
-    description: "Enterprise-grade logistics and supply chain management API for Gram2City. Powering real-time tracking, multi-region hub management, and dynamic marketing ecosystems.",
+    version: "2.2.0",
+    description:
+      "Enterprise-grade logistics and supply chain management API for Gram2City. Powering real-time tracking, multi-region hub management, and dynamic marketing ecosystems.",
   },
   components: {
     securitySchemes: {
@@ -12,6 +13,53 @@ export const swaggerSpec = {
         scheme: "bearer",
         bearerFormat: "JWT",
         description: "Enter your Firebase ID token (without 'Bearer ' prefix).",
+      },
+    },
+    schemas: {
+      ContactInfo: {
+        type: "object",
+        properties: {
+          address: {
+            type: "string",
+            example: "Plot 45, Gulshan Avenue, Dhaka",
+          },
+          phone: { type: "string", example: "+880 1700 000 000" },
+          whatsapp: { type: "string", example: "+880 1700 000 000" },
+          email: { type: "string", example: "support@gram2city.com" },
+        },
+      },
+      MerchantSection: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          description: { type: "string" },
+          benefits: { type: "array", items: { type: "string" } },
+          ctaText: { type: "string" },
+          ctaLink: { type: "string" },
+        },
+      },
+      FeatureCard: {
+        type: "object",
+        properties: {
+          _id: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
+          image: { type: "string" },
+          order: { type: "number" },
+          isActive: { type: "boolean" },
+        },
+      },
+      Testimonial: {
+        type: "object",
+        properties: {
+          _id: { type: "string" },
+          name: { type: "string" },
+          title: { type: "string" },
+          quote: { type: "string" },
+          image: { type: "string" },
+          rating: { type: "number" },
+          isActive: { type: "boolean" },
+        },
       },
     },
   },
@@ -137,7 +185,10 @@ export const swaggerSpec = {
                       properties: {
                         email: { type: "string" },
                         name: { type: "string" },
-                        role: { type: "string", enum: ["user", "rider", "admin"] },
+                        role: {
+                          type: "string",
+                          enum: ["user", "rider", "admin"],
+                        },
                         photoURL: { type: "string" },
                         last_login: { type: "string" },
                       },
@@ -622,93 +673,175 @@ export const swaggerSpec = {
       get: {
         summary: "Get global landing configuration",
         tags: ["Landing Page"],
-        responses: { 200: { description: "Success" } },
+        responses: {
+          200: {
+            description: "Success",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: {
+                      type: "object",
+                      properties: {
+                        merchantSection: {
+                          $ref: "#/components/schemas/MerchantSection",
+                        },
+                        contactInfo: {
+                          $ref: "#/components/schemas/ContactInfo",
+                        },
+                        howItWorksFooter: { type: "string" },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
       patch: {
         summary: "Update global landing configuration",
         tags: ["Landing Page"],
         security: [{ bearerAuth: [] }],
         requestBody: {
-           content: {
-              "application/json": {
-                 schema: { type: "object" }
-              }
-           }
+          content: {
+            "application/json": {
+              schema: { type: "object" },
+            },
+          },
         },
         responses: { 200: { description: "Success" } },
-      }
+      },
+    },
+    "/landing/features": {
+      get: {
+        summary: "Get all active feature cards",
+        tags: ["Landing Page"],
+        responses: {
+          200: {
+            description: "Success",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/FeatureCard" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/landing/testimonials": {
+      get: {
+        summary: "Get all active testimonials",
+        tags: ["Landing Page"],
+        responses: {
+          200: {
+            description: "Success",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    data: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/Testimonial" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     "/landing/banners": {
       get: {
         summary: "Get active banners",
         tags: ["Landing Page"],
         responses: { 200: { description: "Success" } },
-      }
+      },
     },
     "/landing/services": {
       get: {
         summary: "Get active services",
         tags: ["Landing Page"],
         responses: { 200: { description: "Success" } },
-      }
+      },
     },
     "/landing/warehouses": {
       get: {
         summary: "Search & Filter Warehouse Network",
-        description: "Retrieve the full logistics network with advanced server-side filtering by region, district, or operational status.",
+        description:
+          "Retrieve the full logistics network with advanced server-side filtering by region, district, or operational status.",
         tags: ["Landing Page"],
         parameters: [
-           { 
-             name: "search", 
-             in: "query", 
-             required: false,
-             schema: { type: "string", example: "Dhaka" }, 
-             description: "Global search across City, District, and Region fields (case-insensitive)." 
-           },
-           { 
-             name: "district", 
-             in: "query", 
-             required: false,
-             schema: { type: "string", example: "Bogura" },
-             description: "Filter exactly by a specific district name."
-           },
-           { 
-             name: "status", 
-             in: "query", 
-             required: false,
-             schema: { type: "string", enum: ["active", "limited", "coming-soon"], example: "active" },
-             description: "Filter hubs by their operational readiness."
-           }
+          {
+            name: "search",
+            in: "query",
+            required: false,
+            schema: { type: "string", example: "Dhaka" },
+            description:
+              "Global search across City, District, and Region fields (case-insensitive).",
+          },
+          {
+            name: "district",
+            in: "query",
+            required: false,
+            schema: { type: "string", example: "Bogura" },
+            description: "Filter exactly by a specific district name.",
+          },
+          {
+            name: "status",
+            in: "query",
+            required: false,
+            schema: {
+              type: "string",
+              enum: ["active", "limited", "coming-soon"],
+              example: "active",
+            },
+            description: "Filter hubs by their operational readiness.",
+          },
         ],
         responses: { 200: { description: "Success" } },
-      }
+      },
     },
     "/landing/subscribe": {
       post: {
         summary: "Subscribe to newsletter",
         tags: ["Landing Page"],
         requestBody: {
-           required: true,
-           content: {
-              "application/json": {
-                 schema: {
-                    type: "object",
-                    required: ["email"],
-                    properties: { email: { type: "string" } }
-                 }
-              }
-           }
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email"],
+                properties: { email: { type: "string" } },
+              },
+            },
+          },
         },
         responses: { 200: { description: "Success" } },
-      }
+      },
     },
     "/landing/newsletter": {
-       get: {
-          summary: "Get all newsletter subscribers (Admin Only)",
-          tags: ["Landing Page"],
-          security: [{ bearerAuth: [] }],
-          responses: { 200: { description: "Success" } }
-       }
-    }
+      get: {
+        summary: "Get all newsletter subscribers (Admin Only)",
+        tags: ["Landing Page"],
+        security: [{ bearerAuth: [] }],
+        responses: { 200: { description: "Success" } },
+      },
+    },
   },
 };
