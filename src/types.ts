@@ -217,6 +217,7 @@ export interface ServiceItem {
   _id?: ObjectId;
   title: string;
   description: string;
+  image?: string; // New: Custom illustration path
   icon: string;
   color?: string;
   isActive: boolean;
