@@ -34,7 +34,6 @@ export const verifyFBToken = async (
     req.user = decoded;
     next();
   } catch (error) {
-    console.error(error);
     res.status(401).send({ success: false, message: "Unauthorized" });
   }
 };

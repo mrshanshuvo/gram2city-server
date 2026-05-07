@@ -117,12 +117,10 @@ router.post("/auth/register", upload.single("image"), async (req, res) => {
     }
   } catch (error: any) {
     console.error("Unexpected Register Error:", error);
-    res
-      .status(500)
-      .send({
-        success: false,
-        message: "An unexpected error occurred during registration.",
-      });
+    res.status(500).send({
+      success: false,
+      message: "An unexpected error occurred during registration.",
+    });
   }
 });
 
@@ -395,12 +393,10 @@ router.post(
     const { email, password, name, role } = req.body;
 
     if (!email || !password || !name || !role) {
-      return res
-        .status(400)
-        .send({
-          success: false,
-          message: "All fields (email, password, name, role) are required.",
-        });
+      return res.status(400).send({
+        success: false,
+        message: "All fields (email, password, name, role) are required.",
+      });
     }
 
     try {

@@ -42,23 +42,23 @@ router.get("/users/summary", verifyFBToken, verifyAdmin, async (req, res) => {
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const startOfToday = new Date(now.setHours(0, 0, 0, 0));
 
-    const stats = await usersCollection.aggregate([
-      {
-        $facet: {
-          roleCounts: [
-            { $group: { _id: "$role", count: { $sum: 1 } } }
-          ],
-          recentlyJoined: [
-            { $match: { created_at: { $gte: sevenDaysAgo.toISOString() } } },
-            { $count: "count" }
-          ],
-          activeToday: [
-            { $match: { last_login: { $gte: startOfToday.toISOString() } } },
-            { $count: "count" }
-          ]
-        }
-      }
-    ]).toArray();
+    const stats = await usersCollection
+      .aggregate([
+        {
+          $facet: {
+            roleCounts: [{ $group: { _id: "$role", count: { $sum: 1 } } }],
+            recentlyJoined: [
+              { $match: { created_at: { $gte: sevenDaysAgo.toISOString() } } },
+              { $count: "count" },
+            ],
+            activeToday: [
+              { $match: { last_login: { $gte: startOfToday.toISOString() } } },
+              { $count: "count" },
+            ],
+          },
+        },
+      ])
+      .toArray();
 
     const roleMap = stats[0].roleCounts.reduce((acc: any, curr: any) => {
       acc[curr._id] = curr.count;
@@ -73,13 +73,18 @@ router.get("/users/summary", verifyFBToken, verifyAdmin, async (req, res) => {
       rider: roleMap.rider || 0,
       recentlyJoined: stats[0].recentlyJoined[0]?.count || 0,
       activeToday: stats[0].activeToday[0]?.count || 0,
-      total: (roleMap.user || 0) + (roleMap.admin || 0) + (roleMap.superAdmin || 0) + (roleMap.rider || 0)
+      total:
+        (roleMap.user || 0) +
+        (roleMap.admin || 0) +
+        (roleMap.superAdmin || 0) +
+        (roleMap.rider || 0),
     });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch summary" });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch summary" });
   }
 });
-
 
 // PATCH /users/:email/role
 router.patch(
@@ -88,7 +93,7 @@ router.patch(
   verifyAdmin,
   async (req, res) => {
     const { email } = req.params;
-    const { role } = req.body;
+    const { role } = req.body || {};
     try {
       const result = await usersCollection.updateOne(
         { email },
@@ -104,7 +109,7 @@ router.patch(
 // PATCH /users/:email  (update profile)
 router.patch("/users/:email", verifyFBToken, async (req, res) => {
   const { email } = req.params;
-  const { name, photoURL, phone, address } = req.body;
+  const { name, photoURL, phone, address } = req.body || {};
   if (req.user.email !== email)
     return res.status(403).send({ success: false, message: "Unauthorized" });
   try {
@@ -113,17 +118,21 @@ router.patch("/users/:email", verifyFBToken, async (req, res) => {
 
     const result = await usersCollection.updateOne(
       { email },
-      { 
-        $set: { 
-          name, 
-          photoURL, 
-          phone, 
+      {
+        $set: {
+          name,
+          photoURL,
+          phone,
           address,
-          isProfileComplete: isComplete 
-        } 
+          isProfileComplete: isComplete,
+        },
       },
     );
-    res.send({ success: true, modifiedCount: result.modifiedCount, isProfileComplete: isComplete });
+    res.send({
+      success: true,
+      modifiedCount: result.modifiedCount,
+      isProfileComplete: isComplete,
+    });
   } catch {
     res.status(500).send({ success: false, error: "Failed to update profile" });
   }
@@ -146,8 +155,8 @@ router.post("/users", verifyFBToken, async (req, res) => {
       .send({ success: true, message: "User already exists", existing: true });
   }
 
-  const name = req.body.name || req.user.name;
-  const photoURL = req.body.photoURL || req.user.picture;
+  const name = req.body?.name || req.user?.name;
+  const photoURL = req.body?.photoURL || req.user?.picture;
 
   const newUser: User = {
     email,
@@ -174,8 +183,8 @@ router.post("/users/sync", verifyFBToken, async (req, res) => {
   if (!email)
     return res.status(401).send({ success: false, message: "Unauthorized" });
 
-  const name = req.body.name || req.user.name;
-  const photoURL = req.body.photoURL || req.user.picture;
+  const name = req.body?.name || req.user?.name;
+  const photoURL = req.body?.photoURL || req.user?.picture;
 
   const updateDoc: any = {
     $setOnInsert: {
@@ -203,7 +212,10 @@ router.post("/users/sync", verifyFBToken, async (req, res) => {
     res.send({ success: true, user });
   } catch (error) {
     console.error("Error syncing user:", error);
-    res.status(500).send({ success: false, message: "Internal Server Error" });
+    res.status(500).send({
+      success: false,
+      message: "Internal Server Error",
+    });
   }
 });
 
@@ -246,7 +258,9 @@ router.get("/users/:email", verifyFBToken, async (req, res) => {
   try {
     const user = await usersCollection.findOne({ email });
     if (!user) {
-      return res.status(404).send({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .send({ success: false, message: "User not found" });
     }
     res.send(user);
   } catch {
