@@ -65,7 +65,33 @@ export const newsletterCollection = db.collection("newsletter");
 export const testimonialsCollection = db.collection<any>("testimonials");
 export const addressesCollection = db.collection<Address>("addresses");
 
-// ─── Shared Helper ────────────────────────────────────────────────────────────
+// ─── DB Initialization (Indexing) ─────────────────────────────────────────────
+export const initDB = async () => {
+  try {
+    // Unique tracking IDs
+    await parcelCollection.createIndex({ trackingId: 1 }, { unique: true });
+    
+    // Fast user lookups
+    await usersCollection.createIndex({ email: 1 });
+    
+    // Merchant & Rider lookups
+    await merchantsCollection.createIndex({ email: 1 });
+    await ridersCollection.createIndex({ email: 1 });
+    
+    // High-density parcel queries
+    await parcelCollection.createIndex({ created_by: 1 });
+    await parcelCollection.createIndex({ delivery_status: 1 });
+    await parcelCollection.createIndex({ assigned_rider_email: 1 });
+    
+    // Performance: Recent activity feeds
+    await auditCollection.createIndex({ timestamp: -1 });
+    await trackingCollection.createIndex({ trackingId: 1, time: -1 });
+    
+    console.log("✅ Database indexes verified.");
+  } catch (error) {
+    console.error("❌ Database indexing failed:", error);
+  }
+};
 
 export const addTrackingUpdate = async (
   trackingId: string,

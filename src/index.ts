@@ -88,6 +88,7 @@ import faqsRouter from "./routes/faqs";
 import landingRouter from "./routes/landing";
 import avatarsRouter from "./routes/avatars";
 import merchantsRouter from "./routes/merchants";
+import publicRouter from "./routes/public";
 
 import addressesRouter from "./routes/addresses";
 
@@ -110,6 +111,7 @@ app.use("/", faqsRouter);
 app.use("/landing", landingRouter);
 app.use("/avatars", avatarsRouter);
 app.use("/merchants", merchantsRouter);
+app.use("/public", publicRouter);
 
 // ─── Centralized Error Handler ───────────────────────────────────────────────
 app.use(
@@ -198,6 +200,10 @@ const httpServer = createServer(app);
 
 // Initialize Real-time Engine
 initSocket(httpServer);
+
+// Initialize Database Indexes
+import { initDB } from "./db";
+initDB();
 
 httpServer.listen(PORT, () => {
   console.log(

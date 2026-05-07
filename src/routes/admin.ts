@@ -752,4 +752,68 @@ router.get("/fleet", async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /admin/payouts:
+ *   get:
+ *     summary: List All Payout Requests
+ *     tags: [Admin - Financials]
+ *     security: [{ bearerAuth: [] }]
+ */
+router.get("/payouts", async (req, res) => {
+  try {
+    const { cashoutsCollection } = require("../db");
+    const payouts = await cashoutsCollection.find().sort({ requested_at: -1 }).toArray();
+    res.send({ success: true, data: payouts });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to fetch payouts" });
+  }
+});
+
+/**
+ * @swagger
+ * /admin/payouts/{id}/status:
+ *   patch:
+ *     summary: Approve/Reject Payout Request
+ *     tags: [Admin - Financials]
+ *     security: [{ bearerAuth: [] }]
+ */
+router.patch("/payouts/:id/status", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const { cashoutsCollection, notificationsCollection } = require("../db");
+
+    const payout = await cashoutsCollection.findOne({ _id: new ObjectId(String(id)) });
+    if (!payout) return res.status(404).send({ success: false, message: "Payout request not found" });
+
+    await cashoutsCollection.updateOne(
+      { _id: new ObjectId(String(id)) },
+      { $set: { status, processed_at: new Date().toISOString(), processed_by: req.user.email } }
+    );
+
+    // Notify Rider
+    await notificationsCollection.insertOne({
+      email: payout.rider_email,
+      message: `Your payout request of ${payout.amount} BDT has been ${status}.`,
+      time: new Date().toISOString(),
+      isRead: false,
+      type: "payment",
+    });
+
+    // Log action
+    await auditCollection.insertOne({
+      admin_email: req.user.email,
+      action: "PAYOUT_STATUS_CHANGE",
+      target_id: id,
+      details: `Set payout status for ${payout.rider_email} to ${status}`,
+      timestamp: new Date().toISOString(),
+    });
+
+    res.send({ success: true, message: `Payout request ${status} successfully.` });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to update payout status" });
+  }
+});
+
 export default router;

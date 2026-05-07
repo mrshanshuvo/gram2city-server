@@ -334,4 +334,73 @@ router.get("/rider/stats", verifyFBToken, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /riders/payout:
+ *   post:
+ *     summary: Request Earnings Payout
+ *     tags: [Rider Dashboard]
+ *     security: [{ bearerAuth: [] }]
+ */
+router.post("/payout", verifyFBToken, async (req, res) => {
+  try {
+    const email = req.user.email;
+    const { amount } = req.body;
+
+    if (!amount || amount < 500) {
+      return res
+        .status(400)
+        .send({ success: false, message: "Minimum payout is 500 BDT." });
+    }
+
+    const rider = await ridersCollection.findOne({ email });
+    if (!rider)
+      return res.status(404).send({ success: false, message: "Rider not found" });
+
+    // Calculate actual earnings minus already cashed out
+    const deliveryStats = await parcelCollection
+      .aggregate([
+        {
+          $match: { assigned_rider_email: email, delivery_status: "delivered" },
+        },
+        { $group: { _id: null, total: { $sum: "$rider_earning" } } },
+      ])
+      .toArray();
+
+    const cashedOut = await cashoutsCollection
+      .aggregate([
+        { $match: { rider_email: email, status: { $ne: "rejected" } } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ])
+      .toArray();
+
+    const available = (deliveryStats[0]?.total || 0) - (cashedOut[0]?.total || 0);
+
+    if (amount > available) {
+      return res
+        .status(400)
+        .send({ success: false, message: "Insufficient balance." });
+    }
+
+    const payoutRequest = {
+      rider_email: email,
+      rider_name: rider.name,
+      amount: Number(amount),
+      status: "pending",
+      requested_at: new Date().toISOString(),
+    };
+
+    await cashoutsCollection.insertOne(payoutRequest as any);
+
+    res.send({
+      success: true,
+      message: "Payout request submitted successfully.",
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to request payout" });
+  }
+});
+
 export default router;

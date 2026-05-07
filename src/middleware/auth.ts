@@ -53,3 +53,33 @@ export const verifyAdmin = async (
   }
   next();
 };
+
+// ─── Role-Based Guards ────────────────────────────────────────────────────────
+
+export const verifyMerchant = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const email = req.user.email;
+  const user = await usersCollection.findOne({ email });
+  if (user?.role !== "merchant" && user?.role !== "admin") {
+    res.status(403).send({ success: false, message: "Merchant access required" });
+    return;
+  }
+  next();
+};
+
+export const verifyRider = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const email = req.user.email;
+  const user = await usersCollection.findOne({ email });
+  if (user?.role !== "rider" && user?.role !== "admin") {
+    res.status(403).send({ success: false, message: "Rider access required" });
+    return;
+  }
+  next();
+};
