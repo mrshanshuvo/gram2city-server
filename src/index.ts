@@ -89,8 +89,11 @@ import landingRouter from "./routes/landing";
 import avatarsRouter from "./routes/avatars";
 import merchantsRouter from "./routes/merchants";
 
+import addressesRouter from "./routes/addresses";
+
 app.get("/", (_req, res) => res.send("Parcel website server is running"));
 app.use("/admin", adminRouter);
+app.use("/addresses", addressesRouter);
 app.use("/", usersRouter);
 app.use("/", parcelsRouter);
 app.use("/", ridersRouter);

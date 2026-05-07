@@ -40,6 +40,19 @@ router.get("/trackings/:trackingId", async (req, res) => {
   }
 });
 
+router.get("/trackings/all/recent", verifyFBToken, verifyAdmin, async (req, res) => {
+  try {
+    const recentUpdates = await trackingCollection
+      .find({})
+      .sort({ time: -1 })
+      .limit(10)
+      .toArray();
+    res.send({ success: true, history: recentUpdates });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to fetch recent trackings" });
+  }
+});
+
 /**
  * @swagger
  * /trackings:

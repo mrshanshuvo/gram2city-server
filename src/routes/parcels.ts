@@ -5,6 +5,7 @@ import {
   notificationsCollection,
   addTrackingUpdate,
   settingsCollection,
+  auditCollection,
 } from "../db";
 import { verifyFBToken } from "../middleware/auth";
 import { Parcel, SystemSettings } from "../types";
@@ -487,6 +488,121 @@ router.patch("/parcels/:id/pick", verifyFBToken, async (req, res) => {
     res
       .status(500)
       .send({ success: false, message: "Failed to mark as picked" });
+  }
+});
+
+/**
+ * @swagger
+ * /parcels/bulk:
+ *   post:
+ *     summary: Bulk Ingest Parcels (Merchant Feature)
+ *     tags: [Merchant - Logistics]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [parcels]
+ *             properties:
+ *               parcels: { type: array, items: { type: object } }
+ *     responses:
+ *       201: { description: "Parcels Ingested" }
+ */
+router.post("/parcels/bulk", verifyFBToken, async (req, res) => {
+  try {
+    const { parcels, merchantId } = req.body;
+    if (!Array.isArray(parcels)) return res.status(400).send({ success: false, message: "Invalid data format" });
+
+    const newParcels = parcels.map((p: any) => ({
+      trackingId: `G2C-B-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+      parcelName: p.parcelName || "Bulk Item",
+      parcelType: p.parcelType || "Package",
+      created_by: req.user.email as string,
+      creation_date: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      weight: Number(p.weight) || 1,
+      parcelWeight: Number(p.weight) || 1,
+      receiverName: p.receiverName,
+      receiverPhone: p.receiverPhone,
+      receiverPhoneNumber: p.receiverPhone,
+      deliveryAddress: p.deliveryAddress,
+      receiverDistrict: p.receiverDistrict,
+      receiverRegion: p.receiverDistrict,
+      senderName: req.user.name || "Merchant",
+      senderPhone: p.senderPhone || "",
+      cost: Number(p.cost) || 50,
+      payment_status: "unpaid" as const,
+      delivery_status: "pending" as const,
+      merchantId: merchantId ? new ObjectId(String(merchantId)) : undefined,
+      codAmount: Number(p.codAmount) || 0,
+    } as Parcel));
+
+    await parcelCollection.insertMany(newParcels);
+    
+    // Log audit
+    await auditCollection.insertOne({
+      admin_email: req.user.email,
+      action: "BULK_PARCEL_INGEST",
+      details: `Merchant ${req.user.email} uploaded ${newParcels.length} parcels.`,
+      timestamp: new Date().toISOString(),
+    });
+
+    res.status(201).send({ success: true, message: `${newParcels.length} parcels uploaded successfully.` });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to process bulk upload" });
+  }
+});
+
+/**
+ * @swagger
+ * /parcels/{id}/deliver:
+ *   patch:
+ *     summary: Mark Parcel as Delivered
+ *     tags: [Rider - Logistics Operations]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ name: "id", in: path, required: true, schema: { type: string } }]
+ *     responses:
+ *       200: { description: "Delivered" }
+ */
+router.patch("/parcels/:id/deliver", verifyFBToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { addTrackingUpdate } = require("../db");
+
+    const result = await parcelCollection.updateOne(
+      { _id: new ObjectId(String(id)) },
+      {
+        $set: {
+          delivery_status: "delivered",
+          delivered_at: new Date().toISOString(),
+        },
+      },
+    );
+
+    if (result.modifiedCount === 0) {
+      return res
+        .status(404)
+        .send({ success: false, message: "Parcel not found" });
+    }
+
+    const parcel = await parcelCollection.findOne({
+      _id: new ObjectId(String(id)),
+    });
+    if (parcel) {
+      await addTrackingUpdate(
+        parcel.trackingId,
+        "delivered",
+        "Parcel has been successfully delivered to the recipient.",
+        parcel.receiverDistrict,
+      );
+    }
+
+    res.send({ success: true, message: "Parcel delivered successfully." });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to mark as delivered" });
   }
 });
 

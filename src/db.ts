@@ -19,6 +19,8 @@ import type {
   ProcessStep,
   LandingConfig,
   Avatar,
+  Merchant,
+  Address,
 } from "./types";
 
 // ─── MongoDB Client ───────────────────────────────────────────────────────────
@@ -61,6 +63,7 @@ export const merchantsCollection = db.collection<Merchant>("merchants");
 export const warehousesCollection = db.collection("warehouses");
 export const newsletterCollection = db.collection("newsletter");
 export const testimonialsCollection = db.collection<any>("testimonials");
+export const addressesCollection = db.collection<Address>("addresses");
 
 // ─── Shared Helper ────────────────────────────────────────────────────────────
 
