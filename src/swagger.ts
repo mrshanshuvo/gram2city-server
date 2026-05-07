@@ -2,7 +2,7 @@ export const swaggerSpec = {
   openapi: "3.0.0",
   info: {
     title: "Gram2City Logistics Enterprise API",
-    version: "2.2.0",
+    version: "2.3.0",
     description:
       "Enterprise-grade logistics and supply chain management API for Gram2City. Powering real-time tracking, multi-region hub management, and dynamic marketing ecosystems.",
   },
@@ -85,6 +85,22 @@ export const swaggerSpec = {
     {
       name: "Admin - Process Management",
       description: "Operational step-by-step guides",
+    },
+    {
+      name: "Merchant - Business Intelligence",
+      description: "Business stats and application management",
+    },
+    {
+      name: "Rider - Financials",
+      description: "Payout requests and earnings management",
+    },
+    {
+      name: "Admin - Financials",
+      description: "Payout oversight and financial audits",
+    },
+    {
+      name: "Public - System Services",
+      description: "Pricing and public tracking tools",
     },
   ],
   components: {
@@ -549,7 +565,7 @@ export const swaggerSpec = {
     },
     "/rider/cashout": {
       post: {
-        summary: "Cash out my earnings",
+        summary: "Cash out my earnings (Legacy)",
         tags: ["Rider - Logistics Operations"],
         requestBody: {
           content: {
@@ -557,6 +573,28 @@ export const swaggerSpec = {
               schema: {
                 type: "object",
                 properties: { parcelId: { type: "string", example: "string" } },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: "Success" } },
+      },
+    },
+    "/riders/payout": {
+      post: {
+        summary: "Request Withdrawal (Enterprise)",
+        tags: ["Rider - Financials"],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                required: ["amount", "method", "accountNumber"],
+                properties: {
+                  amount: { type: "number", example: 500 },
+                  method: { type: "string", enum: ["bKash", "Nagad", "Bank"] },
+                  accountNumber: { type: "string", example: "01XXXXXXXXX" },
+                },
               },
             },
           },
@@ -778,6 +816,38 @@ export const swaggerSpec = {
                 required: ["status"],
                 properties: {
                   status: { type: "string", enum: ["active", "suspended"] },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: "Success" } },
+      },
+    },
+    "/admin/payouts": {
+      get: {
+        summary: "List All Payout Requests",
+        tags: ["Admin - Financials"],
+        security: [{ bearerAuth: [] }],
+        responses: { 200: { description: "Success" } },
+      },
+    },
+    "/admin/payouts/{id}/status": {
+      patch: {
+        summary: "Approve/Reject Payout",
+        tags: ["Admin - Financials"],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+        ],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                required: ["status"],
+                properties: {
+                  status: { type: "string", enum: ["approved", "rejected"] },
                 },
               },
             },
@@ -1402,6 +1472,59 @@ export const swaggerSpec = {
         summary: "Get all newsletter subscribers (Admin Only)",
         tags: ["Admin - Landing Config"],
         security: [{ bearerAuth: [] }],
+        responses: { 200: { description: "Success" } },
+      },
+    },
+    // ─── MERCHANT DASHBOARD ──────────────────────────────────────────────────
+    "/merchants": {
+      post: {
+        summary: "Submit Merchant Application",
+        tags: ["Merchant - Business Intelligence"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                required: ["businessName", "businessType", "shopAddress"],
+                properties: {
+                  businessName: { type: "string" },
+                  businessType: { type: "string" },
+                  shopAddress: { type: "string" },
+                  contactNumber: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        responses: { 201: { description: "Created" } },
+      },
+    },
+    "/merchants/stats": {
+      get: {
+        summary: "Get Merchant Performance Stats",
+        tags: ["Merchant - Business Intelligence"],
+        security: [{ bearerAuth: [] }],
+        responses: { 200: { description: "Success" } },
+      },
+    },
+    // ─── PUBLIC ENTERPRISE TOOLS ─────────────────────────────────────────────
+    "/public/settings": {
+      get: {
+        summary: "Get Pricing Configuration",
+        tags: ["Public - System Services"],
+        security: [],
+        responses: { 200: { description: "Success" } },
+      },
+    },
+    "/public/tracking/{trackingId}": {
+      get: {
+        summary: "Live Parcel Tracking History",
+        tags: ["Public - System Services"],
+        security: [],
+        parameters: [
+          { name: "trackingId", in: "path", required: true, schema: { type: "string" } },
+        ],
         responses: { 200: { description: "Success" } },
       },
     },
