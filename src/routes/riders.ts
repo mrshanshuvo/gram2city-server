@@ -64,7 +64,7 @@ router.post(
  * /riders:
  *   get:
  *     summary: List all riders (Admin only)
- *     tags: [Admin Panel]
+ *     tags: [Admin - Rider Management]
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - name: status

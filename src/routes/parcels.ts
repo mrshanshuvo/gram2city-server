@@ -18,8 +18,8 @@ const router = Router();
  * @swagger
  * /parcels:
  *   get:
- *     summary: Get my booked parcels (Customer only)
- *     tags: [Customer Portal]
+ *     summary: List My Booked Parcels
+ *     tags: [Customer - Parcel Management]
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - name: payment_status
@@ -54,8 +54,8 @@ router.get("/parcels", verifyFBToken, async (req, res) => {
  * @swagger
  * /parcels/stats:
  *   get:
- *     summary: Get my personal parcel stats and spending (Customer only)
- *     tags: [Customer Portal]
+ *     summary: Get My Parcel Statistics
+ *     tags: [Customer - Parcel Management]
  *     security: [{ bearerAuth: [] }]
  *     responses:
  *       200: { description: "Stats retrieved" }
@@ -111,8 +111,8 @@ router.get("/parcels/stats", verifyFBToken, async (req, res) => {
  * @swagger
  * /parcels:
  *   post:
- *     summary: Book a new parcel with dynamic cost calculation
- *     tags: [Customer Portal]
+ *     summary: Book New Parcel
+ *     tags: [Customer - Parcel Management]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       content:
@@ -246,8 +246,8 @@ router.post(
  * @swagger
  * /parcels/{id}:
  *   get:
- *     summary: Get specific parcel details
- *     tags: [Customer Portal]
+ *     summary: Get Parcel Details
+ *     tags: [Customer - Parcel Management]
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ name: "id", in: path, required: true, schema: { type: string } }]
  *     responses:
@@ -286,8 +286,8 @@ router.get("/parcels/:id", verifyFBToken, async (req, res) => {
  * @swagger
  * /parcels/{id}:
  *   patch:
- *     summary: Update parcel details (Only if pending)
- *     tags: [Customer Portal]
+ *     summary: Update Parcel Details
+ *     tags: [Customer - Parcel Management]
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ name: "id", in: path, required: true, schema: { type: string } }]
  *     responses:
@@ -372,8 +372,8 @@ router.patch(
  * @swagger
  * /parcels/{id}:
  *   delete:
- *     summary: Cancel a parcel (Only if pending)
- *     tags: [Customer Portal]
+ *     summary: Delete/Cancel Parcel
+ *     tags: [Customer - Parcel Management]
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ name: "id", in: path, required: true, schema: { type: string } }]
  *     responses:
@@ -423,8 +423,8 @@ router.delete("/parcels/:id", verifyFBToken, async (req, res) => {
  * @swagger
  * /parcels/{id}/pick:
  *   patch:
- *     summary: Mark parcel as picked up (Rider only)
- *     tags: [Rider Dashboard]
+ *     summary: Mark Parcel as Picked Up
+ *     tags: [Rider - Logistics Operations]
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ name: "id", in: path, required: true, schema: { type: string } }]
  *     responses:

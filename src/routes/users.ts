@@ -12,7 +12,7 @@ const router = Router();
  * /users/search:
  *   get:
  *     summary: Search for users by email (Admin only)
- *     tags: [Users]
+ *     tags: [Admin - User Management]
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ name: "email", in: query, required: true, schema: { type: string } }]
  *     responses:
@@ -39,7 +39,7 @@ router.get("/users/search", verifyFBToken, verifyAdmin, async (req, res) => {
  * /users/staff:
  *   get:
  *     summary: List all administrative staff (Admin only)
- *     tags: [Users]
+ *     tags: [Admin - User Management]
  *     security: [{ bearerAuth: [] }]
  *     responses:
  *       200: { description: "Success" }
@@ -61,7 +61,7 @@ router.get("/users/staff", verifyFBToken, verifyAdmin, async (req, res) => {
  * /users/summary:
  *   get:
  *     summary: Get user role distribution and activity (Admin only)
- *     tags: [Users]
+ *     tags: [Admin - User Management]
  *     security: [{ bearerAuth: [] }]
  *     responses:
  *       200: { description: "Success" }
@@ -121,7 +121,7 @@ router.get("/users/summary", verifyFBToken, verifyAdmin, async (req, res) => {
  * /users/{email}/role:
  *   patch:
  *     summary: Change user role (Admin only)
- *     tags: [Users]
+ *     tags: [Admin - User Management]
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ name: "email", in: path, required: true, schema: { type: string } }]
  *     requestBody:
@@ -159,7 +159,7 @@ router.patch(
  * /users/{email}:
  *   patch:
  *     summary: Update user profile
- *     tags: [Users]
+ *     tags: [User Profile Management]
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ name: "email", in: path, required: true, schema: { type: string } }]
  *     responses:
@@ -209,7 +209,7 @@ router.patch(
  * /users:
  *   post:
  *     summary: Register a new user record
- *     tags: [Users]
+ *     tags: [User Profile Management]
  *     security: [{ bearerAuth: [] }]
  *     responses:
  *       201: { description: "User registered" }
@@ -267,7 +267,7 @@ router.post(
  * /users/sync:
  *   post:
  *     summary: Synchronize user profile and update last login
- *     tags: [Users]
+ *     tags: [User Profile Management]
  *     security: [{ bearerAuth: [] }]
  *     responses:
  *       200: { description: "Sync successful" }
@@ -318,7 +318,7 @@ router.post("/users/sync", verifyFBToken, async (req, res) => {
  * /user/stats/{email}:
  *   get:
  *     summary: Get personal logistics stats for a user
- *     tags: [Users]
+ *     tags: [User Profile Management]
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ name: "email", in: path, required: true, schema: { type: string } }]
  *     responses:
@@ -361,7 +361,7 @@ router.get("/user/stats/:email", verifyFBToken, async (req, res) => {
  * /users/{email}:
  *   get:
  *     summary: Get user profile by email
- *     tags: [Users]
+ *     tags: [User Profile Management]
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ name: "email", in: path, required: true, schema: { type: string } }]
  *     responses:

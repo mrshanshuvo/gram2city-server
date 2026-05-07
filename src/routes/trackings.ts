@@ -45,7 +45,7 @@ router.get("/trackings/:trackingId", async (req, res) => {
  * /trackings:
  *   post:
  *     summary: Manually add a tracking update (Admin Only)
- *     tags: [Admin Panel]
+ *     tags: [Admin - Logistics Management]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       content:

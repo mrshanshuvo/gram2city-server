@@ -27,7 +27,7 @@ const router = Router();
  * /landing/process-steps:
  *   get:
  *     summary: Get all active process steps
- *     tags: [Landing Page]
+ *     tags: [Landing - Process Steps]
  */
 router.get("/process-steps", async (req, res) => {
   try {
@@ -46,7 +46,7 @@ router.get("/process-steps", async (req, res) => {
  * /landing/config:
  *   get:
  *     summary: Get global landing configuration
- *     tags: [Landing Page]
+ *     tags: [Landing - Config]
  */
 router.get("/config", async (req, res) => {
   try {
@@ -62,7 +62,7 @@ router.get("/config", async (req, res) => {
  * /landing/banners:
  *   get:
  *     summary: Get all active banner slides
- *     tags: [Landing Page]
+ *     tags: [Landing - Banners]
  */
 router.get("/banners", async (req, res) => {
   try {
@@ -81,7 +81,7 @@ router.get("/banners", async (req, res) => {
  * /landing/services:
  *   get:
  *     summary: Get all active services
- *     tags: [Landing Page]
+ *     tags: [Landing - Services]
  */
 router.get("/services", async (req, res) => {
   try {
@@ -100,7 +100,7 @@ router.get("/services", async (req, res) => {
  * /landing/features:
  *   get:
  *     summary: Get all active feature cards
- *     tags: [Landing Page]
+ *     tags: [Landing - Features]
  */
 router.get("/features", async (req, res) => {
   try {
@@ -119,7 +119,7 @@ router.get("/features", async (req, res) => {
  * /landing/partners:
  *   get:
  *     summary: Get all partner logos
- *     tags: [Landing Page]
+ *     tags: [Landing - Partners]
  */
 router.get("/partners", async (req, res) => {
   try {
@@ -138,7 +138,7 @@ router.get("/partners", async (req, res) => {
  * /landing/testimonials:
  *   get:
  *     summary: Get all active testimonials
- *     tags: [Landing Page]
+ *     tags: [Landing - Testimonials]
  */
 router.get("/testimonials", async (req, res) => {
   try {
@@ -204,7 +204,7 @@ router.get("/newsletter", async (_req, res) => {
  * /landing/subscribe:
  *   post:
  *     summary: Subscribe to newsletter
- *     tags: [Landing Page]
+ *     tags: [Public - Newsletter]
  *     requestBody:
  *       content:
  *         application/json:
@@ -278,7 +278,7 @@ router.use(verifyFBToken, verifyAdmin);
  * /landing/config:
  *   patch:
  *     summary: Update global landing configuration
- *     tags: [Landing Page]
+ *     tags: [Admin - Landing Config]
  */
 router.patch("/config", async (req, res) => {
   try {
@@ -347,11 +347,100 @@ const handleCRUD = (collection: any, name: string) => {
   });
 };
 
+/**
+ * @swagger
+ * /landing/banners:
+ *   post:
+ *     summary: Create a new banner
+ *     tags: [Admin - Banner Management]
+ * /landing/banners/{id}:
+ *   patch:
+ *     summary: Update a banner
+ *     tags: [Admin - Banner Management]
+ *   delete:
+ *     summary: Delete a banner
+ *     tags: [Admin - Banner Management]
+ */
 handleCRUD(bannersCollection, "banners");
+
+/**
+ * @swagger
+ * /landing/services:
+ *   post:
+ *     summary: Create a new service
+ *     tags: [Admin - Service Management]
+ * /landing/services/{id}:
+ *   patch:
+ *     summary: Update a service
+ *     tags: [Admin - Service Management]
+ *   delete:
+ *     summary: Delete a service
+ *     tags: [Admin - Service Management]
+ */
 handleCRUD(servicesCollection, "services");
+
+/**
+ * @swagger
+ * /landing/features:
+ *   post:
+ *     summary: Create a new feature card
+ *     tags: [Admin - Feature Management]
+ * /landing/features/{id}:
+ *   patch:
+ *     summary: Update a feature card
+ *     tags: [Admin - Feature Management]
+ *   delete:
+ *     summary: Delete a feature card
+ *     tags: [Admin - Feature Management]
+ */
 handleCRUD(featuresCollection, "features");
+
+/**
+ * @swagger
+ * /landing/partners:
+ *   post:
+ *     summary: Create a new partner
+ *     tags: [Admin - Partner Management]
+ * /landing/partners/{id}:
+ *   patch:
+ *     summary: Update a partner
+ *     tags: [Admin - Partner Management]
+ *   delete:
+ *     summary: Delete a partner
+ *     tags: [Admin - Partner Management]
+ */
 handleCRUD(partnersCollection, "partners");
+
+/**
+ * @swagger
+ * /landing/process-steps:
+ *   post:
+ *     summary: Create a new process step
+ *     tags: [Admin - Process Management]
+ * /landing/process-steps/{id}:
+ *   patch:
+ *     summary: Update a process step
+ *     tags: [Admin - Process Management]
+ *   delete:
+ *     summary: Delete a process step
+ *     tags: [Admin - Process Management]
+ */
 handleCRUD(processStepsCollection, "process-steps");
+
+/**
+ * @swagger
+ * /landing/testimonials:
+ *   post:
+ *     summary: Create a new testimonial
+ *     tags: [Admin - Testimonial Management]
+ * /landing/testimonials/{id}:
+ *   patch:
+ *     summary: Update a testimonial
+ *     tags: [Admin - Testimonial Management]
+ *   delete:
+ *     summary: Delete a testimonial
+ *     tags: [Admin - Testimonial Management]
+ */
 handleCRUD(testimonialsCollection, "testimonials");
 
 export default router;

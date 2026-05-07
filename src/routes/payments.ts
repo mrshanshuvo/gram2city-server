@@ -18,8 +18,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
  * @swagger
  * /payments:
  *   get:
- *     summary: Get my payment history
- *     tags: [Customer Portal]
+ *     summary: List My Payment History
+ *     tags: [Customer - Payment Management]
  *     security: [{ bearerAuth: [] }]
  *     responses:
  *       200: { description: "Success" }
@@ -43,8 +43,8 @@ router.get("/payments", verifyFBToken, async (req, res) => {
  * @swagger
  * /create-payment-intent:
  *   post:
- *     summary: Create Stripe payment intent
- *     tags: [Customer Portal]
+ *     summary: Create Stripe Payment Intent
+ *     tags: [Customer - Payment Management]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       content:
@@ -101,8 +101,8 @@ router.post(
  * @swagger
  * /payments:
  *   post:
- *     summary: Record successful payment
- *     tags: [Customer Portal]
+ *     summary: Record Successful Payment
+ *     tags: [Customer - Payment Management]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       content:

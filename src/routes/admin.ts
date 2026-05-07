@@ -19,8 +19,8 @@ router.use(verifyFBToken, verifyAdmin);
  * @swagger
  * /admin/audit-logs:
  *   get:
- *     summary: View administrative audit logs
- *     tags: [Admin Panel]
+ *     summary: List Administrative Audit Logs
+ *     tags: [Admin - Audit Logs]
  *     security: [{ bearerAuth: [] }]
  *     responses:
  *       200: { description: "Success" }
@@ -42,8 +42,8 @@ router.get("/audit-logs", async (req, res) => {
  * @swagger
  * /admin/stats:
  *   get:
- *     summary: Get high-level platform statistics and revenue data
- *     tags: [Admin Panel]
+ *     summary: Get Platform Statistics
+ *     tags: [Admin - Statistics]
  *     security: [{ bearerAuth: [] }]
  *     responses:
  *       200:
@@ -244,8 +244,8 @@ router.get("/stats", async (req, res) => {
  * @swagger
  * /admin/announce:
  *   post:
- *     summary: Send a notification to all users and riders
- *     tags: [Admin Panel]
+ *     summary: Create Bulk Announcement
+ *     tags: [Admin - Announcements]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       content:
@@ -304,8 +304,8 @@ router.post("/announce", validate(announceSchema), async (req, res) => {
  * @swagger
  * /admin/settings:
  *   get:
- *     summary: Get global system settings
- *     tags: [Admin Panel]
+ *     summary: Get Global System Settings
+ *     tags: [Admin - System Settings]
  *     security: [{ bearerAuth: [] }]
  *     responses:
  *       200: { description: "Success" }
@@ -336,8 +336,8 @@ router.get("/settings", async (req, res) => {
  * @swagger
  * /admin/settings:
  *   patch:
- *     summary: Update global system settings
- *     tags: [Admin Panel]
+ *     summary: Update Global System Settings
+ *     tags: [Admin - System Settings]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       content:
@@ -395,8 +395,8 @@ router.patch("/settings", validate(adminSettingsSchema), async (req, res) => {
  * @swagger
  * /admin/users/{email}/status:
  *   patch:
- *     summary: Suspend or activate a user account
- *     tags: [Admin Panel]
+ *     summary: Update User Account Status
+ *     tags: [Admin - User Management]
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ name: "email", in: "path", required: true, schema: { type: "string" } }]
  *     requestBody:
@@ -445,8 +445,8 @@ router.patch(
  * @swagger
  * /admin/all-parcels:
  *   get:
- *     summary: Manage all platform parcels (Admin only)
- *     tags: [Admin Panel]
+ *     summary: List All Platform Parcels
+ *     tags: [Admin - Logistics Management]
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - name: page
@@ -511,8 +511,8 @@ router.get("/all-parcels", async (req, res) => {
  * @swagger
  * /parcels/{id}/assign:
  *   patch:
- *     summary: Assign a rider to a parcel (Admin only)
- *     tags: [Admin Panel]
+ *     summary: Assign Rider to Parcel
+ *     tags: [Admin - Logistics Management]
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ name: "id", in: path, required: true, schema: { type: string } }]
  *     requestBody:
