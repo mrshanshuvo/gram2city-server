@@ -25,31 +25,39 @@ const router = Router();
  *     security: [{ bearerAuth: [] }]
  *     responses:
  *       201: { description: "Application Submitted" }
+ *       400: { description: "Validation failed" }
  */
-router.post("/riders", verifyFBToken, validate(riderApplicationSchema), async (req, res) => {
-  try {
-    const application = {
-      ...req.body,
-      status: "pending",
-      createdAt: new Date().toISOString()
-    };
+router.post(
+  "/riders",
+  verifyFBToken,
+  validate(riderApplicationSchema),
+  async (req, res) => {
+    try {
+      const application = {
+        ...req.body,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      };
 
-    const result = await ridersCollection.insertOne(application);
+      const result = await ridersCollection.insertOne(application);
 
-    // Broadcast to Admins
-    if (io) {
-      io.emit("new_rider_application", {
-        name: application.name,
-        email: application.email,
-        district: application.district
-      });
+      // Broadcast to Admins
+      if (io) {
+        io.emit("new_rider_application", {
+          name: application.name,
+          email: application.email,
+          district: application.district,
+        });
+      }
+
+      res.status(201).send({ success: true, insertedId: result.insertedId });
+    } catch (error) {
+      res
+        .status(500)
+        .send({ success: false, message: "Failed to submit application" });
     }
-
-    res.status(201).send({ success: true, insertedId: result.insertedId });
-  } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to submit application" });
-  }
-});
+  },
+);
 
 /**
  * @swagger
@@ -246,13 +254,22 @@ router.patch("/rider/parcels/:id/status", verifyFBToken, async (req, res) => {
 
 /**
  * @swagger
- * /rider/reviews:
+ * /reviews:
+ *   post:
+ *     summary: Submit a rider review
+ *     tags: [Feedback]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       201: { description: "Review submitted" }
+ *       400: { description: "Validation failed" }
+ * /reviews:
  *   get:
  *     summary: See all reviews and ratings left for me (Rider only)
  *     tags: [Rider Dashboard]
  *     security: [{ bearerAuth: [] }]
  *     responses:
  *       200: { description: "Success" }
+ *       400: { description: "Validation error" }
  */
 router.get("/reviews", verifyFBToken, async (req, res) => {
   try {

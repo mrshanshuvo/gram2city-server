@@ -3,11 +3,11 @@ import { usersCollection, auditCollection, settingsCollection } from "../db";
 import { verifyFBToken, verifyAdmin } from "../middleware/auth";
 import { AuditLog, SystemSettings } from "../types";
 import { validate } from "../middleware/validate";
-import { 
-  adminSettingsSchema, 
-  announceSchema, 
-  userStatusSchema, 
-  assignRiderSchema 
+import {
+  adminSettingsSchema,
+  announceSchema,
+  userStatusSchema,
+  assignRiderSchema,
 } from "../schemas/adminSchema";
 
 const router = Router();
@@ -78,7 +78,9 @@ router.get("/stats", async (req, res) => {
     // 1. Parcel Stats
     const totalParcels = await parcelCollection.countDocuments();
     const pendingParcels = await parcelCollection.countDocuments({
-      delivery_status: { $in: ["pending", "assigned", "not_collected", "picked_up"] },
+      delivery_status: {
+        $in: ["pending", "assigned", "not_collected", "picked_up"],
+      },
     });
     const deliveredParcels = await parcelCollection.countDocuments({
       delivery_status: "delivered",
@@ -95,7 +97,9 @@ router.get("/stats", async (req, res) => {
           $group: {
             _id: null,
             totalProfit: {
-              $sum: { $ifNull: ["$admin_profit", { $multiply: ["$cost", 0.85] }] },
+              $sum: {
+                $ifNull: ["$admin_profit", { $multiply: ["$cost", 0.85] }],
+              },
             },
           },
         },
@@ -167,7 +171,12 @@ router.get("/stats", async (req, res) => {
     // 7. Rider Leaderboard (Top 5 by Deliveries)
     const riderLeaderboard = await parcelCollection
       .aggregate([
-        { $match: { delivery_status: "delivered", assigned_rider_id: { $exists: true } } },
+        {
+          $match: {
+            delivery_status: "delivered",
+            assigned_rider_id: { $exists: true },
+          },
+        },
         {
           $group: {
             _id: "$assigned_rider_id",
@@ -248,6 +257,7 @@ router.get("/stats", async (req, res) => {
  *               message: { type: string, example: "System maintenance tonight at 2 AM." }
  *     responses:
  *       200: { description: "Announcement sent" }
+ *       400: { description: "Validation failed" }
  */
 router.post("/announce", validate(announceSchema), async (req, res) => {
   const { message } = req.body;
@@ -340,6 +350,7 @@ router.get("/settings", async (req, res) => {
  *               rider_commission_percentage: { type: number, example: 15 }
  *     responses:
  *       200: { description: "Settings updated" }
+ *       400: { description: "Validation failed" }
  */
 router.patch("/settings", validate(adminSettingsSchema), async (req, res) => {
   const { base_delivery_fee, cost_per_kg, rider_commission_percentage } =
@@ -398,32 +409,37 @@ router.patch("/settings", validate(adminSettingsSchema), async (req, res) => {
  *               status: { type: string, enum: [active, suspended] }
  *     responses:
  *       200: { description: "User status updated" }
+ *       400: { description: "Validation failed" }
  */
-router.patch("/users/:email/status", validate(userStatusSchema), async (req, res) => {
-  const email = req.params.email as string;
-  const { status } = req.body;
-  try {
-    await usersCollection.updateOne({ email }, { $set: { status } });
+router.patch(
+  "/users/:email/status",
+  validate(userStatusSchema),
+  async (req, res) => {
+    const email = req.params.email as string;
+    const { status } = req.body;
+    try {
+      await usersCollection.updateOne({ email }, { $set: { status } });
 
-    const log: AuditLog = {
-      admin_email: req.user.email as string,
-      action: "USER_STATUS_CHANGE",
-      target_id: email,
-      details: `Changed user ${email} status to ${status}`,
-      timestamp: new Date().toISOString(),
-    };
-    await auditCollection.insertOne(log);
+      const log: AuditLog = {
+        admin_email: req.user.email as string,
+        action: "USER_STATUS_CHANGE",
+        target_id: email,
+        details: `Changed user ${email} status to ${status}`,
+        timestamp: new Date().toISOString(),
+      };
+      await auditCollection.insertOne(log);
 
-    res.send({
-      success: true,
-      message: `User account ${status} successfully.`,
-    });
-  } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to update user status" });
-  }
-});
+      res.send({
+        success: true,
+        message: `User account ${status} successfully.`,
+      });
+    } catch (error) {
+      res
+        .status(500)
+        .send({ success: false, message: "Failed to update user status" });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -456,8 +472,10 @@ router.get("/all-parcels", async (req, res) => {
     }
     if (startDate || endDate) {
       query.creation_date = {};
-      if (startDate) query.creation_date.$gte = new Date(startDate as string).toISOString();
-      if (endDate) query.creation_date.$lte = new Date(endDate as string).toISOString();
+      if (startDate)
+        query.creation_date.$gte = new Date(startDate as string).toISOString();
+      if (endDate)
+        query.creation_date.$lte = new Date(endDate as string).toISOString();
     }
 
     const totalItems = await parcelCollection.countDocuments(query);
@@ -483,7 +501,9 @@ router.get("/all-parcels", async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch all parcels" });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch all parcels" });
   }
 });
 
@@ -505,49 +525,72 @@ router.get("/all-parcels", async (req, res) => {
  *               riderId: { type: string, example: "60d...123" }
  *     responses:
  *       200: { description: "Rider Assigned" }
+ *       400: { description: "Validation failed or Not found" }
  */
-router.patch("/parcels/:id/assign", validate(assignRiderSchema), async (req, res) => {
-  const { id } = req.params;
-  const { riderId } = req.body;
-  try {
-    const { parcelCollection, ridersCollection, addTrackingUpdate } = require("../db");
-    const { ObjectId } = require("mongodb");
+router.patch(
+  "/parcels/:id/assign",
+  validate(assignRiderSchema),
+  async (req, res) => {
+    const { id } = req.params;
+    const { riderId } = req.body;
+    try {
+      const {
+        parcelCollection,
+        ridersCollection,
+        addTrackingUpdate,
+      } = require("../db");
+      const { ObjectId } = require("mongodb");
 
-    const rider = await ridersCollection.findOne({ _id: new ObjectId(String(riderId)) });
-    if (!rider) return res.status(404).send({ success: false, message: "Rider not found" });
+      const rider = await ridersCollection.findOne({
+        _id: new ObjectId(String(riderId)),
+      });
+      if (!rider)
+        return res
+          .status(404)
+          .send({ success: false, message: "Rider not found" });
 
-    const result = await parcelCollection.updateOne(
-      { _id: new ObjectId(String(id)) },
-      {
-        $set: {
-          assigned_rider_id: rider._id,
-          assigned_rider_name: rider.name,
-          assigned_rider_email: rider.email,
-          assigned_rider_phone: rider.phone,
-          delivery_status: "assigned",
+      const result = await parcelCollection.updateOne(
+        { _id: new ObjectId(String(id)) },
+        {
+          $set: {
+            assigned_rider_id: rider._id,
+            assigned_rider_name: rider.name,
+            assigned_rider_email: rider.email,
+            assigned_rider_phone: rider.phone,
+            delivery_status: "assigned",
+          },
         },
-      },
-    );
-
-    if (result.modifiedCount === 0) {
-      return res.status(404).send({ success: false, message: "Parcel not found or already updated" });
-    }
-
-    // Add tracking update
-    const parcel = await parcelCollection.findOne({ _id: new ObjectId(String(id)) });
-    if (parcel) {
-      await addTrackingUpdate(
-        parcel.trackingId,
-        "assigned",
-        `Parcel assigned to rider ${rider.name}`,
-        "Admin Dashboard"
       );
-    }
 
-    res.send({ success: true, message: "Rider assigned successfully" });
-  } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to assign rider" });
-  }
-});
+      if (result.modifiedCount === 0) {
+        return res
+          .status(404)
+          .send({
+            success: false,
+            message: "Parcel not found or already updated",
+          });
+      }
+
+      // Add tracking update
+      const parcel = await parcelCollection.findOne({
+        _id: new ObjectId(String(id)),
+      });
+      if (parcel) {
+        await addTrackingUpdate(
+          parcel.trackingId,
+          "assigned",
+          `Parcel assigned to rider ${rider.name}`,
+          "Admin Dashboard",
+        );
+      }
+
+      res.send({ success: true, message: "Rider assigned successfully" });
+    } catch (error) {
+      res
+        .status(500)
+        .send({ success: false, message: "Failed to assign rider" });
+    }
+  },
+);
 
 export default router;

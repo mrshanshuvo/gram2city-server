@@ -5,6 +5,17 @@ import { verifyFBToken } from "../middleware/auth";
 const router = Router();
 
 // GET /cashouts?rider_email=...
+/**
+ * @swagger
+ * /cashouts:
+ *   get:
+ *     summary: Get cashout history for a rider
+ *     tags: [Rider Dashboard]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ name: "rider_email", in: query, required: true, schema: { type: string } }]
+ *     responses:
+ *       200: { description: "Success" }
+ */
 router.get("/cashouts", verifyFBToken, async (req, res) => {
   const rider_email = req.query.rider_email as string | undefined;
   if (!rider_email)

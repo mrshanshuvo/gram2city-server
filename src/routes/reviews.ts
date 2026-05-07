@@ -6,7 +6,16 @@ import { reviewSchema } from "../schemas/commonSchema";
 
 const router = Router();
 
-// GET /reviews/rider/:email
+/**
+ * @swagger
+ * /reviews/rider/{email}:
+ *   get:
+ *     summary: Get reviews for a specific rider
+ *     tags: [Feedback]
+ *     parameters: [{ name: "email", in: path, required: true, schema: { type: string } }]
+ *     responses:
+ *       200: { description: "Success" }
+ */
 router.get("/reviews/rider/:email", async (req, res) => {
   const { email } = req.params;
   try {
@@ -20,16 +29,31 @@ router.get("/reviews/rider/:email", async (req, res) => {
   }
 });
 
-// POST /reviews
-router.post("/reviews", verifyFBToken, validate(reviewSchema), async (req, res) => {
-  const review = req.body;
-  review.date = new Date().toISOString();
-  try {
-    const result = await reviewsCollection.insertOne(review);
-    res.send({ success: true, data: result });
-  } catch {
-    res.status(500).send({ error: "Failed to submit review" });
-  }
-});
+/**
+ * @swagger
+ * /reviews:
+ *   post:
+ *     summary: Submit a rider review
+ *     tags: [Feedback]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       201: { description: "Review submitted" }
+ *       400: { description: "Validation failed" }
+ */
+router.post(
+  "/reviews",
+  verifyFBToken,
+  validate(reviewSchema),
+  async (req, res) => {
+    const review = req.body;
+    review.date = new Date().toISOString();
+    try {
+      const result = await reviewsCollection.insertOne(review);
+      res.send({ success: true, data: result });
+    } catch {
+      res.status(500).send({ error: "Failed to submit review" });
+    }
+  },
+);
 
 export default router;

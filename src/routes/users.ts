@@ -7,7 +7,17 @@ import type { User } from "../types";
 
 const router = Router();
 
-// GET /users/search
+/**
+ * @swagger
+ * /users/search:
+ *   get:
+ *     summary: Search for users by email (Admin only)
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ name: "email", in: query, required: true, schema: { type: string } }]
+ *     responses:
+ *       200: { description: "Success" }
+ */
 router.get("/users/search", verifyFBToken, verifyAdmin, async (req, res) => {
   const emailQuery = req.query.email as string | undefined;
   if (!emailQuery)
@@ -24,7 +34,16 @@ router.get("/users/search", verifyFBToken, verifyAdmin, async (req, res) => {
   }
 });
 
-// GET /users/staff (List all admins)
+/**
+ * @swagger
+ * /users/staff:
+ *   get:
+ *     summary: List all administrative staff (Admin only)
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: "Success" }
+ */
 router.get("/users/staff", verifyFBToken, verifyAdmin, async (req, res) => {
   try {
     const staff = await usersCollection
@@ -37,7 +56,16 @@ router.get("/users/staff", verifyFBToken, verifyAdmin, async (req, res) => {
   }
 });
 
-// GET /users/summary (Role distribution)
+/**
+ * @swagger
+ * /users/summary:
+ *   get:
+ *     summary: Get user role distribution and activity (Admin only)
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: "Success" }
+ */
 router.get("/users/summary", verifyFBToken, verifyAdmin, async (req, res) => {
   try {
     const now = new Date();
@@ -88,7 +116,25 @@ router.get("/users/summary", verifyFBToken, verifyAdmin, async (req, res) => {
   }
 });
 
-// PATCH /users/:email/role
+/**
+ * @swagger
+ * /users/{email}/role:
+ *   patch:
+ *     summary: Change user role (Admin only)
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ name: "email", in: path, required: true, schema: { type: string } }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [role]
+ *             properties:
+ *               role: { type: string, enum: [admin, superAdmin, user, rider] }
+ *     responses:
+ *       200: { description: "Role updated" }
+ */
 router.patch(
   "/users/:email/role",
   verifyFBToken,
@@ -108,7 +154,18 @@ router.patch(
   },
 );
 
-// PATCH /users/:email  (update profile)
+/**
+ * @swagger
+ * /users/{email}:
+ *   patch:
+ *     summary: Update user profile
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ name: "email", in: path, required: true, schema: { type: string } }]
+ *     responses:
+ *       200: { description: "Profile updated" }
+ *       400: { description: "Validation failed" }
+ */
 router.patch(
   "/users/:email",
   verifyFBToken,
@@ -147,7 +204,17 @@ router.patch(
   },
 );
 
-// POST /users (Register new user)
+/**
+ * @swagger
+ * /users:
+ *   post:
+ *     summary: Register a new user record
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       201: { description: "User registered" }
+ *       400: { description: "Validation failed" }
+ */
 router.post(
   "/users",
   verifyFBToken,
@@ -195,7 +262,16 @@ router.post(
   },
 );
 
-// POST /users/sync (Automatic sync for every login/refresh)
+/**
+ * @swagger
+ * /users/sync:
+ *   post:
+ *     summary: Synchronize user profile and update last login
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: "Sync successful" }
+ */
 router.post("/users/sync", verifyFBToken, async (req, res) => {
   const email = req.user.email;
   if (!email)
@@ -237,7 +313,17 @@ router.post("/users/sync", verifyFBToken, async (req, res) => {
   }
 });
 
-// GET /user/stats/:email
+/**
+ * @swagger
+ * /user/stats/{email}:
+ *   get:
+ *     summary: Get personal logistics stats for a user
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ name: "email", in: path, required: true, schema: { type: string } }]
+ *     responses:
+ *       200: { description: "Success" }
+ */
 router.get("/user/stats/:email", verifyFBToken, async (req, res) => {
   const { email } = req.params;
   try {
@@ -270,7 +356,17 @@ router.get("/user/stats/:email", verifyFBToken, async (req, res) => {
   }
 });
 
-// GET /users/:email
+/**
+ * @swagger
+ * /users/{email}:
+ *   get:
+ *     summary: Get user profile by email
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ name: "email", in: path, required: true, schema: { type: string } }]
+ *     responses:
+ *       200: { description: "Success" }
+ */
 router.get("/users/:email", verifyFBToken, async (req, res) => {
   const { email } = req.params;
   try {

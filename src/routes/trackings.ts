@@ -26,12 +26,10 @@ router.get("/trackings/:trackingId", async (req, res) => {
       .toArray();
 
     if (updates.length === 0) {
-      return res
-        .status(404)
-        .send({
-          success: false,
-          message: "No tracking history found for this ID.",
-        });
+      return res.status(404).send({
+        success: false,
+        message: "No tracking history found for this ID.",
+      });
     }
 
     res.send({ success: true, trackingId, history: updates });
@@ -62,36 +60,41 @@ router.get("/trackings/:trackingId", async (req, res) => {
  *               location: { type: string }
  *     responses:
  *       201: { description: "Created" }
+ *       400: { description: "Validation failed" }
  */
-router.post("/trackings", verifyFBToken, verifyAdmin, validate(trackingSchema), async (req, res) => {
-  try {
-    const { trackingId, status, details, location } = req.body;
+router.post(
+  "/trackings",
+  verifyFBToken,
+  verifyAdmin,
+  validate(trackingSchema),
+  async (req, res) => {
+    try {
+      const { trackingId, status, details, location } = req.body;
 
-    if (!trackingId || !status || !details) {
-      return res
-        .status(400)
-        .send({ success: false, message: "Missing required fields" });
-    }
+      if (!trackingId || !status || !details) {
+        return res
+          .status(400)
+          .send({ success: false, message: "Missing required fields" });
+      }
 
-    const update = {
-      trackingId,
-      status,
-      details,
-      location: location || "Processing Center",
-      time: new Date().toISOString(),
-    };
+      const update = {
+        trackingId,
+        status,
+        details,
+        location: location || "Processing Center",
+        time: new Date().toISOString(),
+      };
 
-    const result = await trackingCollection.insertOne(update);
-    res
-      .status(201)
-      .send({
+      const result = await trackingCollection.insertOne(update);
+      res.status(201).send({
         success: true,
         message: "Tracking update added.",
         id: result.insertedId,
       });
-  } catch (error) {
-    res.status(500).send({ success: false, message: "Server error" });
-  }
-});
+    } catch (error) {
+      res.status(500).send({ success: false, message: "Server error" });
+    }
+  },
+);
 
 export default router;

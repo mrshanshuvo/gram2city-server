@@ -199,6 +199,24 @@ router.get("/newsletter", async (_req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /landing/subscribe:
+ *   post:
+ *     summary: Subscribe to newsletter
+ *     tags: [Landing Page]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string, format: email }
+ *     responses:
+ *       201: { description: "Subscribed" }
+ *       400: { description: "Validation failed" }
+ */
 router.post("/subscribe", validate(newsletterSchema), async (req, res) => {
   try {
     const { email } = req.body;

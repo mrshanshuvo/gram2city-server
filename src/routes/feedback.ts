@@ -13,22 +13,32 @@ const router = Router();
  *     summary: Submit user feedback
  *     tags: [Feedback]
  *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       201: { description: "Feedback submitted" }
+ *       400: { description: "Validation failed" }
  */
-router.post("/feedback", verifyFBToken, validate(feedbackSchema), async (req, res) => {
-  try {
-    const feedback = {
-      ...req.body,
-      userEmail: req.user.email,
-      timestamp: new Date().toISOString(),
-      isResolved: false
-    };
+router.post(
+  "/feedback",
+  verifyFBToken,
+  validate(feedbackSchema),
+  async (req, res) => {
+    try {
+      const feedback = {
+        ...req.body,
+        userEmail: req.user.email,
+        timestamp: new Date().toISOString(),
+        isResolved: false,
+      };
 
-    const result = await feedbackCollection.insertOne(feedback);
-    res.status(201).send({ success: true, insertedId: result.insertedId });
-  } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to submit feedback" });
-  }
-});
+      const result = await feedbackCollection.insertOne(feedback);
+      res.status(201).send({ success: true, insertedId: result.insertedId });
+    } catch (error) {
+      res
+        .status(500)
+        .send({ success: false, message: "Failed to submit feedback" });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -46,7 +56,9 @@ router.get("/feedback", verifyFBToken, verifyAdmin, async (req, res) => {
       .toArray();
     res.send({ success: true, data: feedback });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch feedback" });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch feedback" });
   }
 });
 

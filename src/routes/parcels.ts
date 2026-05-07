@@ -132,107 +132,115 @@ router.get("/parcels/stats", verifyFBToken, async (req, res) => {
  *               deliveryDate: { type: string, format: date }
  *     responses:
  *       201: { description: "Parcel Booked" }
+ *       400: { description: "Validation failed or Missing fields" }
  */
-router.post("/parcels", verifyFBToken, validate(parcelSchema), async (req, res) => {
-  try {
-    const {
-      parcelName,
-      parcelType,
-      weight,
-      receiverName,
-      receiverPhone,
-      deliveryAddress,
-      receiverDistrict,
-      senderPhone,
-      deliveryDate,
-    } = req.body;
+router.post(
+  "/parcels",
+  verifyFBToken,
+  validate(parcelSchema),
+  async (req, res) => {
+    try {
+      const {
+        parcelName,
+        parcelType,
+        weight,
+        receiverName,
+        receiverPhone,
+        deliveryAddress,
+        receiverDistrict,
+        senderPhone,
+        deliveryDate,
+      } = req.body;
 
-    if (
-      !parcelName ||
-      !weight ||
-      !receiverName ||
-      !receiverPhone ||
-      !deliveryAddress ||
-      !receiverDistrict
-    ) {
-      return res
-        .status(400)
-        .send({ success: false, message: "Missing required fields." });
-    }
+      if (
+        !parcelName ||
+        !weight ||
+        !receiverName ||
+        !receiverPhone ||
+        !deliveryAddress ||
+        !receiverDistrict
+      ) {
+        return res
+          .status(400)
+          .send({ success: false, message: "Missing required fields." });
+      }
 
-    // 1. Fetch System Settings for cost calculation
-    const settings = (await settingsCollection.findOne({})) as SystemSettings;
-    const baseFee = settings?.base_delivery_fee || 50;
-    const costPerKg = settings?.cost_per_kg || 20;
-    const riderCommissionPct = settings?.rider_commission_percentage || 15;
+      // 1. Fetch System Settings for cost calculation
+      const settings = (await settingsCollection.findOne({})) as SystemSettings;
+      const baseFee = settings?.base_delivery_fee || 50;
+      const costPerKg = settings?.cost_per_kg || 20;
+      const riderCommissionPct = settings?.rider_commission_percentage || 15;
 
-    // 2. Intelligent Cost Calculation
-    const weightNum = Number(weight);
-    const totalCost =
-      baseFee + (weightNum > 1 ? (weightNum - 1) * costPerKg : 0);
-    const riderEarning = (totalCost * riderCommissionPct) / 100;
-    const adminProfit = totalCost - riderEarning;
+      // 2. Intelligent Cost Calculation
+      const weightNum = Number(weight);
+      const totalCost =
+        baseFee + (weightNum > 1 ? (weightNum - 1) * costPerKg : 0);
+      const riderEarning = (totalCost * riderCommissionPct) / 100;
+      const adminProfit = totalCost - riderEarning;
 
-    // 3. Create Professional Parcel Object
-    const trackingId = `G2C-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    const newParcel: Parcel = {
-      trackingId,
-      parcelName,
-      parcelType,
-      created_by: req.user.email as string,
-      creation_date: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      weight: weightNum,
-      parcelWeight: weightNum, // Alias for frontend
-      receiverName,
-      receiverPhone,
-      receiverPhoneNumber: receiverPhone, // Alias for frontend
-      deliveryAddress,
-      receiverDistrict,
-      receiverRegion: receiverDistrict, // Alias for frontend
-      senderPhone,
-      senderContact: senderPhone, // Alias for frontend
-      senderDistrict: req.body.senderDistrict || "",
-      senderRegion: req.body.senderDistrict || "", // Alias for frontend
-      senderName: req.body.senderName || req.user.name || "Anonymous",
-      deliveryDate,
-      cost: totalCost,
-      rider_earning: riderEarning,
-      admin_profit: adminProfit,
-      payment_status: "unpaid",
-      delivery_status: "pending",
-    };
-
-    const result = await parcelCollection.insertOne(newParcel);
-
-    // 4. Tracking & Notification
-    await addTrackingUpdate(
-      trackingId,
-      "booked",
-      "Your parcel has been booked and is awaiting collection.",
-    );
-
-    // 5. Broadcast to Admins
-    if (io) {
-      io.emit("new_parcel", {
+      // 3. Create Professional Parcel Object
+      const trackingId = `G2C-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const newParcel: Parcel = {
         trackingId,
-        sender: newParcel.senderName,
-        destination: newParcel.receiverDistrict,
+        parcelName,
+        parcelType,
+        created_by: req.user.email as string,
+        creation_date: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        weight: weightNum,
+        parcelWeight: weightNum, // Alias for frontend
+        receiverName,
+        receiverPhone,
+        receiverPhoneNumber: receiverPhone, // Alias for frontend
+        deliveryAddress,
+        receiverDistrict,
+        receiverRegion: receiverDistrict, // Alias for frontend
+        senderPhone,
+        senderContact: senderPhone, // Alias for frontend
+        senderDistrict: req.body.senderDistrict || "",
+        senderRegion: req.body.senderDistrict || "", // Alias for frontend
+        senderName: req.body.senderName || req.user.name || "Anonymous",
+        deliveryDate,
         cost: totalCost,
-      });
-    }
+        rider_earning: riderEarning,
+        admin_profit: adminProfit,
+        payment_status: "unpaid",
+        delivery_status: "pending",
+      };
 
-    res.status(201).send({
-      success: true,
-      message: "Parcel booked successfully!",
-      trackingId,
-      cost: totalCost,
-      id: result.insertedId,
-    });
-  } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to book parcel." });
-  }
-});
+      const result = await parcelCollection.insertOne(newParcel);
+
+      // 4. Tracking & Notification
+      await addTrackingUpdate(
+        trackingId,
+        "booked",
+        "Your parcel has been booked and is awaiting collection.",
+      );
+
+      // 5. Broadcast to Admins
+      if (io) {
+        io.emit("new_parcel", {
+          trackingId,
+          sender: newParcel.senderName,
+          destination: newParcel.receiverDistrict,
+          cost: totalCost,
+        });
+      }
+
+      res.status(201).send({
+        success: true,
+        message: "Parcel booked successfully!",
+        trackingId,
+        cost: totalCost,
+        id: result.insertedId,
+      });
+    } catch (error) {
+      res
+        .status(500)
+        .send({ success: false, message: "Failed to book parcel." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -255,16 +263,22 @@ router.get("/parcels/:id", verifyFBToken, async (req, res) => {
     });
 
     if (!parcel) {
-      return res.status(404).send({ success: false, message: "Parcel not found." });
+      return res
+        .status(404)
+        .send({ success: false, message: "Parcel not found." });
     }
 
     if (parcel.created_by !== email && req.user.role !== "admin") {
-      return res.status(403).send({ success: false, message: "Unauthorized access." });
+      return res
+        .status(403)
+        .send({ success: false, message: "Unauthorized access." });
     }
 
     res.send({ success: true, data: parcel });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch parcel." });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch parcel." });
   }
 });
 
@@ -278,64 +292,81 @@ router.get("/parcels/:id", verifyFBToken, async (req, res) => {
  *     parameters: [{ name: "id", in: path, required: true, schema: { type: string } }]
  *     responses:
  *       200: { description: "Updated" }
+ *       400: { description: "Validation failed or Parcel not in transit" }
  */
-router.patch("/parcels/:id", verifyFBToken, validate(updateParcelSchema), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const email = req.user.email;
-    const updateData = req.body;
+router.patch(
+  "/parcels/:id",
+  verifyFBToken,
+  validate(updateParcelSchema),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const email = req.user.email;
+      const updateData = req.body;
 
-    const parcel = await parcelCollection.findOne({
-      _id: new ObjectId(String(id)),
-    });
-
-    if (!parcel) {
-      return res.status(404).send({ success: false, message: "Parcel not found." });
-    }
-
-    if (parcel.created_by !== email) {
-      return res.status(403).send({ success: false, message: "Unauthorized." });
-    }
-
-    if (parcel.delivery_status !== "pending") {
-      return res.status(400).send({ 
-        success: false, 
-        message: "Cannot update a parcel that is already in transit." 
+      const parcel = await parcelCollection.findOne({
+        _id: new ObjectId(String(id)),
       });
+
+      if (!parcel) {
+        return res
+          .status(404)
+          .send({ success: false, message: "Parcel not found." });
+      }
+
+      if (parcel.created_by !== email) {
+        return res
+          .status(403)
+          .send({ success: false, message: "Unauthorized." });
+      }
+
+      if (parcel.delivery_status !== "pending") {
+        return res.status(400).send({
+          success: false,
+          message: "Cannot update a parcel that is already in transit.",
+        });
+      }
+
+      // Recalculate cost if weight changed
+      if (updateData.weight) {
+        const settings = (await settingsCollection.findOne(
+          {},
+        )) as SystemSettings;
+        const baseFee = settings?.base_delivery_fee || 50;
+        const costPerKg = settings?.cost_per_kg || 20;
+        const riderCommissionPct = settings?.rider_commission_percentage || 15;
+
+        const weightNum = Number(updateData.weight);
+        const totalCost =
+          baseFee + (weightNum > 1 ? (weightNum - 1) * costPerKg : 0);
+        const riderEarning = (totalCost * riderCommissionPct) / 100;
+        const adminProfit = totalCost - riderEarning;
+
+        updateData.cost = totalCost;
+        updateData.rider_earning = riderEarning;
+        updateData.admin_profit = adminProfit;
+        updateData.parcelWeight = weightNum; // Sync alias
+      }
+
+      // Map other aliases if present
+      if (updateData.receiverPhone)
+        updateData.receiverPhoneNumber = updateData.receiverPhone;
+      if (updateData.receiverDistrict)
+        updateData.receiverRegion = updateData.receiverDistrict;
+
+      await parcelCollection.updateOne(
+        { _id: new ObjectId(String(id)) },
+        { $set: updateData },
+      );
+
+      res.send({ success: true, message: "Parcel updated successfully." });
+    } catch (error) {
+      res
+        .status(500)
+        .send({ success: false, message: "Failed to update parcel." });
     }
-
-    // Recalculate cost if weight changed
-    if (updateData.weight) {
-      const settings = (await settingsCollection.findOne({})) as SystemSettings;
-      const baseFee = settings?.base_delivery_fee || 50;
-      const costPerKg = settings?.cost_per_kg || 20;
-      const riderCommissionPct = settings?.rider_commission_percentage || 15;
-
-      const weightNum = Number(updateData.weight);
-      const totalCost = baseFee + (weightNum > 1 ? (weightNum - 1) * costPerKg : 0);
-      const riderEarning = (totalCost * riderCommissionPct) / 100;
-      const adminProfit = totalCost - riderEarning;
-
-      updateData.cost = totalCost;
-      updateData.rider_earning = riderEarning;
-      updateData.admin_profit = adminProfit;
-      updateData.parcelWeight = weightNum; // Sync alias
-    }
-
-    // Map other aliases if present
-    if (updateData.receiverPhone) updateData.receiverPhoneNumber = updateData.receiverPhone;
-    if (updateData.receiverDistrict) updateData.receiverRegion = updateData.receiverDistrict;
-
-    await parcelCollection.updateOne(
-      { _id: new ObjectId(String(id)) },
-      { $set: updateData }
-    );
-
-    res.send({ success: true, message: "Parcel updated successfully." });
-  } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to update parcel." });
-  }
-});
+  },
+);
 
 /**
  * @swagger

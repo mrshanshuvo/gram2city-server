@@ -57,6 +57,7 @@ router.get("/payments", verifyFBToken, async (req, res) => {
  *               parcelId: { type: string }
  *     responses:
  *       200: { description: "Success" }
+ *       400: { description: "Validation failed" }
  */
 router.post(
   "/create-payment-intent",
@@ -115,6 +116,7 @@ router.post(
  *               amount: { type: number }
  *     responses:
  *       200: { description: "Success" }
+ *       400: { description: "Validation failed" }
  */
 router.post(
   "/payments",
