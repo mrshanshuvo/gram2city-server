@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { feedbackCollection } from "../db";
 import { verifyFBToken, verifyAdmin } from "../middleware/auth";
+import { validate } from "../middleware/validate";
+import { feedbackSchema } from "../schemas/commonSchema";
 
 const router = Router();
 
@@ -12,7 +14,7 @@ const router = Router();
  *     tags: [Feedback]
  *     security: [{ bearerAuth: [] }]
  */
-router.post("/feedback", verifyFBToken, async (req, res) => {
+router.post("/feedback", verifyFBToken, validate(feedbackSchema), async (req, res) => {
   try {
     const feedback = {
       ...req.body,

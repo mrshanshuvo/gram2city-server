@@ -11,6 +11,8 @@ import {
 import { verifyFBToken } from "../middleware/auth";
 import { Rider, SystemSettings, Parcel } from "../types";
 import { io } from "../socket";
+import { validate } from "../middleware/validate";
+import { riderApplicationSchema } from "../schemas/riderSchema";
 
 const router = Router();
 
@@ -24,7 +26,7 @@ const router = Router();
  *     responses:
  *       201: { description: "Application Submitted" }
  */
-router.post("/riders", verifyFBToken, async (req, res) => {
+router.post("/riders", verifyFBToken, validate(riderApplicationSchema), async (req, res) => {
   try {
     const application = {
       ...req.body,

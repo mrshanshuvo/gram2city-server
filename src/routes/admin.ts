@@ -2,6 +2,13 @@ import { Router } from "express";
 import { usersCollection, auditCollection, settingsCollection } from "../db";
 import { verifyFBToken, verifyAdmin } from "../middleware/auth";
 import { AuditLog, SystemSettings } from "../types";
+import { validate } from "../middleware/validate";
+import { 
+  adminSettingsSchema, 
+  announceSchema, 
+  userStatusSchema, 
+  assignRiderSchema 
+} from "../schemas/adminSchema";
 
 const router = Router();
 
@@ -242,7 +249,7 @@ router.get("/stats", async (req, res) => {
  *     responses:
  *       200: { description: "Announcement sent" }
  */
-router.post("/announce", async (req, res) => {
+router.post("/announce", validate(announceSchema), async (req, res) => {
   const { message } = req.body;
   try {
     const { notificationsCollection } = require("../db");
@@ -334,7 +341,7 @@ router.get("/settings", async (req, res) => {
  *     responses:
  *       200: { description: "Settings updated" }
  */
-router.patch("/settings", async (req, res) => {
+router.patch("/settings", validate(adminSettingsSchema), async (req, res) => {
   const { base_delivery_fee, cost_per_kg, rider_commission_percentage } =
     req.body;
   try {
@@ -392,8 +399,8 @@ router.patch("/settings", async (req, res) => {
  *     responses:
  *       200: { description: "User status updated" }
  */
-router.patch("/users/:email/status", async (req, res) => {
-  const { email } = req.params;
+router.patch("/users/:email/status", validate(userStatusSchema), async (req, res) => {
+  const email = req.params.email as string;
   const { status } = req.body;
   try {
     await usersCollection.updateOne({ email }, { $set: { status } });
@@ -499,7 +506,7 @@ router.get("/all-parcels", async (req, res) => {
  *     responses:
  *       200: { description: "Rider Assigned" }
  */
-router.patch("/parcels/:id/assign", async (req, res) => {
+router.patch("/parcels/:id/assign", validate(assignRiderSchema), async (req, res) => {
   const { id } = req.params;
   const { riderId } = req.body;
   try {

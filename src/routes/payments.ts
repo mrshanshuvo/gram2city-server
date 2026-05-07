@@ -8,6 +8,8 @@ import {
   addTrackingUpdate,
 } from "../db";
 import { verifyFBToken } from "../middleware/auth";
+import { validate } from "../middleware/validate";
+import { paymentSchema } from "../schemas/commonSchema";
 
 const router = Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
@@ -56,40 +58,43 @@ router.get("/payments", verifyFBToken, async (req, res) => {
  *     responses:
  *       200: { description: "Success" }
  */
-router.post("/create-payment-intent", verifyFBToken, async (req, res) => {
-  const { amount, parcelId } = req.body;
-  try {
-    // Security: Verify parcel ownership
-    const parcel = await parcelCollection.findOne({
-      _id: new ObjectId(parcelId as string),
-      created_by: req.user.email,
-    });
+router.post(
+  "/create-payment-intent",
+  verifyFBToken,
+  validate(paymentSchema),
+  async (req, res) => {
+    const { amount, parcelId } = req.body;
+    try {
+      // Security: Verify parcel ownership
+      const parcel = await parcelCollection.findOne({
+        _id: new ObjectId(parcelId as string),
+        created_by: req.user.email,
+      });
 
-    if (!parcel)
-      return res
-        .status(403)
-        .send({
+      if (!parcel)
+        return res.status(403).send({
           success: false,
           message: "Unauthorized: You do not own this parcel.",
         });
 
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(Number(amount) * 100),
-      currency: process.env.STRIPE_CURRENCY || "usd",
-      payment_method_types: ["card"],
-      metadata: {
-        parcelId: parcelId.toString(),
-        userEmail: req.user.email as string,
-      },
-    });
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(Number(amount) * 100),
+        currency: process.env.STRIPE_CURRENCY || "usd",
+        payment_method_types: ["card"],
+        metadata: {
+          parcelId: parcelId.toString(),
+          userEmail: req.user.email as string,
+        },
+      });
 
-    res.json({ clientSecret: paymentIntent.client_secret });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to create payment intent." });
-  }
-});
+      res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to create payment intent." });
+    }
+  },
+);
 
 /**
  * @swagger
@@ -111,73 +116,78 @@ router.post("/create-payment-intent", verifyFBToken, async (req, res) => {
  *     responses:
  *       200: { description: "Success" }
  */
-router.post("/payments", verifyFBToken, async (req, res) => {
-  try {
-    const { parcelId, transactionId, amount, paymentMethod } = req.body;
-    const email = req.user.email;
+router.post(
+  "/payments",
+  verifyFBToken,
+  validate(paymentSchema),
+  async (req, res) => {
+    try {
+      const { parcelId, transactionId, amount, paymentMethod } = req.body;
+      const email = req.user.email;
 
-    if (!parcelId || !transactionId || !amount) {
-      return res
-        .status(400)
-        .send({ success: false, message: "Missing payment information" });
-    }
+      if (!parcelId || !transactionId || !amount) {
+        return res
+          .status(400)
+          .send({ success: false, message: "Missing payment information" });
+      }
 
-    // 1. Verify Ownership & Eligibility
-    const parcel = await parcelCollection.findOne({
-      _id: new ObjectId(parcelId as string),
-      created_by: email,
-    });
+      // 1. Verify Ownership & Eligibility
+      const parcel = await parcelCollection.findOne({
+        _id: new ObjectId(parcelId as string),
+        created_by: email,
+      });
 
-    if (!parcel)
-      return res
-        .status(403)
-        .send({
+      if (!parcel)
+        return res.status(403).send({
           success: false,
           message: "Unauthorized: Parcel not found or not yours.",
         });
-    if (parcel.payment_status === "paid")
-      return res
-        .status(400)
-        .send({ success: false, message: "Parcel is already paid." });
+      if (parcel.payment_status === "paid")
+        return res
+          .status(400)
+          .send({ success: false, message: "Parcel is already paid." });
 
-    // 2. Mark Parcel as Paid
-    await parcelCollection.updateOne(
-      { _id: new ObjectId(parcelId as string) },
-      { $set: { payment_status: "paid" } },
-    );
+      // 2. Mark Parcel as Paid
+      await parcelCollection.updateOne(
+        { _id: new ObjectId(parcelId as string) },
+        { $set: { payment_status: "paid" } },
+      );
 
-    // 3. Record Payment Transaction
-    const paymentRecord = {
-      parcelId: new ObjectId(parcelId as string),
-      email: email as string,
-      transactionId,
-      amount: Number(amount) / 100,
-      paymentMethod: paymentMethod || "card",
-      paid_at: new Date().toISOString(),
-      payment_time: new Date().toISOString(),
-    };
+      // 3. Record Payment Transaction
+      const paymentRecord = {
+        parcelId: new ObjectId(parcelId as string),
+        email: email as string,
+        transactionId,
+        amount: Number(amount) / 100,
+        paymentMethod: paymentMethod || "card",
+        paid_at: new Date().toISOString(),
+        payment_time: new Date().toISOString(),
+      };
 
-    await paymentCollection.insertOne(paymentRecord as any);
+      await paymentCollection.insertOne(paymentRecord as any);
 
-    // 4. Tracking & Notifications
-    await addTrackingUpdate(
-      parcel.trackingId,
-      "paid",
-      `Payment received. Transaction ID: ${transactionId}`,
-    );
+      // 4. Tracking & Notifications
+      await addTrackingUpdate(
+        parcel.trackingId,
+        "paid",
+        `Payment received. Transaction ID: ${transactionId}`,
+      );
 
-    notificationsCollection.insertOne({
-      email: email as string,
-      message: `Payment Successful: Your parcel "${parcel.parcelName}" is now confirmed for delivery!`,
-      time: new Date().toISOString(),
-      isRead: false,
-      type: "payment",
-    });
+      notificationsCollection.insertOne({
+        email: email as string,
+        message: `Payment Successful: Your parcel "${parcel.parcelName}" is now confirmed for delivery!`,
+        time: new Date().toISOString(),
+        isRead: false,
+        type: "payment",
+      });
 
-    res.send({ success: true, message: "Payment recorded successfully." });
-  } catch (error) {
-    res.status(500).send({ success: false, message: "Internal server error" });
-  }
-});
+      res.send({ success: true, message: "Payment recorded successfully." });
+    } catch (error) {
+      res
+        .status(500)
+        .send({ success: false, message: "Internal server error" });
+    }
+  },
+);
 
 export default router;

@@ -5,6 +5,12 @@ import multer from "multer";
 import FormData from "form-data";
 import { usersCollection } from "../db";
 import { User } from "../types";
+import { validate } from "../middleware/validate";
+import {
+  registerAuthSchema,
+  loginSchema,
+  adminCreateUserSchema,
+} from "../schemas/userSchema";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -35,94 +41,99 @@ const IMGBB_KEY = process.env.IMGBB_API_KEY;
  *       400:
  *         description: Registration failed
  */
-router.post("/auth/register", upload.single("image"), async (req, res) => {
-  const { email, password, name } = req.body;
-  let photoURL = "";
+router.post(
+  "/auth/register",
+  upload.single("image"),
+  validate(registerAuthSchema),
+  async (req, res) => {
+    const { email, password, name } = req.body;
+    let photoURL = "";
 
-  try {
-    // 1. Image Upload Phase
-    if (req.file) {
+    try {
+      // 1. Image Upload Phase
+      if (req.file) {
+        try {
+          const formData = new FormData();
+          formData.append("image", req.file.buffer.toString("base64"));
+          const imgRes = await axios.post(
+            `https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`,
+            formData,
+            { headers: formData.getHeaders() },
+          );
+          photoURL = imgRes.data.data.display_url;
+        } catch (imgError) {
+          console.error("ImgBB Upload Error:", imgError);
+          return res.status(400).send({
+            success: false,
+            message:
+              "Failed to upload profile image. Please try a different file.",
+          });
+        }
+      }
+
+      // 2. Firebase Registration Phase
+      let idToken = "";
+      let expiresIn = "";
       try {
-        const formData = new FormData();
-        formData.append("image", req.file.buffer.toString("base64"));
-        const imgRes = await axios.post(
-          `https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`,
-          formData,
-          { headers: formData.getHeaders() },
+        const fbRes = await axios.post(
+          `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}`,
+          { email, password, returnSecureToken: true },
         );
-        photoURL = imgRes.data.data.display_url;
-      } catch (imgError) {
-        console.error("ImgBB Upload Error:", imgError);
-        return res.status(400).send({
+        idToken = fbRes.data.idToken;
+        expiresIn = fbRes.data.expiresIn;
+      } catch (fbError: any) {
+        const fbErrMsg = fbError.response?.data?.error?.message || "";
+        console.error("Firebase Registration Error Raw:", fbErrMsg);
+
+        let message = "Authentication failed.";
+
+        if (fbErrMsg.includes("EMAIL_EXISTS"))
+          message = "This email is already registered.";
+        else if (fbErrMsg.includes("INVALID_EMAIL"))
+          message = "Please provide a valid email address.";
+        else if (fbErrMsg.includes("WEAK_PASSWORD"))
+          message = "Password should be at least 6 characters.";
+        else if (fbErrMsg.includes("TOO_MANY_ATTEMPTS"))
+          message = "Too many attempts. Please try again later.";
+
+        return res.status(400).send({ success: false, message });
+      }
+
+      // 3. Database Save Phase
+      try {
+        const newUser: User = {
+          email,
+          name,
+          photoURL,
+          role: "user",
+          created_at: new Date().toISOString(),
+          last_login: new Date().toISOString(),
+        };
+        await usersCollection.insertOne(newUser);
+        res.status(201).send({
+          success: true,
+          message: "Registration successful! Welcome to Gram2City.",
+          token: idToken,
+          role: newUser.role,
+          expiresIn,
+        });
+      } catch (dbError) {
+        console.error("MongoDB Save Error:", dbError);
+        res.status(500).send({
           success: false,
           message:
-            "Failed to upload profile image. Please try a different file.",
+            "Account created in Firebase, but failed to save profile to database.",
         });
       }
-    }
-
-    // 2. Firebase Registration Phase
-    let idToken = "";
-    let expiresIn = "";
-    try {
-      const fbRes = await axios.post(
-        `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}`,
-        { email, password, returnSecureToken: true },
-      );
-      idToken = fbRes.data.idToken;
-      expiresIn = fbRes.data.expiresIn;
-    } catch (fbError: any) {
-      const fbErrMsg = fbError.response?.data?.error?.message || "";
-      console.error("Firebase Registration Error Raw:", fbErrMsg);
-
-      let message = "Authentication failed.";
-
-      if (fbErrMsg.includes("EMAIL_EXISTS"))
-        message = "This email is already registered.";
-      else if (fbErrMsg.includes("INVALID_EMAIL"))
-        message = "Please provide a valid email address.";
-      else if (fbErrMsg.includes("WEAK_PASSWORD"))
-        message = "Password should be at least 6 characters.";
-      else if (fbErrMsg.includes("TOO_MANY_ATTEMPTS"))
-        message = "Too many attempts. Please try again later.";
-
-      return res.status(400).send({ success: false, message });
-    }
-
-    // 3. Database Save Phase
-    try {
-      const newUser: User = {
-        email,
-        name,
-        photoURL,
-        role: "user",
-        created_at: new Date().toISOString(),
-        last_login: new Date().toISOString(),
-      };
-      await usersCollection.insertOne(newUser);
-      res.status(201).send({
-        success: true,
-        message: "Registration successful! Welcome to Gram2City.",
-        token: idToken,
-        role: newUser.role,
-        expiresIn,
-      });
-    } catch (dbError) {
-      console.error("MongoDB Save Error:", dbError);
+    } catch (error: any) {
+      console.error("Unexpected Register Error:", error);
       res.status(500).send({
         success: false,
-        message:
-          "Account created in Firebase, but failed to save profile to database.",
+        message: "An unexpected error occurred during registration.",
       });
     }
-  } catch (error: any) {
-    console.error("Unexpected Register Error:", error);
-    res.status(500).send({
-      success: false,
-      message: "An unexpected error occurred during registration.",
-    });
-  }
-});
+  },
+);
 
 /**
  * @swagger
@@ -146,7 +157,7 @@ router.post("/auth/register", upload.single("image"), async (req, res) => {
  *       401:
  *         description: Invalid credentials
  */
-router.post("/auth/login", async (req, res) => {
+router.post("/auth/login", validate(loginSchema), async (req, res) => {
   const { email, password } = req.body;
 
   try {
@@ -389,6 +400,7 @@ router.post(
   "/auth/admin/create-user",
   verifyFBToken,
   verifyAdmin,
+  validate(adminCreateUserSchema),
   async (req, res) => {
     const { email, password, name, role } = req.body;
 

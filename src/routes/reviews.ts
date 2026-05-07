@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { reviewsCollection } from "../db";
 import { verifyFBToken } from "../middleware/auth";
+import { validate } from "../middleware/validate";
+import { reviewSchema } from "../schemas/commonSchema";
 
 const router = Router();
 
@@ -19,7 +21,7 @@ router.get("/reviews/rider/:email", async (req, res) => {
 });
 
 // POST /reviews
-router.post("/reviews", verifyFBToken, async (req, res) => {
+router.post("/reviews", verifyFBToken, validate(reviewSchema), async (req, res) => {
   const review = req.body;
   review.date = new Date().toISOString();
   try {

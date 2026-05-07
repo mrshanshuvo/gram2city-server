@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { usersCollection, parcelCollection } from "../db";
 import { verifyFBToken, verifyAdmin } from "../middleware/auth";
+import { validate } from "../middleware/validate";
+import { registerUserSchema, updateProfileSchema } from "../schemas/userSchema";
 import type { User } from "../types";
 
 const router = Router();
@@ -107,75 +109,91 @@ router.patch(
 );
 
 // PATCH /users/:email  (update profile)
-router.patch("/users/:email", verifyFBToken, async (req, res) => {
-  const { email } = req.params;
-  const { name, photoURL, phone, address } = req.body || {};
-  if (req.user.email !== email)
-    return res.status(403).send({ success: false, message: "Unauthorized" });
-  try {
-    // Check if profile is complete (needs name, phone, and address)
-    const isComplete = !!(name && phone && address);
+router.patch(
+  "/users/:email",
+  verifyFBToken,
+  validate(updateProfileSchema),
+  async (req, res) => {
+    const { email } = req.params;
+    const { name, photoURL, phone, address } = req.body || {};
+    if (req.user.email !== email)
+      return res.status(403).send({ success: false, message: "Unauthorized" });
+    try {
+      // Check if profile is complete (needs name, phone, and address)
+      const isComplete = !!(name && phone && address);
 
-    const result = await usersCollection.updateOne(
-      { email },
-      {
-        $set: {
-          name,
-          photoURL,
-          phone,
-          address,
-          isProfileComplete: isComplete,
+      const result = await usersCollection.updateOne(
+        { email },
+        {
+          $set: {
+            name,
+            photoURL,
+            phone,
+            address,
+            isProfileComplete: isComplete,
+          },
         },
-      },
-    );
-    res.send({
-      success: true,
-      modifiedCount: result.modifiedCount,
-      isProfileComplete: isComplete,
-    });
-  } catch {
-    res.status(500).send({ success: false, error: "Failed to update profile" });
-  }
-});
+      );
+      res.send({
+        success: true,
+        modifiedCount: result.modifiedCount,
+        isProfileComplete: isComplete,
+      });
+    } catch {
+      res
+        .status(500)
+        .send({ success: false, error: "Failed to update profile" });
+    }
+  },
+);
 
 // POST /users (Register new user)
-router.post("/users", verifyFBToken, async (req, res) => {
-  const email = req.user.email;
-  if (!email) {
-    return res
-      .status(400)
-      .send({ success: false, message: "Email not found in token" });
-  }
+router.post(
+  "/users",
+  verifyFBToken,
+  validate(registerUserSchema),
+  async (req, res) => {
+    const email = req.user.email;
+    if (!email) {
+      return res
+        .status(400)
+        .send({ success: false, message: "Email not found in token" });
+    }
 
-  // Check if user already exists
-  const existingUser = await usersCollection.findOne({ email });
-  if (existingUser) {
-    return res
-      .status(200)
-      .send({ success: true, message: "User already exists", existing: true });
-  }
+    // Check if user already exists
+    const existingUser = await usersCollection.findOne({ email });
+    if (existingUser) {
+      return res.status(200).send({
+        success: true,
+        message: "User already exists",
+        existing: true,
+      });
+    }
 
-  const name = req.body?.name || req.user?.name;
-  const photoURL = req.body?.photoURL || req.user?.picture;
+    const name = req.body?.name || req.user?.name;
+    const photoURL = req.body?.photoURL || req.user?.picture;
 
-  const newUser: User = {
-    email,
-    name,
-    photoURL,
-    role: "user",
-    isProfileComplete: false, // Always starts incomplete
-    created_at: new Date().toISOString(),
-    last_login: new Date().toISOString(),
-  };
+    const newUser: User = {
+      email,
+      name,
+      photoURL,
+      role: "user",
+      isProfileComplete: false, // Always starts incomplete
+      created_at: new Date().toISOString(),
+      last_login: new Date().toISOString(),
+    };
 
-  try {
-    const result = await usersCollection.insertOne(newUser);
-    res.status(201).send({ success: true, insertedId: result.insertedId });
-  } catch (error) {
-    console.error("Error registering user:", error);
-    res.status(500).send({ success: false, message: "Internal Server Error" });
-  }
-});
+    try {
+      const result = await usersCollection.insertOne(newUser);
+      res.status(201).send({ success: true, insertedId: result.insertedId });
+    } catch (error) {
+      console.error("Error registering user:", error);
+      res
+        .status(500)
+        .send({ success: false, message: "Internal Server Error" });
+    }
+  },
+);
 
 // POST /users/sync (Automatic sync for every login/refresh)
 router.post("/users/sync", verifyFBToken, async (req, res) => {

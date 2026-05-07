@@ -9,6 +9,8 @@ import {
 import { verifyFBToken } from "../middleware/auth";
 import { Parcel, SystemSettings } from "../types";
 import { io } from "../socket";
+import { validate } from "../middleware/validate";
+import { parcelSchema, updateParcelSchema } from "../schemas/parcelSchema";
 
 const router = Router();
 
@@ -131,7 +133,7 @@ router.get("/parcels/stats", verifyFBToken, async (req, res) => {
  *     responses:
  *       201: { description: "Parcel Booked" }
  */
-router.post("/parcels", verifyFBToken, async (req, res) => {
+router.post("/parcels", verifyFBToken, validate(parcelSchema), async (req, res) => {
   try {
     const {
       parcelName,
@@ -277,7 +279,7 @@ router.get("/parcels/:id", verifyFBToken, async (req, res) => {
  *     responses:
  *       200: { description: "Updated" }
  */
-router.patch("/parcels/:id", verifyFBToken, async (req, res) => {
+router.patch("/parcels/:id", verifyFBToken, validate(updateParcelSchema), async (req, res) => {
   try {
     const { id } = req.params;
     const email = req.user.email;
