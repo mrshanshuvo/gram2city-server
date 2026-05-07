@@ -82,8 +82,17 @@ router.get("/stats", async (req, res) => {
         $in: ["pending", "assigned", "not_collected", "picked_up"],
       },
     });
+    const onTheWayParcels = await parcelCollection.countDocuments({
+      delivery_status: "on_the_way",
+    });
     const deliveredParcels = await parcelCollection.countDocuments({
       delivery_status: "delivered",
+    });
+    const cancelledParcels = await parcelCollection.countDocuments({
+      delivery_status: "cancelled",
+    });
+    const returnedParcels = await parcelCollection.countDocuments({
+      delivery_status: "returned",
     });
 
     // 2. Financial Stats (Aggregation)
@@ -110,10 +119,19 @@ router.get("/stats", async (req, res) => {
     const totalUsers = await usersCollection.countDocuments({ role: "user" });
     const totalRiders = await ridersCollection.countDocuments();
 
-    // 4. Daily Bookings (Last 7 Days)
+    // 4. Daily Bookings (Last 7 Days - Comprehensive)
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      last7Days.push(d.toISOString().split("T")[0]);
+    }
+
     const sevenDaysAgo = new Date();
+    sevenDaysAgo.setHours(0, 0, 0, 0);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const dailyBookings = await parcelCollection
+
+    const bookingsRaw = await parcelCollection
       .aggregate([
         {
           $match: {
@@ -134,6 +152,11 @@ router.get("/stats", async (req, res) => {
         { $sort: { _id: 1 } },
       ])
       .toArray();
+
+    const dailyBookings = last7Days.map((date) => ({
+      _id: date,
+      count: bookingsRaw.find((b: { _id: string; count: number }) => b._id === date)?.count || 0,
+    }));
 
     // 5. Parcel Type Distribution
     const typeDistribution = await parcelCollection
@@ -221,7 +244,10 @@ router.get("/stats", async (req, res) => {
         parcels: {
           total: totalParcels,
           pending: pendingParcels,
+          onTheWay: onTheWayParcels,
           delivered: deliveredParcels,
+          cancelled: cancelledParcels,
+          returned: returnedParcels,
         },
         revenue: revenueData[0]?.totalRevenue || 0,
         profit: profitData[0]?.totalProfit || 0,
