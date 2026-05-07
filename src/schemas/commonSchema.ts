@@ -26,3 +26,18 @@ export const paymentSchema = z.object({
     transactionId: z.string().optional(),
   }),
 });
+
+export const newsletterSchema = z.object({
+  body: z.object({
+    email: z.string().email("Invalid email address"),
+  }),
+});
+
+export const trackingSchema = z.object({
+  body: z.object({
+    trackingId: z.string().min(1, "Tracking ID is required"),
+    status: z.string().min(1, "Status is required"),
+    details: z.string().min(1, "Details are required"),
+    location: z.string().optional(),
+  }),
+});

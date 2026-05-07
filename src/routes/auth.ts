@@ -39,7 +39,15 @@ const IMGBB_KEY = process.env.IMGBB_API_KEY;
  *       201:
  *         description: User created successfully
  *       400:
- *         description: Registration failed
+ *         description: Registration failed or Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: false }
+ *                 message: { type: string, example: "Validation failed" }
+ *                 errors: { type: array, items: { type: object } }
  */
 router.post(
   "/auth/register",
@@ -154,6 +162,8 @@ router.post(
  *     responses:
  *       200:
  *         description: Login successful
+ *       400:
+ *         description: Validation failed
  *       401:
  *         description: Invalid credentials
  */
@@ -395,6 +405,8 @@ import { verifyAdmin } from "../middleware/auth";
  *     responses:
  *       201:
  *         description: User created
+ *       400:
+ *         description: Validation failed or Creation error
  */
 router.post(
   "/auth/admin/create-user",

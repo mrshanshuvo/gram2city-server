@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { trackingCollection } from "../db";
 import { verifyFBToken, verifyAdmin } from "../middleware/auth";
+import { validate } from "../middleware/validate";
+import { trackingSchema } from "../schemas/commonSchema";
 
 const router = Router();
 
@@ -61,7 +63,7 @@ router.get("/trackings/:trackingId", async (req, res) => {
  *     responses:
  *       201: { description: "Created" }
  */
-router.post("/trackings", verifyFBToken, verifyAdmin, async (req, res) => {
+router.post("/trackings", verifyFBToken, verifyAdmin, validate(trackingSchema), async (req, res) => {
   try {
     const { trackingId, status, details, location } = req.body;
 

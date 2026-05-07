@@ -12,6 +12,8 @@ import {
   ridersCollection,
 } from "../db";
 import { verifyFBToken, verifyAdmin } from "../middleware/auth";
+import { validate } from "../middleware/validate";
+import { newsletterSchema } from "../schemas/commonSchema";
 import { ObjectId } from "mongodb";
 
 const router = Router();
@@ -154,12 +156,18 @@ router.get("/testimonials", async (req, res) => {
 router.get("/stats", async (_req, res) => {
   try {
     const warehouses = await warehousesCollection.find({}).toArray();
-    const totalDistricts = [...new Set(warehouses.map(w => w.district))];
-    const activeHubs = warehouses.filter(w => w.status === "active").length;
-    const expressZones = warehouses.filter(w => w.status === "limited").length;
-    const approvedRiders = await ridersCollection.countDocuments({ status: "approved" });
+    const totalDistricts = [...new Set(warehouses.map((w) => w.district))];
+    const activeHubs = warehouses.filter((w) => w.status === "active").length;
+    const expressZones = warehouses.filter(
+      (w) => w.status === "limited",
+    ).length;
+    const approvedRiders = await ridersCollection.countDocuments({
+      status: "approved",
+    });
 
-    console.log(`[STATS] Districts: ${totalDistricts.length}, Active: ${activeHubs}, Riders: ${approvedRiders}`);
+    console.log(
+      `[STATS] Districts: ${totalDistricts.length}, Active: ${activeHubs}, Riders: ${approvedRiders}`,
+    );
 
     res.send({
       success: true,
@@ -167,8 +175,8 @@ router.get("/stats", async (_req, res) => {
         districts: totalDistricts.length || 64, // Fallback to 64 if DB is being seeded
         activeHubs: activeHubs || 0,
         expressZones: expressZones || 0,
-        riders: approvedRiders || 0
-      }
+        riders: approvedRiders || 0,
+      },
     });
   } catch (error) {
     console.error("[STATS ERROR]", error);
@@ -191,7 +199,7 @@ router.get("/newsletter", async (_req, res) => {
   }
 });
 
-router.post("/subscribe", async (req, res) => {
+router.post("/subscribe", validate(newsletterSchema), async (req, res) => {
   try {
     const { email } = req.body;
     if (!email || !email.includes("@")) {
