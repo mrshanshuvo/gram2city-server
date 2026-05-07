@@ -209,14 +209,14 @@ router.post("/parcels", verifyFBToken, async (req, res) => {
       "booked",
       "Your parcel has been booked and is awaiting collection.",
     );
-    
+
     // 5. Broadcast to Admins
     if (io) {
       io.emit("new_parcel", {
         trackingId,
         sender: newParcel.senderName,
         destination: newParcel.receiverDistrict,
-        cost: totalCost
+        cost: totalCost,
       });
     }
 
@@ -229,6 +229,109 @@ router.post("/parcels", verifyFBToken, async (req, res) => {
     });
   } catch (error) {
     res.status(500).send({ success: false, message: "Failed to book parcel." });
+  }
+});
+
+/**
+ * @swagger
+ * /parcels/{id}:
+ *   get:
+ *     summary: Get specific parcel details
+ *     tags: [Customer Portal]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ name: "id", in: path, required: true, schema: { type: string } }]
+ *     responses:
+ *       200: { description: "Success" }
+ */
+router.get("/parcels/:id", verifyFBToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const email = req.user.email;
+
+    const parcel = await parcelCollection.findOne({
+      _id: new ObjectId(String(id)),
+    });
+
+    if (!parcel) {
+      return res.status(404).send({ success: false, message: "Parcel not found." });
+    }
+
+    if (parcel.created_by !== email && req.user.role !== "admin") {
+      return res.status(403).send({ success: false, message: "Unauthorized access." });
+    }
+
+    res.send({ success: true, data: parcel });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to fetch parcel." });
+  }
+});
+
+/**
+ * @swagger
+ * /parcels/{id}:
+ *   patch:
+ *     summary: Update parcel details (Only if pending)
+ *     tags: [Customer Portal]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ name: "id", in: path, required: true, schema: { type: string } }]
+ *     responses:
+ *       200: { description: "Updated" }
+ */
+router.patch("/parcels/:id", verifyFBToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const email = req.user.email;
+    const updateData = req.body;
+
+    const parcel = await parcelCollection.findOne({
+      _id: new ObjectId(String(id)),
+    });
+
+    if (!parcel) {
+      return res.status(404).send({ success: false, message: "Parcel not found." });
+    }
+
+    if (parcel.created_by !== email) {
+      return res.status(403).send({ success: false, message: "Unauthorized." });
+    }
+
+    if (parcel.delivery_status !== "pending") {
+      return res.status(400).send({ 
+        success: false, 
+        message: "Cannot update a parcel that is already in transit." 
+      });
+    }
+
+    // Recalculate cost if weight changed
+    if (updateData.weight) {
+      const settings = (await settingsCollection.findOne({})) as SystemSettings;
+      const baseFee = settings?.base_delivery_fee || 50;
+      const costPerKg = settings?.cost_per_kg || 20;
+      const riderCommissionPct = settings?.rider_commission_percentage || 15;
+
+      const weightNum = Number(updateData.weight);
+      const totalCost = baseFee + (weightNum > 1 ? (weightNum - 1) * costPerKg : 0);
+      const riderEarning = (totalCost * riderCommissionPct) / 100;
+      const adminProfit = totalCost - riderEarning;
+
+      updateData.cost = totalCost;
+      updateData.rider_earning = riderEarning;
+      updateData.admin_profit = adminProfit;
+      updateData.parcelWeight = weightNum; // Sync alias
+    }
+
+    // Map other aliases if present
+    if (updateData.receiverPhone) updateData.receiverPhoneNumber = updateData.receiverPhone;
+    if (updateData.receiverDistrict) updateData.receiverRegion = updateData.receiverDistrict;
+
+    await parcelCollection.updateOne(
+      { _id: new ObjectId(String(id)) },
+      { $set: updateData }
+    );
+
+    res.send({ success: true, message: "Parcel updated successfully." });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to update parcel." });
   }
 });
 
@@ -259,23 +362,19 @@ router.delete("/parcels/:id", verifyFBToken, async (req, res) => {
 
     // Security: Only owner can delete
     if (parcel.created_by !== email) {
-      return res
-        .status(403)
-        .send({
-          success: false,
-          message: "Unauthorized to cancel this parcel.",
-        });
+      return res.status(403).send({
+        success: false,
+        message: "Unauthorized to cancel this parcel.",
+      });
     }
 
     // Business Logic: Can only cancel if pending
     if (parcel.delivery_status !== "pending") {
-      return res
-        .status(400)
-        .send({
-          success: false,
-          message:
-            "Cannot cancel a parcel that is already assigned or in transit.",
-        });
+      return res.status(400).send({
+        success: false,
+        message:
+          "Cannot cancel a parcel that is already assigned or in transit.",
+      });
     }
 
     await parcelCollection.deleteOne({ _id: new ObjectId(String(id)) });
@@ -314,22 +413,28 @@ router.patch("/parcels/:id/pick", verifyFBToken, async (req, res) => {
     );
 
     if (result.modifiedCount === 0) {
-      return res.status(404).send({ success: false, message: "Parcel not found" });
+      return res
+        .status(404)
+        .send({ success: false, message: "Parcel not found" });
     }
 
-    const parcel = await parcelCollection.findOne({ _id: new ObjectId(String(id)) });
+    const parcel = await parcelCollection.findOne({
+      _id: new ObjectId(String(id)),
+    });
     if (parcel) {
       await addTrackingUpdate(
         parcel.trackingId,
         "on_the_way",
         "Parcel has been picked up and is on the way.",
-        "Pickup Point"
+        "Pickup Point",
       );
     }
 
     res.send({ success: true, message: "Parcel picked up successfully." });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to mark as picked" });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to mark as picked" });
   }
 });
 
