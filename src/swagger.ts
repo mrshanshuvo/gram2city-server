@@ -6,6 +6,30 @@ export const swaggerSpec = {
     description:
       "Enterprise-grade logistics and supply chain management API for Gram2City. Powering real-time tracking, multi-region hub management, and dynamic marketing ecosystems.",
   },
+  tags: [
+    { name: "Public - System", description: "Core system health and status" },
+    { name: "Public - Authentication", description: "Identity and access management" },
+    { name: "Public - Logistics", description: "Public parcel tracking and network search" },
+    { name: "Public - Newsletter", description: "Marketing and subscriptions" },
+    { name: "Customer - Parcel Management", description: "Booking and tracking personal parcels" },
+    { name: "Customer - Payment Management", description: "Financial transactions and history" },
+    { name: "Customer - Feedback", description: "Rider reviews and service feedback" },
+    { name: "Rider - Logistics Operations", description: "Pickup and delivery management" },
+    { name: "Admin - Statistics", description: "Platform-wide metrics and revenue" },
+    { name: "Admin - Audit Logs", description: "Security and operation logs" },
+    { name: "Admin - Announcements", description: "Bulk communication management" },
+    { name: "Admin - System Settings", description: "Global fee and commission configuration" },
+    { name: "Admin - User Management", description: "Account lifecycle and role assignment" },
+    { name: "Admin - Logistics Management", description: "Global parcel oversight and rider assignment" },
+    { name: "Admin - Rider Management", description: "Rider application and status management" },
+    { name: "Admin - Landing Config", description: "Global landing page settings" },
+    { name: "Admin - Banner Management", description: "Hero section and marketing banners" },
+    { name: "Admin - Service Management", description: "Service offering configurations" },
+    { name: "Admin - Feature Management", description: "Platform feature highlight cards" },
+    { name: "Admin - Partner Management", description: "Partner and client logo management" },
+    { name: "Admin - Testimonial Management", description: "User review and testimonial management" },
+    { name: "Admin - Process Management", description: "Operational step-by-step guides" },
+  ],
   components: {
     securitySchemes: {
       bearerAuth: {
@@ -72,7 +96,7 @@ export const swaggerSpec = {
     "/": {
       get: {
         summary: "Health Check",
-        tags: ["System"],
+        tags: ["Public - System"],
         security: [],
         responses: { 200: { description: "Server is running" } },
       },
@@ -81,7 +105,7 @@ export const swaggerSpec = {
     "/auth/register": {
       post: {
         summary: "Register a new user",
-        tags: ["Authentication"],
+        tags: ["Public - Authentication"],
         security: [],
         requestBody: {
           required: true,
@@ -106,7 +130,7 @@ export const swaggerSpec = {
     "/auth/login": {
       post: {
         summary: "Login user",
-        tags: ["Authentication"],
+        tags: ["Public - Authentication"],
         security: [],
         requestBody: {
           required: true,
@@ -129,13 +153,13 @@ export const swaggerSpec = {
     "/auth/me": {
       get: {
         summary: "Get my profile",
-        tags: ["Authentication"],
+        tags: ["Public - Authentication"],
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: "Success" } },
       },
       delete: {
         summary: "Delete my account",
-        tags: ["Authentication"],
+        tags: ["Public - Authentication"],
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: "Success" } },
       },
@@ -143,7 +167,7 @@ export const swaggerSpec = {
     "/auth/send-verification": {
       post: {
         summary: "Send verification email",
-        tags: ["Authentication"],
+        tags: ["Public - Authentication"],
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: "Success" } },
       },
@@ -151,7 +175,7 @@ export const swaggerSpec = {
     "/auth/reset-password": {
       post: {
         summary: "Reset password email",
-        tags: ["Authentication"],
+        tags: ["Public - Authentication"],
         requestBody: {
           required: true,
           content: {
@@ -169,7 +193,7 @@ export const swaggerSpec = {
     "/users/sync": {
       post: {
         summary: "Sync user session and get role",
-        tags: ["Authentication"],
+        tags: ["Public - Authentication"],
         security: [{ bearerAuth: [] }],
         responses: {
           200: {
@@ -206,7 +230,7 @@ export const swaggerSpec = {
     "/parcels": {
       get: {
         summary: "My booked parcels",
-        tags: ["Customer Portal"],
+        tags: ["Customer - Parcel Management"],
         parameters: [
           {
             name: "email",
@@ -223,7 +247,7 @@ export const swaggerSpec = {
       },
       post: {
         summary: "Book a new parcel",
-        tags: ["Customer Portal"],
+        tags: ["Customer - Parcel Management"],
         requestBody: {
           required: true,
           content: {
@@ -265,7 +289,7 @@ export const swaggerSpec = {
     "/users/{email}": {
       patch: {
         summary: "Update my profile",
-        tags: ["Customer Portal"],
+        tags: ["Customer - Parcel Management"],
         parameters: [
           {
             name: "email",
@@ -294,7 +318,7 @@ export const swaggerSpec = {
     "/payments": {
       post: {
         summary: "Pay for a parcel",
-        tags: ["Customer Portal"],
+        tags: ["Customer - Payment Management"],
         requestBody: {
           content: {
             "application/x-www-form-urlencoded": {
@@ -313,7 +337,7 @@ export const swaggerSpec = {
       },
       get: {
         summary: "My payment history",
-        tags: ["Customer Portal"],
+        tags: ["Customer - Payment Management"],
         parameters: [
           {
             name: "email",
@@ -327,7 +351,7 @@ export const swaggerSpec = {
     "/reviews": {
       post: {
         summary: "Submit a review for a rider",
-        tags: ["Customer Portal"],
+        tags: ["Customer - Feedback"],
         requestBody: {
           content: {
             "application/x-www-form-urlencoded": {
@@ -349,7 +373,7 @@ export const swaggerSpec = {
     "/trackings/{trackingId}": {
       get: {
         summary: "Track my parcel",
-        tags: ["Customer Portal"],
+        tags: ["Public - Logistics"],
         security: [],
         parameters: [
           {
@@ -367,14 +391,14 @@ export const swaggerSpec = {
     "/rider/parcels": {
       get: {
         summary: "Parcels assigned to me",
-        tags: ["Rider Dashboard"],
+        tags: ["Rider - Logistics Operations"],
         responses: { 200: { description: "Success" } },
       },
     },
     "/parcels/{id}/pick": {
       patch: {
         summary: "Mark parcel as picked up",
-        tags: ["Rider Dashboard"],
+        tags: ["Rider - Logistics Operations"],
         parameters: [
           {
             name: "id",
@@ -389,7 +413,7 @@ export const swaggerSpec = {
     "/rider/parcels/{id}/status": {
       patch: {
         summary: "Update delivery status",
-        tags: ["Rider Dashboard"],
+        tags: ["Rider - Logistics Operations"],
         parameters: [
           {
             name: "id",
@@ -419,7 +443,7 @@ export const swaggerSpec = {
     "/rider/stats/{email}": {
       get: {
         summary: "My delivery stats",
-        tags: ["Rider Dashboard"],
+        tags: ["Rider - Logistics Operations"],
         parameters: [
           {
             name: "email",
@@ -434,7 +458,7 @@ export const swaggerSpec = {
     "/rider/cashout": {
       post: {
         summary: "Cash out my earnings",
-        tags: ["Rider Dashboard"],
+        tags: ["Rider - Logistics Operations"],
         requestBody: {
           content: {
             "application/x-www-form-urlencoded": {
@@ -452,15 +476,15 @@ export const swaggerSpec = {
     // ─── ADMIN PANEL ──────────────────────────────────────────────────────────
     "/admin/stats": {
       get: {
-        summary: "Global platform stats",
-        tags: ["Admin Panel"],
+        summary: "Get Platform Statistics",
+        tags: ["Admin - Statistics"],
         responses: { 200: { description: "Success" } },
       },
     },
     "/admin/all-parcels": {
       get: {
-        summary: "Manage all platform parcels",
-        tags: ["Admin Panel"],
+        summary: "List All Platform Parcels",
+        tags: ["Admin - Logistics Management"],
         parameters: [
           {
             name: "page",
@@ -478,8 +502,8 @@ export const swaggerSpec = {
     },
     "/users/{email}/role": {
       patch: {
-        summary: "Change a user's role",
-        tags: ["Admin Panel"],
+        summary: "Update User Role",
+        tags: ["Admin - User Management"],
         parameters: [
           {
             name: "email",
@@ -505,8 +529,8 @@ export const swaggerSpec = {
     },
     "/parcels/{id}/assign": {
       patch: {
-        summary: "Assign a rider to a parcel",
-        tags: ["Admin Panel"],
+        summary: "Assign Rider to Parcel",
+        tags: ["Admin - Logistics Management"],
         parameters: [
           {
             name: "id",
@@ -530,8 +554,8 @@ export const swaggerSpec = {
     },
     "/riders/{id}/status": {
       patch: {
-        summary: "Approve/Reject rider application",
-        tags: ["Admin Panel"],
+        summary: "Update Rider Application Status",
+        tags: ["Admin - Rider Management"],
         parameters: [
           {
             name: "id",
@@ -558,8 +582,8 @@ export const swaggerSpec = {
     },
     "/admin/announce": {
       post: {
-        summary: "Send a notification to all users and riders",
-        tags: ["Admin Panel"],
+        summary: "Create Bulk Announcement",
+        tags: ["Admin - Announcements"],
         security: [{ bearerAuth: [] }],
         requestBody: {
           content: {
@@ -582,8 +606,8 @@ export const swaggerSpec = {
     },
     "/auth/admin/create-user": {
       post: {
-        summary: "Onboard new Admin/Rider manually",
-        tags: ["Admin Panel"],
+        summary: "Onboard New Admin/Rider",
+        tags: ["Admin - User Management"],
         security: [{ bearerAuth: [] }],
         requestBody: {
           content: {
@@ -605,22 +629,22 @@ export const swaggerSpec = {
     },
     "/admin/audit-logs": {
       get: {
-        summary: "View administrative audit logs",
-        tags: ["Admin Panel"],
+        summary: "List Administrative Audit Logs",
+        tags: ["Admin - Audit Logs"],
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: "Success" } },
       },
     },
     "/admin/settings": {
       get: {
-        summary: "Get global system settings",
-        tags: ["Admin Panel"],
+        summary: "Get Global System Settings",
+        tags: ["Admin - System Settings"],
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: "Success" } },
       },
       patch: {
-        summary: "Update global system settings",
-        tags: ["Admin Panel"],
+        summary: "Update Global System Settings",
+        tags: ["Admin - System Settings"],
         security: [{ bearerAuth: [] }],
         requestBody: {
           content: {
@@ -641,8 +665,8 @@ export const swaggerSpec = {
     },
     "/admin/users/{email}/status": {
       patch: {
-        summary: "Suspend or activate a user account",
-        tags: ["Admin Panel"],
+        summary: "Update User Account Status",
+        tags: ["Admin - User Management"],
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -672,7 +696,7 @@ export const swaggerSpec = {
     "/landing/config": {
       get: {
         summary: "Get global landing configuration",
-        tags: ["Landing Page"],
+        tags: ["Admin - Landing Config"],
         responses: {
           200: {
             description: "Success",
@@ -703,7 +727,7 @@ export const swaggerSpec = {
       },
       patch: {
         summary: "Update global landing configuration",
-        tags: ["Landing Page"],
+        tags: ["Admin - Landing Config"],
         security: [{ bearerAuth: [] }],
         requestBody: {
           content: {
@@ -718,7 +742,7 @@ export const swaggerSpec = {
     "/landing/features": {
       get: {
         summary: "Get all active feature cards",
-        tags: ["Landing Page"],
+        tags: ["Admin - Feature Management"],
         responses: {
           200: {
             description: "Success",
@@ -743,7 +767,7 @@ export const swaggerSpec = {
     "/landing/testimonials": {
       get: {
         summary: "Get all active testimonials",
-        tags: ["Landing Page"],
+        tags: ["Admin - Testimonial Management"],
         responses: {
           200: {
             description: "Success",
@@ -768,14 +792,14 @@ export const swaggerSpec = {
     "/landing/banners": {
       get: {
         summary: "Get active banners",
-        tags: ["Landing Page"],
+        tags: ["Admin - Banner Management"],
         responses: { 200: { description: "Success" } },
       },
     },
     "/landing/services": {
       get: {
         summary: "Get active services",
-        tags: ["Landing Page"],
+        tags: ["Admin - Service Management"],
         responses: { 200: { description: "Success" } },
       },
     },
@@ -784,7 +808,7 @@ export const swaggerSpec = {
         summary: "Search & Filter Warehouse Network",
         description:
           "Retrieve the full logistics network with advanced server-side filtering by region, district, or operational status.",
-        tags: ["Landing Page"],
+        tags: ["Public - Logistics"],
         parameters: [
           {
             name: "search",
@@ -819,7 +843,7 @@ export const swaggerSpec = {
     "/landing/subscribe": {
       post: {
         summary: "Subscribe to newsletter",
-        tags: ["Landing Page"],
+        tags: ["Public - Newsletter"],
         requestBody: {
           required: true,
           content: {
@@ -838,7 +862,7 @@ export const swaggerSpec = {
     "/landing/newsletter": {
       get: {
         summary: "Get all newsletter subscribers (Admin Only)",
-        tags: ["Landing Page"],
+        tags: ["Admin - Landing Config"],
         security: [{ bearerAuth: [] }],
         responses: { 200: { description: "Success" } },
       },

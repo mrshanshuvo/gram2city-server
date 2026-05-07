@@ -27,7 +27,7 @@ const router = Router();
  * /landing/process-steps:
  *   get:
  *     summary: Get all active process steps
- *     tags: [Landing - Process Steps]
+ *     tags: [Admin - Process Management]
  */
 router.get("/process-steps", async (req, res) => {
   try {
@@ -46,7 +46,7 @@ router.get("/process-steps", async (req, res) => {
  * /landing/config:
  *   get:
  *     summary: Get global landing configuration
- *     tags: [Landing - Config]
+ *     tags: [Admin - Landing Config]
  */
 router.get("/config", async (req, res) => {
   try {
@@ -62,7 +62,7 @@ router.get("/config", async (req, res) => {
  * /landing/banners:
  *   get:
  *     summary: Get all active banner slides
- *     tags: [Landing - Banners]
+ *     tags: [Admin - Banner Management]
  */
 router.get("/banners", async (req, res) => {
   try {
@@ -81,7 +81,7 @@ router.get("/banners", async (req, res) => {
  * /landing/services:
  *   get:
  *     summary: Get all active services
- *     tags: [Landing - Services]
+ *     tags: [Admin - Service Management]
  */
 router.get("/services", async (req, res) => {
   try {
@@ -100,7 +100,7 @@ router.get("/services", async (req, res) => {
  * /landing/features:
  *   get:
  *     summary: Get all active feature cards
- *     tags: [Landing - Features]
+ *     tags: [Admin - Feature Management]
  */
 router.get("/features", async (req, res) => {
   try {
@@ -119,7 +119,7 @@ router.get("/features", async (req, res) => {
  * /landing/partners:
  *   get:
  *     summary: Get all partner logos
- *     tags: [Landing - Partners]
+ *     tags: [Admin - Partner Management]
  */
 router.get("/partners", async (req, res) => {
   try {
@@ -138,7 +138,7 @@ router.get("/partners", async (req, res) => {
  * /landing/testimonials:
  *   get:
  *     summary: Get all active testimonials
- *     tags: [Landing - Testimonials]
+ *     tags: [Admin - Testimonial Management]
  */
 router.get("/testimonials", async (req, res) => {
   try {
