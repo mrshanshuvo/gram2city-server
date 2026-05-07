@@ -8,7 +8,7 @@ export interface User {
   email: string;
   name?: string;
   photoURL?: string;
-  role?: "user" | "admin" | "rider" | "superAdmin";
+  role?: "user" | "admin" | "rider" | "merchant" | "superAdmin";
   phone?: string;
   address?: string;
   status?: "active" | "suspended" | "pending"; // Added: User status management
@@ -67,6 +67,11 @@ export interface Parcel {
   delivered_at?: string;
   cancelled_at?: string;
   return_reason?: string;
+
+  // Multi-Role Support
+  merchantId?: ObjectId;
+  requiredVehicle?: "bike" | "car" | "mini_pickup" | "large_pickup";
+  codAmount?: number;
 }
 
 export interface Rider {
@@ -83,6 +88,27 @@ export interface Rider {
   average_rating?: number;
   total_delivered?: number;
   is_available?: boolean;
+
+  // Vehicle Details
+  vehicleType?: "bike" | "car" | "mini_pickup" | "large_pickup";
+  vehicleNumber?: string;
+  drivingLicense?: string;
+}
+
+export interface Merchant {
+  _id?: ObjectId;
+  userId: ObjectId;
+  email: string;
+  businessName: string;
+  businessType?: string;
+  tradeLicense?: string;
+  logo?: string;
+  address: string;
+  district: string;
+  phone: string;
+  status: "pending" | "approved" | "suspended" | "rejected";
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Payment {

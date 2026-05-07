@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { usersCollection, auditCollection, settingsCollection } from "../db";
+import { ObjectId } from "mongodb";
+import { usersCollection, auditCollection, settingsCollection, merchantsCollection } from "../db";
 import { verifyFBToken, verifyAdmin } from "../middleware/auth";
 import { AuditLog, SystemSettings } from "../types";
 import { validate } from "../middleware/validate";
@@ -238,6 +239,11 @@ router.get("/stats", async (req, res) => {
       ])
       .toArray();
 
+    // 9. Fleet Distribution (by Vehicle Type)
+    const fleetDistribution = await ridersCollection
+      .aggregate([{ $group: { _id: "$vehicleType", count: { $sum: 1 } } }])
+      .toArray();
+
     res.send({
       success: true,
       stats: {
@@ -257,6 +263,7 @@ router.get("/stats", async (req, res) => {
         avgDeliveryTime: deliveryTimeData[0]?.avgHours || 0,
         riderLeaderboard,
         districtDistribution,
+        fleetDistribution,
       },
     });
   } catch (error) {
@@ -575,6 +582,26 @@ router.patch(
           .status(404)
           .send({ success: false, message: "Rider not found" });
 
+      const parcel = await parcelCollection.findOne({
+        _id: new ObjectId(String(id)),
+      });
+      if (!parcel)
+        return res
+          .status(404)
+          .send({ success: false, message: "Parcel not found" });
+
+      // Smart Assignment Check
+      if (
+        parcel.requiredVehicle &&
+        rider.vehicleType &&
+        parcel.requiredVehicle !== rider.vehicleType
+      ) {
+        return res.status(400).send({
+          success: false,
+          message: `Vehicle mismatch: Parcel requires ${parcel.requiredVehicle}, but rider has ${rider.vehicleType}.`,
+        });
+      }
+
       const result = await parcelCollection.updateOne(
         { _id: new ObjectId(String(id)) },
         {
@@ -598,9 +625,6 @@ router.patch(
       }
 
       // Add tracking update
-      const parcel = await parcelCollection.findOne({
-        _id: new ObjectId(String(id)),
-      });
       if (parcel) {
         await addTrackingUpdate(
           parcel.trackingId,
@@ -618,5 +642,114 @@ router.patch(
     }
   },
 );
+
+/**
+ * @swagger
+ * /admin/merchants:
+ *   get:
+ *     summary: List All Merchant Applications
+ *     tags: [Admin - Merchant Management]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - name: status
+ *         in: query
+ *         schema: { type: string, enum: [pending, approved, rejected, suspended] }
+ *     responses:
+ *       200: { description: "Success" }
+ */
+router.get("/merchants", async (req, res) => {
+  try {
+    const { status } = req.query;
+    const query: any = {};
+    if (status) query.status = status;
+
+    const merchants = await merchantsCollection
+      .find(query)
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    res.send({ success: true, data: merchants });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to fetch merchants" });
+  }
+});
+
+/**
+ * @swagger
+ * /admin/merchants/{id}/status:
+ *   patch:
+ *     summary: Update Merchant Application Status
+ *     tags: [Admin - Merchant Management]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status: { type: string, enum: [approved, rejected, suspended] }
+ *     responses:
+ *       200: { description: "Status updated" }
+ */
+router.patch("/merchants/:id/status", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const merchant = await merchantsCollection.findOne({ _id: new ObjectId(String(id)) });
+    if (!merchant) return res.status(404).send({ success: false, message: "Merchant not found" });
+
+    await merchantsCollection.updateOne(
+      { _id: new ObjectId(String(id)) },
+      { $set: { status, updatedAt: new Date().toISOString() } }
+    );
+
+    // If approved, update user role
+    if (status === "approved") {
+      await usersCollection.updateOne(
+        { email: merchant.email },
+        { $set: { role: "merchant" } }
+      );
+    }
+
+    // Log action
+    await auditCollection.insertOne({
+      admin_email: req.user.email,
+      action: "MERCHANT_STATUS_CHANGE",
+      target_id: id,
+      details: `Changed merchant ${merchant.businessName} status to ${status}`,
+      timestamp: new Date().toISOString(),
+    });
+
+    res.send({ success: true, message: `Merchant status updated to ${status}` });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to update status" });
+  }
+});
+
+/**
+ * @swagger
+ * /admin/fleet:
+ *   get:
+ *     summary: Get Fleet Vehicle Distribution
+ *     tags: [Admin - Fleet Overview]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: "Success" }
+ */
+router.get("/fleet", async (req, res) => {
+  try {
+    const { ridersCollection } = require("../db");
+    const fleetStats = await ridersCollection.aggregate([
+      { $group: { _id: "$vehicleType", count: { $sum: 1 } } }
+    ]).toArray();
+
+    res.send({ success: true, data: fleetStats });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to fetch fleet stats" });
+  }
+});
 
 export default router;

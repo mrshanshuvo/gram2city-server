@@ -150,6 +150,9 @@ router.post(
         receiverDistrict,
         senderPhone,
         deliveryDate,
+        requiredVehicle = "bike",
+        merchantId,
+        codAmount,
       } = req.body;
 
       if (
@@ -171,10 +174,22 @@ router.post(
       const costPerKg = settings?.cost_per_kg || 20;
       const riderCommissionPct = settings?.rider_commission_percentage || 15;
 
-      // 2. Intelligent Cost Calculation
+      // 2. Intelligent Cost Calculation with Vehicle Multiplier
+      const vehicleMultipliers = {
+        bike: 1,
+        car: 1.5,
+        mini_pickup: 2.2,
+        large_pickup: 3.5,
+      };
+      const multiplier =
+        vehicleMultipliers[requiredVehicle as keyof typeof vehicleMultipliers] ||
+        1;
+
       const weightNum = Number(weight);
-      const totalCost =
+      const baseCost =
         baseFee + (weightNum > 1 ? (weightNum - 1) * costPerKg : 0);
+      const totalCost = baseCost * multiplier;
+
       const riderEarning = (totalCost * riderCommissionPct) / 100;
       const adminProfit = totalCost - riderEarning;
 
@@ -206,6 +221,10 @@ router.post(
         admin_profit: adminProfit,
         payment_status: "unpaid",
         delivery_status: "pending",
+        // Multi-Role Support
+        requiredVehicle: requiredVehicle as any,
+        merchantId: merchantId ? new ObjectId(String(merchantId)) : undefined,
+        codAmount: codAmount ? Number(codAmount) : undefined,
       };
 
       const result = await parcelCollection.insertOne(newParcel);

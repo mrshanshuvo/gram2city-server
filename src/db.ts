@@ -57,6 +57,7 @@ export const partnersCollection = db.collection<PartnerLogo>("partners");
 export const processStepsCollection = db.collection<ProcessStep>("process_steps");
 export const landingConfigCollection = db.collection<LandingConfig>("landing_config");
 export const avatarsCollection = db.collection<Avatar>("avatars");
+export const merchantsCollection = db.collection<Merchant>("merchants");
 export const warehousesCollection = db.collection("warehouses");
 export const newsletterCollection = db.collection("newsletter");
 export const testimonialsCollection = db.collection<any>("testimonials");
