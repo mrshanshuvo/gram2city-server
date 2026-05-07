@@ -130,7 +130,37 @@ app.use(
   "/swagger",
   swaggerUi.serve,
   swaggerUi.setup(swaggerSpec, {
-    customCss: ".swagger-ui .topbar { display: none }",
+    customCss: `
+      .swagger-ui .topbar { display: none }
+      .swagger-ui .parameters-col_description {
+        position: relative !important;
+      }
+      .swagger-ui .parameter__empty_value { 
+        display: flex !important; 
+        align-items: center !important; 
+        position: absolute !important;
+        top: 6px !important;
+        left: 310px !important;
+        width: 150px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .swagger-ui .parameter__empty_value input { 
+        margin: 0 5px 0 0 !important; 
+        width: 14px !important; 
+        height: 14px !important;
+      }
+      .swagger-ui .parameter__empty_value label { 
+        margin: 0 !important; 
+        font-size: 11px !important; 
+        color: #777 !important;
+        font-weight: normal !important;
+        white-space: nowrap !important;
+      }
+      .swagger-ui .opblock-body select {
+        min-width: 120px !important;
+      }
+    `,
     customCssUrl: CSS_URL,
     customJs: [
       "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js",

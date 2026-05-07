@@ -552,6 +552,7 @@ export const swaggerSpec = {
             "application/x-www-form-urlencoded": {
               schema: {
                 type: "object",
+                required: ["role"],
                 properties: {
                   role: { type: "string", enum: ["user", "rider", "admin"] },
                 },
@@ -770,6 +771,7 @@ export const swaggerSpec = {
             "application/x-www-form-urlencoded": {
               schema: {
                 type: "object",
+                required: ["howItWorksFooter"],
                 properties: {
                   "merchantSection.title": { type: "string" },
                   "merchantSection.description": { type: "string" },
@@ -879,14 +881,15 @@ export const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           content: {
-            "application/x-www-form-urlencoded": {
+            "multipart/form-data": {
               schema: {
                 type: "object",
+                required: ["name", "quote"],
                 properties: {
                   name: { type: "string" },
                   title: { type: "string" },
                   quote: { type: "string" },
-                  image: { type: "string" },
+                  image: { type: "string", format: "binary" },
                   rating: { type: "number" },
                   isActive: { type: "boolean" },
                 },
@@ -907,14 +910,14 @@ export const swaggerSpec = {
         ],
         requestBody: {
           content: {
-            "application/x-www-form-urlencoded": {
+            "multipart/form-data": {
               schema: {
                 type: "object",
                 properties: {
                   name: { type: "string" },
                   title: { type: "string" },
                   quote: { type: "string" },
-                  image: { type: "string" },
+                  image: { type: "string", format: "binary" },
                   rating: { type: "number" },
                   isActive: { type: "boolean" },
                 },
@@ -946,13 +949,14 @@ export const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           content: {
-            "application/x-www-form-urlencoded": {
+            "multipart/form-data": {
               schema: {
                 type: "object",
+                required: ["title", "image"],
                 properties: {
                   title: { type: "string" },
                   description: { type: "string" },
-                  image: { type: "string", description: "Image URL (use /upload first)" },
+                  image: { type: "string", format: "binary" },
                   ctaText: { type: "string" },
                   ctaLink: { type: "string" },
                   order: { type: "number" },
@@ -975,13 +979,13 @@ export const swaggerSpec = {
         ],
         requestBody: {
           content: {
-            "application/x-www-form-urlencoded": {
+            "multipart/form-data": {
               schema: {
                 type: "object",
                 properties: {
                   title: { type: "string" },
                   description: { type: "string" },
-                  image: { type: "string" },
+                  image: { type: "string", format: "binary" },
                   ctaText: { type: "string" },
                   ctaLink: { type: "string" },
                   order: { type: "number" },
@@ -1015,14 +1019,15 @@ export const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           content: {
-            "application/x-www-form-urlencoded": {
+            "multipart/form-data": {
               schema: {
                 type: "object",
+                required: ["title", "description"],
                 properties: {
                   title: { type: "string" },
                   description: { type: "string" },
                   icon: { type: "string" },
-                  image: { type: "string" },
+                  image: { type: "string", format: "binary" },
                   order: { type: "number" },
                   isActive: { type: "boolean" },
                 },
@@ -1043,14 +1048,14 @@ export const swaggerSpec = {
         ],
         requestBody: {
           content: {
-            "application/x-www-form-urlencoded": {
+            "multipart/form-data": {
               schema: {
                 type: "object",
                 properties: {
                   title: { type: "string" },
                   description: { type: "string" },
                   icon: { type: "string" },
-                  image: { type: "string" },
+                  image: { type: "string", format: "binary" },
                   order: { type: "number" },
                   isActive: { type: "boolean" },
                 },
@@ -1119,12 +1124,13 @@ export const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           content: {
-            "application/x-www-form-urlencoded": {
+            "multipart/form-data": {
               schema: {
                 type: "object",
+                required: ["name", "logo"],
                 properties: {
                   name: { type: "string" },
-                  logo: { type: "string" },
+                  logo: { type: "string", format: "binary" },
                   website: { type: "string" },
                   order: { type: "number" },
                   isActive: { type: "boolean" },
@@ -1146,12 +1152,12 @@ export const swaggerSpec = {
         ],
         requestBody: {
           content: {
-            "application/x-www-form-urlencoded": {
+            "multipart/form-data": {
               schema: {
                 type: "object",
                 properties: {
                   name: { type: "string" },
-                  logo: { type: "string" },
+                  logo: { type: "string", format: "binary" },
                   website: { type: "string" },
                   order: { type: "number" },
                   isActive: { type: "boolean" },
@@ -1213,6 +1219,7 @@ export const swaggerSpec = {
             "application/x-www-form-urlencoded": {
               schema: {
                 type: "object",
+                required: ["title", "description"],
                 properties: {
                   title: { type: "string" },
                   description: { type: "string" },

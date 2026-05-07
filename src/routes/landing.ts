@@ -25,7 +25,11 @@ import {
 } from "../schemas/landingSchema";
 import { ObjectId } from "mongodb";
 
+import { uploadToImgBB } from "../utils/upload";
+import multer from "multer";
+
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 // ─── PUBLIC ROUTES ──────────────────────────────────────────────────────────
 
@@ -277,45 +281,70 @@ router.use(verifyFBToken, verifyAdmin);
  *     summary: Update global landing configuration
  *     tags: [Admin - Landing Config]
  */
-router.patch("/config", validate(landingConfigUpdateSchema), async (req, res) => {
-  try {
-    const update = req.body;
-    delete update._id;
-    await landingConfigCollection.updateOne(
-      {},
-      { $set: update },
-      { upsert: true },
-    );
-    res.send({ success: true, message: "Configuration updated" });
-  } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to update config" });
-  }
-});
+router.patch(
+  "/config",
+  validate(landingConfigUpdateSchema),
+  async (req, res) => {
+    try {
+      const update = req.body;
+      delete update._id;
+      await landingConfigCollection.updateOne(
+        {},
+        { $set: update },
+        { upsert: true },
+      );
+      res.send({ success: true, message: "Configuration updated" });
+    } catch (error) {
+      res
+        .status(500)
+        .send({ success: false, message: "Failed to update config" });
+    }
+  },
+);
 
 // Helper for Generic CRUD
-const handleCRUD = (collection: any, name: string, schema?: any) => {
-  router.post(`/${name}`, schema ? validate(schema) : (req, res, next) => next(), async (req, res) => {
+const handleCRUD = (
+  collection: any,
+  name: string,
+  schema?: any,
+  imageField?: string,
+) => {
+  const middleware = [];
+  if (imageField) middleware.push(upload.single(imageField));
+  if (schema) middleware.push(validate(schema));
+
+  router.post(`/${name}`, ...middleware, async (req: any, res: any) => {
     try {
       const item = req.body;
-      // We don't force isActive if it's already in the body (schema allows it)
+
+      // Handle file upload if present
+      if (imageField && req.file) {
+        item[imageField] = await uploadToImgBB(req.file);
+      }
+
       if (item.isActive === undefined) item.isActive = true;
       item.createdAt = new Date().toISOString();
       const result = await collection.insertOne(item);
       res.send({ success: true, data: { ...item, _id: result.insertedId } });
     } catch (error) {
+      console.error(`CRUD POST ERROR [${name}]:`, error);
       res
         .status(500)
         .send({ success: false, message: `Failed to create ${name}` });
     }
   });
 
-  router.patch(`/${name}/:id`, schema ? validate(schema) : (req, res, next) => next(), async (req, res) => {
+  router.patch(`/${name}/:id`, ...middleware, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const update = req.body;
       delete update._id;
+
+      // Handle file upload if present
+      if (imageField && req.file) {
+        update[imageField] = await uploadToImgBB(req.file);
+      }
+
       const result = await collection.updateOne(
         { _id: new ObjectId(id) },
         { $set: update },
@@ -324,6 +353,7 @@ const handleCRUD = (collection: any, name: string, schema?: any) => {
         return res.status(404).send({ success: false, message: "Not found" });
       res.send({ success: true, message: `${name} updated` });
     } catch (error) {
+      console.error(`CRUD PATCH ERROR [${name}]:`, error);
       res
         .status(500)
         .send({ success: false, message: `Failed to update ${name}` });
@@ -374,7 +404,7 @@ router.get("/newsletter", async (_req, res) => {
  *     summary: Delete a banner
  *     tags: [Admin - Banner Management]
  */
-handleCRUD(bannersCollection, "banners", bannerSchema);
+handleCRUD(bannersCollection, "banners", bannerSchema, "image");
 
 /**
  * @swagger
@@ -390,7 +420,7 @@ handleCRUD(bannersCollection, "banners", bannerSchema);
  *     summary: Delete a service
  *     tags: [Admin - Service Management]
  */
-handleCRUD(servicesCollection, "services", serviceSchema);
+handleCRUD(servicesCollection, "services", serviceSchema, "image");
 
 /**
  * @swagger
@@ -406,7 +436,7 @@ handleCRUD(servicesCollection, "services", serviceSchema);
  *     summary: Delete a feature card
  *     tags: [Admin - Feature Management]
  */
-handleCRUD(featuresCollection, "features", featureSchema);
+handleCRUD(featuresCollection, "features", featureSchema, "image");
 
 /**
  * @swagger
@@ -422,7 +452,7 @@ handleCRUD(featuresCollection, "features", featureSchema);
  *     summary: Delete a partner
  *     tags: [Admin - Partner Management]
  */
-handleCRUD(partnersCollection, "partners", partnerSchema);
+handleCRUD(partnersCollection, "partners", partnerSchema, "logo");
 
 /**
  * @swagger
@@ -454,6 +484,6 @@ handleCRUD(processStepsCollection, "process-steps", processStepSchema);
  *     summary: Delete a testimonial
  *     tags: [Admin - Testimonial Management]
  */
-handleCRUD(testimonialsCollection, "testimonials", testimonialSchema);
+handleCRUD(testimonialsCollection, "testimonials", testimonialSchema, "image");
 
 export default router;
