@@ -14,6 +14,15 @@ import {
 import { verifyFBToken, verifyAdmin } from "../middleware/auth";
 import { validate } from "../middleware/validate";
 import { newsletterSchema } from "../schemas/commonSchema";
+import {
+  bannerSchema,
+  serviceSchema,
+  featureSchema,
+  partnerSchema,
+  testimonialSchema,
+  processStepSchema,
+  landingConfigUpdateSchema,
+} from "../schemas/landingSchema";
 import { ObjectId } from "mongodb";
 
 const router = Router();
@@ -185,19 +194,7 @@ router.get("/stats", async (_req, res) => {
 });
 
 // ─── NEWSLETTER (Public) ──────────────────────────────────────────────────
-router.get("/newsletter", async (_req, res) => {
-  try {
-    const subscribers = await newsletterCollection
-      .find({})
-      .sort({ subscribedAt: -1 })
-      .toArray();
-    res.send({ success: true, data: subscribers });
-  } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to fetch subscribers" });
-  }
-});
+// Newsletter subscription is public, but list is admin-only (moved below)
 
 /**
  * @swagger
@@ -280,7 +277,7 @@ router.use(verifyFBToken, verifyAdmin);
  *     summary: Update global landing configuration
  *     tags: [Admin - Landing Config]
  */
-router.patch("/config", async (req, res) => {
+router.patch("/config", validate(landingConfigUpdateSchema), async (req, res) => {
   try {
     const update = req.body;
     delete update._id;
@@ -298,11 +295,12 @@ router.patch("/config", async (req, res) => {
 });
 
 // Helper for Generic CRUD
-const handleCRUD = (collection: any, name: string) => {
-  router.post(`/${name}`, async (req, res) => {
+const handleCRUD = (collection: any, name: string, schema?: any) => {
+  router.post(`/${name}`, schema ? validate(schema) : (req, res, next) => next(), async (req, res) => {
     try {
       const item = req.body;
-      item.isActive = true;
+      // We don't force isActive if it's already in the body (schema allows it)
+      if (item.isActive === undefined) item.isActive = true;
       item.createdAt = new Date().toISOString();
       const result = await collection.insertOne(item);
       res.send({ success: true, data: { ...item, _id: result.insertedId } });
@@ -313,7 +311,7 @@ const handleCRUD = (collection: any, name: string) => {
     }
   });
 
-  router.patch(`/${name}/:id`, async (req, res) => {
+  router.patch(`/${name}/:id`, schema ? validate(schema) : (req, res, next) => next(), async (req, res) => {
     try {
       const { id } = req.params;
       const update = req.body;
@@ -347,6 +345,21 @@ const handleCRUD = (collection: any, name: string) => {
   });
 };
 
+// Admin Only Newsletter List
+router.get("/newsletter", async (_req, res) => {
+  try {
+    const subscribers = await newsletterCollection
+      .find({})
+      .sort({ subscribedAt: -1 })
+      .toArray();
+    res.send({ success: true, data: subscribers });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch subscribers" });
+  }
+});
+
 /**
  * @swagger
  * /landing/banners:
@@ -361,7 +374,7 @@ const handleCRUD = (collection: any, name: string) => {
  *     summary: Delete a banner
  *     tags: [Admin - Banner Management]
  */
-handleCRUD(bannersCollection, "banners");
+handleCRUD(bannersCollection, "banners", bannerSchema);
 
 /**
  * @swagger
@@ -377,7 +390,7 @@ handleCRUD(bannersCollection, "banners");
  *     summary: Delete a service
  *     tags: [Admin - Service Management]
  */
-handleCRUD(servicesCollection, "services");
+handleCRUD(servicesCollection, "services", serviceSchema);
 
 /**
  * @swagger
@@ -393,7 +406,7 @@ handleCRUD(servicesCollection, "services");
  *     summary: Delete a feature card
  *     tags: [Admin - Feature Management]
  */
-handleCRUD(featuresCollection, "features");
+handleCRUD(featuresCollection, "features", featureSchema);
 
 /**
  * @swagger
@@ -409,7 +422,7 @@ handleCRUD(featuresCollection, "features");
  *     summary: Delete a partner
  *     tags: [Admin - Partner Management]
  */
-handleCRUD(partnersCollection, "partners");
+handleCRUD(partnersCollection, "partners", partnerSchema);
 
 /**
  * @swagger
@@ -425,7 +438,7 @@ handleCRUD(partnersCollection, "partners");
  *     summary: Delete a process step
  *     tags: [Admin - Process Management]
  */
-handleCRUD(processStepsCollection, "process-steps");
+handleCRUD(processStepsCollection, "process-steps", processStepSchema);
 
 /**
  * @swagger
@@ -441,6 +454,6 @@ handleCRUD(processStepsCollection, "process-steps");
  *     summary: Delete a testimonial
  *     tags: [Admin - Testimonial Management]
  */
-handleCRUD(testimonialsCollection, "testimonials");
+handleCRUD(testimonialsCollection, "testimonials", testimonialSchema);
 
 export default router;

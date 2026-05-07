@@ -102,6 +102,41 @@ export const swaggerSpec = {
       },
     },
     // ─── AUTHENTICATION ───────────────────────────────────────────────────────
+    "/upload": {
+      post: {
+        summary: "Upload Image to ImgBB",
+        tags: ["Public - System"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                properties: {
+                  image: { type: "string", format: "binary" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Success",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean" },
+                    url: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     "/auth/register": {
       post: {
         summary: "Register a new user",
@@ -614,10 +649,11 @@ export const swaggerSpec = {
             "application/x-www-form-urlencoded": {
               schema: {
                 type: "object",
+                required: ["email", "password", "name", "role"],
                 properties: {
-                  email: { type: "string", example: "string" },
-                  password: { type: "string", example: "string" },
-                  name: { type: "string", example: "string" },
+                  email: { type: "string" },
+                  password: { type: "string" },
+                  name: { type: "string" },
                   role: { type: "string", enum: ["admin", "rider", "user"] },
                 },
               },
@@ -731,8 +767,17 @@ export const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           content: {
-            "application/json": {
-              schema: { type: "object" },
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  "merchantSection.title": { type: "string" },
+                  "merchantSection.description": { type: "string" },
+                  "contactInfo.phone": { type: "string" },
+                  "contactInfo.email": { type: "string" },
+                  howItWorksFooter: { type: "string" },
+                },
+              },
             },
           },
         },
@@ -741,7 +786,7 @@ export const swaggerSpec = {
     },
     "/landing/features": {
       get: {
-        summary: "Get all active feature cards",
+        summary: "List Feature Cards",
         tags: ["Admin - Feature Management"],
         responses: {
           200: {
@@ -763,10 +808,50 @@ export const swaggerSpec = {
           },
         },
       },
+      post: {
+        summary: "Create Feature Card",
+        tags: ["Admin - Feature Management"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/FeatureCard" },
+            },
+          },
+        },
+        responses: { 201: { description: "Created" } },
+      },
+    },
+    "/landing/features/{id}": {
+      patch: {
+        summary: "Update Feature Card",
+        tags: ["Admin - Feature Management"],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+        ],
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: { type: "object" },
+            },
+          },
+        },
+        responses: { 200: { description: "Updated" } },
+      },
+      delete: {
+        summary: "Delete Feature Card",
+        tags: ["Admin - Feature Management"],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+        ],
+        responses: { 200: { description: "Deleted" } },
+      },
     },
     "/landing/testimonials": {
       get: {
-        summary: "Get all active testimonials",
+        summary: "List Testimonials",
         tags: ["Admin - Testimonial Management"],
         responses: {
           200: {
@@ -788,19 +873,201 @@ export const swaggerSpec = {
           },
         },
       },
+      post: {
+        summary: "Create Testimonial",
+        tags: ["Admin - Testimonial Management"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  title: { type: "string" },
+                  quote: { type: "string" },
+                  image: { type: "string" },
+                  rating: { type: "number" },
+                  isActive: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        responses: { 201: { description: "Created" } },
+      },
+    },
+    "/landing/testimonials/{id}": {
+      patch: {
+        summary: "Update Testimonial",
+        tags: ["Admin - Testimonial Management"],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+        ],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  title: { type: "string" },
+                  quote: { type: "string" },
+                  image: { type: "string" },
+                  rating: { type: "number" },
+                  isActive: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: "Updated" } },
+      },
+      delete: {
+        summary: "Delete Testimonial",
+        tags: ["Admin - Testimonial Management"],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+        ],
+        responses: { 200: { description: "Deleted" } },
+      },
     },
     "/landing/banners": {
       get: {
-        summary: "Get active banners",
+        summary: "List Active Banners",
         tags: ["Admin - Banner Management"],
         responses: { 200: { description: "Success" } },
+      },
+      post: {
+        summary: "Create New Banner",
+        tags: ["Admin - Banner Management"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  image: { type: "string", description: "Image URL (use /upload first)" },
+                  ctaText: { type: "string" },
+                  ctaLink: { type: "string" },
+                  order: { type: "number" },
+                  isActive: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        responses: { 201: { description: "Created" } },
+      },
+    },
+    "/landing/banners/{id}": {
+      patch: {
+        summary: "Update Banner",
+        tags: ["Admin - Banner Management"],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+        ],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  image: { type: "string" },
+                  ctaText: { type: "string" },
+                  ctaLink: { type: "string" },
+                  order: { type: "number" },
+                  isActive: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: "Updated" } },
+      },
+      delete: {
+        summary: "Delete Banner",
+        tags: ["Admin - Banner Management"],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+        ],
+        responses: { 200: { description: "Deleted" } },
       },
     },
     "/landing/services": {
       get: {
-        summary: "Get active services",
+        summary: "List Active Services",
         tags: ["Admin - Service Management"],
         responses: { 200: { description: "Success" } },
+      },
+      post: {
+        summary: "Create New Service",
+        tags: ["Admin - Service Management"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  icon: { type: "string" },
+                  image: { type: "string" },
+                  order: { type: "number" },
+                  isActive: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        responses: { 201: { description: "Created" } },
+      },
+    },
+    "/landing/services/{id}": {
+      patch: {
+        summary: "Update Service",
+        tags: ["Admin - Service Management"],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+        ],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  icon: { type: "string" },
+                  image: { type: "string" },
+                  order: { type: "number" },
+                  isActive: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: "Updated" } },
+      },
+      delete: {
+        summary: "Delete Service",
+        tags: ["Admin - Service Management"],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+        ],
+        responses: { 200: { description: "Deleted" } },
       },
     },
     "/landing/warehouses": {
@@ -838,6 +1105,134 @@ export const swaggerSpec = {
           },
         ],
         responses: { 200: { description: "Success" } },
+      },
+    },
+    "/landing/partners": {
+      get: {
+        summary: "List Partner Logos",
+        tags: ["Admin - Partner Management"],
+        responses: { 200: { description: "Success" } },
+      },
+      post: {
+        summary: "Create New Partner",
+        tags: ["Admin - Partner Management"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  logo: { type: "string" },
+                  website: { type: "string" },
+                  order: { type: "number" },
+                  isActive: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        responses: { 201: { description: "Created" } },
+      },
+    },
+    "/landing/partners/{id}": {
+      patch: {
+        summary: "Update Partner",
+        tags: ["Admin - Partner Management"],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+        ],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  logo: { type: "string" },
+                  website: { type: "string" },
+                  order: { type: "number" },
+                  isActive: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: "Updated" } },
+      },
+      delete: {
+        summary: "Delete Partner",
+        tags: ["Admin - Partner Management"],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+        ],
+        responses: { 200: { description: "Deleted" } },
+      },
+    },
+    "/landing/process-steps": {
+      get: {
+        summary: "List Process Steps",
+        tags: ["Admin - Process Management"],
+        responses: { 200: { description: "Success" } },
+      },
+      post: {
+        summary: "Create Process Step",
+        tags: ["Admin - Process Management"],
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  order: { type: "number" },
+                  isActive: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        responses: { 201: { description: "Created" } },
+      },
+    },
+    "/landing/process-steps/{id}": {
+      patch: {
+        summary: "Update Process Step",
+        tags: ["Admin - Process Management"],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+        ],
+        requestBody: {
+          content: {
+            "application/x-www-form-urlencoded": {
+              schema: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  order: { type: "number" },
+                  isActive: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        responses: { 200: { description: "Updated" } },
+      },
+      delete: {
+        summary: "Delete Process Step",
+        tags: ["Admin - Process Management"],
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string" } },
+        ],
+        responses: { 200: { description: "Deleted" } },
       },
     },
     "/landing/subscribe": {
