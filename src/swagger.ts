@@ -8,27 +8,84 @@ export const swaggerSpec = {
   },
   tags: [
     { name: "Public - System", description: "Core system health and status" },
-    { name: "Public - Authentication", description: "Identity and access management" },
-    { name: "Public - Logistics", description: "Public parcel tracking and network search" },
+    {
+      name: "Public - Authentication",
+      description: "Identity and access management",
+    },
+    {
+      name: "Public - Logistics",
+      description: "Public parcel tracking and network search",
+    },
     { name: "Public - Newsletter", description: "Marketing and subscriptions" },
-    { name: "Customer - Parcel Management", description: "Booking and tracking personal parcels" },
-    { name: "Customer - Payment Management", description: "Financial transactions and history" },
-    { name: "Customer - Feedback", description: "Rider reviews and service feedback" },
-    { name: "Rider - Logistics Operations", description: "Pickup and delivery management" },
-    { name: "Admin - Statistics", description: "Platform-wide metrics and revenue" },
+    {
+      name: "Customer - Parcel Management",
+      description: "Booking and tracking personal parcels",
+    },
+    {
+      name: "Customer - Payment Management",
+      description: "Financial transactions and history",
+    },
+    {
+      name: "Customer - Feedback",
+      description: "Rider reviews and service feedback",
+    },
+    {
+      name: "Rider - Logistics Operations",
+      description: "Pickup and delivery management",
+    },
+    {
+      name: "Admin - Statistics",
+      description: "Platform-wide metrics and revenue",
+    },
     { name: "Admin - Audit Logs", description: "Security and operation logs" },
-    { name: "Admin - Announcements", description: "Bulk communication management" },
-    { name: "Admin - System Settings", description: "Global fee and commission configuration" },
-    { name: "Admin - User Management", description: "Account lifecycle and role assignment" },
-    { name: "Admin - Logistics Management", description: "Global parcel oversight and rider assignment" },
-    { name: "Admin - Rider Management", description: "Rider application and status management" },
-    { name: "Admin - Landing Config", description: "Global landing page settings" },
-    { name: "Admin - Banner Management", description: "Hero section and marketing banners" },
-    { name: "Admin - Service Management", description: "Service offering configurations" },
-    { name: "Admin - Feature Management", description: "Platform feature highlight cards" },
-    { name: "Admin - Partner Management", description: "Partner and client logo management" },
-    { name: "Admin - Testimonial Management", description: "User review and testimonial management" },
-    { name: "Admin - Process Management", description: "Operational step-by-step guides" },
+    {
+      name: "Admin - Announcements",
+      description: "Bulk communication management",
+    },
+    {
+      name: "Admin - System Settings",
+      description: "Global fee and commission configuration",
+    },
+    {
+      name: "Admin - User Management",
+      description: "Account lifecycle and role assignment",
+    },
+    {
+      name: "Admin - Logistics Management",
+      description: "Global parcel oversight and rider assignment",
+    },
+    {
+      name: "Admin - Rider Management",
+      description: "Rider application and status management",
+    },
+    {
+      name: "Admin - Landing Config",
+      description: "Global landing page settings",
+    },
+    {
+      name: "Admin - Banner Management",
+      description: "Hero section and marketing banners",
+    },
+    {
+      name: "Admin - Service Management",
+      description: "Service offering configurations",
+    },
+    {
+      name: "Admin - Feature Management",
+      description: "Platform feature highlight cards",
+    },
+    {
+      name: "Admin - Partner Management",
+      description: "Partner and client logo management",
+    },
+    {
+      name: "Admin - Testimonial Management",
+      description: "User review and testimonial management",
+    },
+    {
+      name: "Admin - Process Management",
+      description: "Operational step-by-step guides",
+    },
   ],
   components: {
     securitySchemes: {
@@ -816,8 +873,18 @@ export const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           content: {
-            "application/json": {
-              schema: { $ref: "#/components/schemas/FeatureCard" },
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["title", "description"],
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  image: { type: "string", format: "binary" },
+                  order: { type: "number" },
+                  isActive: { type: "boolean" },
+                },
+              },
             },
           },
         },
@@ -830,12 +897,26 @@ export const swaggerSpec = {
         tags: ["Admin - Feature Management"],
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
         ],
         requestBody: {
           content: {
-            "application/json": {
-              schema: { type: "object" },
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  image: { type: "string", format: "binary" },
+                  order: { type: "number" },
+                  isActive: { type: "boolean" },
+                },
+              },
             },
           },
         },
@@ -846,7 +927,12 @@ export const swaggerSpec = {
         tags: ["Admin - Feature Management"],
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
         ],
         responses: { 200: { description: "Deleted" } },
       },
@@ -906,7 +992,12 @@ export const swaggerSpec = {
         tags: ["Admin - Testimonial Management"],
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
         ],
         requestBody: {
           content: {
@@ -932,7 +1023,12 @@ export const swaggerSpec = {
         tags: ["Admin - Testimonial Management"],
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
         ],
         responses: { 200: { description: "Deleted" } },
       },
@@ -975,7 +1071,12 @@ export const swaggerSpec = {
         tags: ["Admin - Banner Management"],
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
         ],
         requestBody: {
           content: {
@@ -1002,7 +1103,12 @@ export const swaggerSpec = {
         tags: ["Admin - Banner Management"],
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
         ],
         responses: { 200: { description: "Deleted" } },
       },
@@ -1044,7 +1150,12 @@ export const swaggerSpec = {
         tags: ["Admin - Service Management"],
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
         ],
         requestBody: {
           content: {
@@ -1070,7 +1181,12 @@ export const swaggerSpec = {
         tags: ["Admin - Service Management"],
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
         ],
         responses: { 200: { description: "Deleted" } },
       },
@@ -1148,7 +1264,12 @@ export const swaggerSpec = {
         tags: ["Admin - Partner Management"],
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
         ],
         requestBody: {
           content: {
@@ -1173,7 +1294,12 @@ export const swaggerSpec = {
         tags: ["Admin - Partner Management"],
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
         ],
         responses: { 200: { description: "Deleted" } },
       },
@@ -1212,7 +1338,12 @@ export const swaggerSpec = {
         tags: ["Admin - Process Management"],
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
         ],
         requestBody: {
           content: {
@@ -1237,7 +1368,12 @@ export const swaggerSpec = {
         tags: ["Admin - Process Management"],
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
         ],
         responses: { 200: { description: "Deleted" } },
       },
@@ -1249,7 +1385,7 @@ export const swaggerSpec = {
         requestBody: {
           required: true,
           content: {
-            "application/json": {
+            "application/x-www-form-urlencoded": {
               schema: {
                 type: "object",
                 required: ["email"],

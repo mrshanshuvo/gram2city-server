@@ -126,7 +126,7 @@ router.get("/users/summary", verifyFBToken, verifyAdmin, async (req, res) => {
  *     parameters: [{ name: "email", in: path, required: true, schema: { type: string } }]
  *     requestBody:
  *       content:
- *         application/json:
+ *         application/x-www-form-urlencoded:
  *           schema:
  *             type: object
  *             required: [role]

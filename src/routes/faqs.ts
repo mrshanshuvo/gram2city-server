@@ -200,7 +200,7 @@ router.get("/faqs/admin", verifyFBToken, verifyAdmin, async (_req, res) => {
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         application/x-www-form-urlencoded:
  *           schema:
  *             type: object
  *             required: [question, answer]
@@ -245,9 +245,15 @@ router.post("/faqs", verifyFBToken, verifyAdmin, async (req, res) => {
  *           type: string
  *     requestBody:
  *       content:
- *         application/json:
+ *         application/x-www-form-urlencoded:
  *           schema:
  *             type: object
+ *             properties:
+ *               question: { type: string }
+ *               answer: { type: string }
+ *               order: { type: integer }
+ *               category: { type: string }
+ *               isActive: { type: boolean }
  */
 router.patch("/faqs/:id", verifyFBToken, verifyAdmin, async (req, res) => {
   try {

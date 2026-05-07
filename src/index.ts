@@ -133,29 +133,42 @@ app.use(
     customCss: `
       .swagger-ui .topbar { display: none }
       .swagger-ui .parameters-col_description {
-        position: relative !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+        gap: 15px !important;
+        margin-bottom: 8px !important;
+        width: 100% !important;
       }
+      /* Expand the input to fill space, but allow checkbox to sit next to it */
+      .swagger-ui .parameters-col_description input:not([type="checkbox"]),
+      .swagger-ui .parameters-col_description select {
+        flex: 1 1 auto !important;
+        min-width: 150px !important;
+        max-width: 400px !important;
+        margin-bottom: 0 !important;
+      }
+      /* Align the checkbox container */
       .swagger-ui .parameter__empty_value { 
         display: flex !important; 
         align-items: center !important; 
-        position: absolute !important;
-        top: 6px !important;
-        left: 310px !important;
-        width: 150px !important;
+        white-space: nowrap !important;
         margin: 0 !important;
         padding: 0 !important;
+        flex: 0 0 auto !important;
       }
       .swagger-ui .parameter__empty_value input { 
         margin: 0 5px 0 0 !important; 
-        width: 14px !important; 
-        height: 14px !important;
+        width: 15px !important; 
+        height: 15px !important;
+        cursor: pointer !important;
       }
       .swagger-ui .parameter__empty_value label { 
         margin: 0 !important; 
         font-size: 11px !important; 
-        color: #777 !important;
+        color: #888 !important;
         font-weight: normal !important;
-        white-space: nowrap !important;
       }
       .swagger-ui .opblock-body select {
         min-width: 120px !important;

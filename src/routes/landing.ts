@@ -208,7 +208,7 @@ router.get("/stats", async (_req, res) => {
  *     tags: [Public - Newsletter]
  *     requestBody:
  *       content:
- *         application/json:
+ *         application/x-www-form-urlencoded:
  *           schema:
  *             type: object
  *             required: [email]
