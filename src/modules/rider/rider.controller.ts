@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { ObjectId } from "mongodb";
 import { RiderService } from "./rider.service";
-import { io } from "../../socket";
+import { io } from "../../socket/socket";
 
 export const submitApplication = async (req: Request, res: Response) => {
   try {
@@ -23,7 +23,9 @@ export const submitApplication = async (req: Request, res: Response) => {
 
     res.status(201).send({ success: true, insertedId: result.insertedId });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to submit application" });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to submit application" });
   }
 };
 
@@ -33,7 +35,11 @@ export const getAllRiders = async (req: Request, res: Response) => {
     const pageNum = parseInt(req.query.page as string) || 1;
     const sizeNum = parseInt(req.query.size as string) || 50;
 
-    const { riders, totalItems } = await RiderService.getAllRiders(status as string, pageNum, sizeNum);
+    const { riders, totalItems } = await RiderService.getAllRiders(
+      status as string,
+      pageNum,
+      sizeNum,
+    );
     const totalPages = Math.ceil(totalItems / sizeNum);
 
     res.send({
@@ -59,16 +65,25 @@ export const getAssignedParcels = async (req: Request, res: Response) => {
     const rider = await RiderService.getRiderByEmail(riderEmail);
 
     if (!rider)
-      return res.status(404).send({ success: false, message: "Rider profile not found." });
+      return res
+        .status(404)
+        .send({ success: false, message: "Rider profile not found." });
 
-    const parcels = await RiderService.getAssignedParcels(new ObjectId(String(rider._id)));
+    const parcels = await RiderService.getAssignedParcels(
+      new ObjectId(String(rider._id)),
+    );
     res.send({ success: true, count: parcels.length, data: parcels });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch assigned parcels." });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch assigned parcels." });
   }
 };
 
-export const updateParcelDeliveryStatus = async (req: Request, res: Response) => {
+export const updateParcelDeliveryStatus = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const { id } = req.params;
     const { delivery_status } = req.body;
@@ -76,15 +91,23 @@ export const updateParcelDeliveryStatus = async (req: Request, res: Response) =>
 
     const rider = await RiderService.getRiderByEmail(riderEmail);
     if (!rider)
-      return res.status(404).send({ success: false, message: "Rider not found." });
+      return res
+        .status(404)
+        .send({ success: false, message: "Rider not found." });
 
-    const result = await RiderService.updateParcelDeliveryStatus(id as string, new ObjectId(String(rider._id)), delivery_status);
+    const result = await RiderService.updateParcelDeliveryStatus(
+      id as string,
+      new ObjectId(String(rider._id)),
+      delivery_status,
+    );
     if (!result.success) {
       return res.status(404).send(result);
     }
     res.send(result);
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to update status." });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to update status." });
   }
 };
 
@@ -94,7 +117,9 @@ export const getRiderReviews = async (req: Request, res: Response) => {
     const reviews = await RiderService.getRiderReviews(email);
     res.send({ success: true, count: reviews.length, data: reviews });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch reviews." });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch reviews." });
   }
 };
 
@@ -114,7 +139,9 @@ export const requestPayout = async (req: Request, res: Response) => {
     const { amount } = req.body;
 
     if (!amount || amount < 500) {
-      return res.status(400).send({ success: false, message: "Minimum payout is 500 BDT." });
+      return res
+        .status(400)
+        .send({ success: false, message: "Minimum payout is 500 BDT." });
     }
 
     const result = await RiderService.requestPayout(email, amount);
@@ -123,6 +150,8 @@ export const requestPayout = async (req: Request, res: Response) => {
     }
     res.send(result);
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to request payout" });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to request payout" });
   }
 };

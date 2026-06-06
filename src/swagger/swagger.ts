@@ -838,7 +838,12 @@ export const swaggerSpec = {
         tags: ["Admin - Financials"],
         security: [{ bearerAuth: [] }],
         parameters: [
-          { name: "id", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
         ],
         requestBody: {
           content: {
@@ -1523,7 +1528,12 @@ export const swaggerSpec = {
         tags: ["Public - System Services"],
         security: [],
         parameters: [
-          { name: "trackingId", in: "path", required: true, schema: { type: "string" } },
+          {
+            name: "trackingId",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
         ],
         responses: { 200: { description: "Success" } },
       },

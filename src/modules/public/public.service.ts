@@ -15,7 +15,7 @@ import {
   merchantsCollection,
   usersCollection,
   parcelCollection,
-} from "../../db";
+} from "../../db/db";
 import {
   ProcessStep,
   LandingConfig,

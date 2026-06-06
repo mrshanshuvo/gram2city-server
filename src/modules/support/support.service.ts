@@ -6,7 +6,7 @@ import {
   feedbackCollection,
   notificationsCollection,
   messagesCollection,
-} from "../../db";
+} from "../../db/db";
 import {
   FAQ,
   Review,
@@ -78,7 +78,9 @@ export class SupportService {
   }
 
   static async getFAQCategories(): Promise<string[]> {
-    return faqsCollection.distinct("category", { isActive: true }) as Promise<string[]>;
+    return faqsCollection.distinct("category", { isActive: true }) as Promise<
+      string[]
+    >;
   }
 
   static async getAllFAQsAdmin(): Promise<FAQ[]> {

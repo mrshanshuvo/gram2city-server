@@ -6,16 +6,22 @@ import {
   notificationsCollection,
   reviewsCollection,
   addTrackingUpdate,
-} from "../../db";
+} from "../../db/db";
 import { Rider, Cashout } from "./rider.interface";
 import { Parcel } from "../parcel/parcel.interface";
 
 export class RiderService {
-  static async submitApplication(application: Omit<Rider, "_id">): Promise<InsertOneResult> {
+  static async submitApplication(
+    application: Omit<Rider, "_id">,
+  ): Promise<InsertOneResult> {
     return ridersCollection.insertOne(application);
   }
 
-  static async getAllRiders(status?: string, pageNum: number = 1, sizeNum: number = 50) {
+  static async getAllRiders(
+    status?: string,
+    pageNum: number = 1,
+    sizeNum: number = 50,
+  ) {
     const query: any = {};
     if (status === "available") {
       query.status = "approved";
@@ -34,7 +40,9 @@ export class RiderService {
   }
 
   static async getRiderByEmail(email: string): Promise<Rider | null> {
-    return (await ridersCollection.findOne({ email })) as unknown as Rider | null;
+    return (await ridersCollection.findOne({
+      email,
+    })) as unknown as Rider | null;
   }
 
   static async getAssignedParcels(riderId: ObjectId): Promise<Parcel[]> {
@@ -47,7 +55,11 @@ export class RiderService {
       .toArray()) as unknown as Parcel[];
   }
 
-  static async updateParcelDeliveryStatus(id: string, riderId: ObjectId, delivery_status: string) {
+  static async updateParcelDeliveryStatus(
+    id: string,
+    riderId: ObjectId,
+    delivery_status: string,
+  ) {
     const parcel = await parcelCollection.findOne({
       _id: new ObjectId(String(id)),
       assigned_rider_id: riderId,
@@ -65,17 +77,24 @@ export class RiderService {
       // Update Rider Performance Metrics
       await ridersCollection.updateOne(
         { _id: riderId },
-        { $inc: { total_delivered: 1 } }
+        { $inc: { total_delivered: 1 } },
       );
     }
 
     await parcelCollection.updateOne(
       { _id: new ObjectId(String(id)) },
-      { $set: updateFields }
+      { $set: updateFields },
     );
 
-    const statusMsg = delivery_status === "delivered" ? "delivered successfully" : "now on the way";
-    await addTrackingUpdate(parcel.trackingId, delivery_status, `Parcel has been ${statusMsg}.`);
+    const statusMsg =
+      delivery_status === "delivered"
+        ? "delivered successfully"
+        : "now on the way";
+    await addTrackingUpdate(
+      parcel.trackingId,
+      delivery_status,
+      `Parcel has been ${statusMsg}.`,
+    );
 
     await notificationsCollection.insertOne({
       email: parcel.created_by,
@@ -115,7 +134,8 @@ export class RiderService {
 
     return {
       totalEarnings: deliveryStats[0]?.totalEarnings || 0,
-      totalDelivered: rider?.total_delivered || deliveryStats[0]?.totalDelivered || 0,
+      totalDelivered:
+        rider?.total_delivered || deliveryStats[0]?.totalDelivered || 0,
       averageRating: rider?.average_rating || 0,
     };
   }
@@ -143,7 +163,8 @@ export class RiderService {
       ])
       .toArray();
 
-    const available = (deliveryStats[0]?.total || 0) - (cashedOut[0]?.total || 0);
+    const available =
+      (deliveryStats[0]?.total || 0) - (cashedOut[0]?.total || 0);
 
     if (amount > available) {
       return { success: false, message: "Insufficient balance." };

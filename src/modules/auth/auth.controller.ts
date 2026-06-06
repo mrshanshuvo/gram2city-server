@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { AuthService } from "./auth.service";
-import type { User } from "../../types";
+import type { User } from "../../types/types";
 
 export const register = async (req: Request, res: Response) => {
   const { email, password, name } = req.body;

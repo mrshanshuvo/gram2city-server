@@ -1,7 +1,7 @@
 import app from "./app";
 import { createServer } from "http";
-import { initSocket } from "./socket";
-import { initDB } from "./db";
+import { initSocket } from "./socket/socket";
+import { initDB } from "./db/db";
 import { config } from "./config";
 
 const PORT = config.PORT;

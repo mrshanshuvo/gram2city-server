@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import admin from "firebase-admin";
 import { SupportService } from "./support.service";
 import { FAQ, Review } from "./support.interface";
-import { usersCollection } from "../../db";
+import { usersCollection } from "../../db/db";
 
 // ─── FAQS CONTROLLERS ────────────────────────────────────────────────────────
 
@@ -49,7 +49,10 @@ export const voteFAQHelpful = async (req: Request, res: Response) => {
       }
     }
 
-    const result = await SupportService.voteFAQHelpful(id as string, identifier);
+    const result = await SupportService.voteFAQHelpful(
+      id as string,
+      identifier,
+    );
     if (!result.success) {
       return res.status(400).send(result);
     }
@@ -192,7 +195,9 @@ export const getUnreadNotifications = async (req: Request, res: Response) => {
   if (req.user?.email !== email)
     return res.status(403).send({ success: false, message: "Unauthorized" });
   try {
-    const notifications = await SupportService.getUnreadNotifications(email as string);
+    const notifications = await SupportService.getUnreadNotifications(
+      email as string,
+    );
     res.send(notifications);
   } catch {
     res.status(500).send({ error: "Failed to fetch notifications" });
@@ -214,7 +219,9 @@ export const markAllNotificationsRead = async (req: Request, res: Response) => {
   if ((req.user as any)?.email !== email)
     return res.status(403).send({ success: false, message: "Unauthorized" });
   try {
-    const result = await SupportService.markAllNotificationsRead(email as string);
+    const result = await SupportService.markAllNotificationsRead(
+      email as string,
+    );
     res.send(result);
   } catch {
     res.status(500).send({ error: "Failed to mark all as read" });
@@ -231,16 +238,16 @@ export const getChatHistory = async (req: Request, res: Response) => {
     if (!conversationId.includes(userEmail)) {
       const user = await usersCollection.findOne({ email: userEmail });
       if (user?.role !== "admin" && user?.role !== "superAdmin") {
-        return res
-          .status(403)
-          .send({
-            success: false,
-            message: "Unauthorized to view this conversation",
-          });
+        return res.status(403).send({
+          success: false,
+          message: "Unauthorized to view this conversation",
+        });
       }
     }
 
-    const messages = await SupportService.getChatHistory(conversationId as string);
+    const messages = await SupportService.getChatHistory(
+      conversationId as string,
+    );
     res.send({ success: true, data: messages });
   } catch (error) {
     res

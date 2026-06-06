@@ -7,7 +7,7 @@ import {
   cashoutsCollection,
   notificationsCollection,
   addTrackingUpdate,
-} from "../../db";
+} from "../../db/db";
 import { Payment } from "./finance.interface";
 
 const stripe = new Stripe(config.STRIPE_SECRET_KEY, {
@@ -22,7 +22,11 @@ export class FinanceService {
       .toArray()) as unknown as Payment[];
   }
 
-  static async createPaymentIntent(amount: number, parcelId: string, email: string): Promise<string> {
+  static async createPaymentIntent(
+    amount: number,
+    parcelId: string,
+    email: string,
+  ): Promise<string> {
     const parcel = await parcelCollection.findOne({
       _id: new ObjectId(parcelId),
       created_by: email,
@@ -50,8 +54,13 @@ export class FinanceService {
   }
 
   static async recordPayment(
-    data: { parcelId: string; transactionId: string; amount: number; paymentMethod?: string },
-    email: string
+    data: {
+      parcelId: string;
+      transactionId: string;
+      amount: number;
+      paymentMethod?: string;
+    },
+    email: string,
   ): Promise<{ success: boolean; message: string }> {
     const { parcelId, transactionId, amount, paymentMethod } = data;
 
@@ -61,7 +70,10 @@ export class FinanceService {
     });
 
     if (!parcel) {
-      return { success: false, message: "Unauthorized: Parcel not found or not yours." };
+      return {
+        success: false,
+        message: "Unauthorized: Parcel not found or not yours.",
+      };
     }
 
     if (parcel.payment_status === "paid") {
@@ -70,7 +82,7 @@ export class FinanceService {
 
     await parcelCollection.updateOne(
       { _id: new ObjectId(parcelId) },
-      { $set: { payment_status: "paid" } }
+      { $set: { payment_status: "paid" } },
     );
 
     const paymentRecord = {
@@ -88,7 +100,7 @@ export class FinanceService {
     await addTrackingUpdate(
       parcel.trackingId,
       "paid",
-      `Payment received. Transaction ID: ${transactionId}`
+      `Payment received. Transaction ID: ${transactionId}`,
     );
 
     await notificationsCollection.insertOne({

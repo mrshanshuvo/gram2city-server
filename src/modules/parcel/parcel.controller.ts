@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { ObjectId } from "mongodb";
 import { ParcelService } from "./parcel.service";
 import { Parcel } from "./parcel.interface";
-import { io } from "../../socket";
+import { io } from "../../socket/socket";
 
 export const getMyParcels = async (req: Request, res: Response) => {
   try {
@@ -292,14 +292,15 @@ export const bulkIngestParcels = async (req: Request, res: Response) => {
         }) as Parcel,
     );
 
-    await ParcelService.bulkIngestParcels(newParcels, req.user?.email as string);
+    await ParcelService.bulkIngestParcels(
+      newParcels,
+      req.user?.email as string,
+    );
 
-    res
-      .status(201)
-      .send({
-        success: true,
-        message: `${newParcels.length} parcels uploaded successfully.`,
-      });
+    res.status(201).send({
+      success: true,
+      message: `${newParcels.length} parcels uploaded successfully.`,
+    });
   } catch (error) {
     res
       .status(500)
@@ -329,7 +330,9 @@ export const markDelivered = async (req: Request, res: Response) => {
 export const getTrackingHistory = async (req: Request, res: Response) => {
   try {
     const { trackingId } = req.params;
-    const updates = await ParcelService.getTrackingHistory(trackingId as string);
+    const updates = await ParcelService.getTrackingHistory(
+      trackingId as string,
+    );
 
     if (updates.length === 0) {
       return res.status(404).send({
@@ -385,12 +388,10 @@ export const addManualTrackingUpdate = async (req: Request, res: Response) => {
 
 export const uploadImage = async (req: Request, res: Response) => {
   if (!req.file) {
-    return res
-      .status(400)
-      .send({
-        success: false,
-        message: "No file uploaded or file type not supported",
-      });
+    return res.status(400).send({
+      success: false,
+      message: "No file uploaded or file type not supported",
+    });
   }
 
   try {

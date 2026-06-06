@@ -8,7 +8,7 @@ import {
   settingsCollection,
   auditCollection,
   addTrackingUpdate,
-} from "../../db";
+} from "../../db/db";
 import { Parcel, TrackingUpdate } from "./parcel.interface";
 import { SystemSettings } from "../admin/admin.interface";
 

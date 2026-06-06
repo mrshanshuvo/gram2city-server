@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import admin from "firebase-admin";
-import { usersCollection } from "../db";
+import { usersCollection } from "../db/db";
 
 // ─── Token Verification ───────────────────────────────────────────────────────
 
@@ -64,7 +64,9 @@ export const verifyMerchant = async (
   const email = req.user.email;
   const user = await usersCollection.findOne({ email });
   if (user?.role !== "merchant" && user?.role !== "admin") {
-    res.status(403).send({ success: false, message: "Merchant access required" });
+    res
+      .status(403)
+      .send({ success: false, message: "Merchant access required" });
     return;
   }
   next();

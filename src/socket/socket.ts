@@ -1,8 +1,8 @@
 import { Server } from "socket.io";
 import type { Server as HttpServer } from "http";
-import { messagesCollection } from "./db";
-import { ChatMessage } from "./types";
-import { config } from "./config";
+import { messagesCollection } from "../db/db";
+import { ChatMessage } from "../types/types";
+import { config } from "../config";
 
 export let io: Server;
 
@@ -10,8 +10,8 @@ export const initSocket = (server: HttpServer) => {
   io = new Server(server, {
     cors: {
       origin: config.CLIENT_URL,
-      methods: ["GET", "POST"]
-    }
+      methods: ["GET", "POST"],
+    },
   });
 
   io.on("connection", (socket) => {
@@ -30,7 +30,7 @@ export const initSocket = (server: HttpServer) => {
       io.to(trackingId).emit("location_received", {
         trackingId,
         location,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     });
 

@@ -7,7 +7,7 @@ import compression from "compression";
 import rateLimit from "express-rate-limit";
 import admin from "firebase-admin";
 import swaggerUi from "swagger-ui-express";
-import { swaggerSpec } from "./swagger";
+import { swaggerSpec } from "./swagger/swagger";
 
 import { config } from "./config";
 

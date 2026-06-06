@@ -21,9 +21,9 @@ import type {
   Avatar,
   Merchant,
   Address,
-} from "./types";
+} from "../types/types";
 
-import { config } from "./config";
+import { config } from "../config";
 
 // ─── MongoDB Client ───────────────────────────────────────────────────────────
 
@@ -82,20 +82,22 @@ export const initDB = async () => {
 
     const deduplicateCollection = async (collection: any, key: string) => {
       try {
-        const duplicates = await collection.aggregate([
-          {
-            $group: {
-              _id: `$${key}`,
-              ids: { $push: "$_id" },
-              count: { $sum: 1 },
+        const duplicates = await collection
+          .aggregate([
+            {
+              $group: {
+                _id: `$${key}`,
+                ids: { $push: "$_id" },
+                count: { $sum: 1 },
+              },
             },
-          },
-          {
-            $match: {
-              count: { $gt: 1 },
+            {
+              $match: {
+                count: { $gt: 1 },
+              },
             },
-          },
-        ]).toArray();
+          ])
+          .toArray();
 
         for (const dup of duplicates) {
           if (dup._id) {

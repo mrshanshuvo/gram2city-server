@@ -10,7 +10,7 @@ import {
   parcelCollection,
   avatarsCollection,
   addressesCollection,
-} from "../../db";
+} from "../../db/db";
 import { User, Avatar, UserStats, Address } from "./user.interface";
 
 export class UserService {
@@ -76,7 +76,10 @@ export class UserService {
     email: string,
     role: string,
   ): Promise<UpdateResult> {
-    return usersCollection.updateOne({ email }, { $set: { role: role as any } });
+    return usersCollection.updateOne(
+      { email },
+      { $set: { role: role as any } },
+    );
   }
 
   static async updateUserProfile(

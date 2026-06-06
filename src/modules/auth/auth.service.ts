@@ -1,8 +1,8 @@
 import axios from "axios";
 import admin from "firebase-admin";
 import FormData from "form-data";
-import { usersCollection } from "../../db";
-import type { User } from "../../types";
+import { usersCollection } from "../../db/db";
+import type { User } from "../../types/types";
 import { FirebaseAuthResponse } from "./auth.interface";
 
 import { config } from "../../config";

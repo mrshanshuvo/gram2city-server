@@ -10,7 +10,7 @@ import {
   cashoutsCollection,
   notificationsCollection,
   addTrackingUpdate,
-} from "../../db";
+} from "../../db/db";
 import { AuditLog, SystemSettings } from "./admin.interface";
 
 export class AdminService {
@@ -103,9 +103,7 @@ export class AdminService {
 
     const dailyBookings = last7Days.map((date) => ({
       _id: date,
-      count:
-        bookingsRaw.find((b: any) => b._id === date)
-          ?.count || 0,
+      count: bookingsRaw.find((b: any) => b._id === date)?.count || 0,
     }));
 
     // 5. Parcel Type Distribution
@@ -304,7 +302,10 @@ export class AdminService {
     status: string,
     adminEmail: string,
   ): Promise<void> {
-    await usersCollection.updateOne({ email }, { $set: { status: status as any } });
+    await usersCollection.updateOne(
+      { email },
+      { $set: { status: status as any } },
+    );
 
     const log: AuditLog = {
       admin_email: adminEmail,
