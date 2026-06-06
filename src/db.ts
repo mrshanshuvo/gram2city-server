@@ -78,10 +78,43 @@ export const initDB = async () => {
       }
     };
 
+    const deduplicateCollection = async (collection: any, key: string) => {
+      try {
+        const duplicates = await collection.aggregate([
+          {
+            $group: {
+              _id: `$${key}`,
+              ids: { $push: "$_id" },
+              count: { $sum: 1 },
+            },
+          },
+          {
+            $match: {
+              count: { $gt: 1 },
+            },
+          },
+        ]).toArray();
+
+        for (const dup of duplicates) {
+          if (dup._id) {
+            const idsToDelete = dup.ids.slice(1);
+            await collection.deleteMany({ _id: { $in: idsToDelete } });
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to deduplicate collection:`, err);
+      }
+    };
+
     // Safely drop old non-unique indexes before replacing them with unique indexes
     await dropIndexIfExists(usersCollection, "email_1");
     await dropIndexIfExists(merchantsCollection, "email_1");
     await dropIndexIfExists(ridersCollection, "email_1");
+
+    // Deduplicate collections to prevent DuplicateKey index build errors
+    await deduplicateCollection(usersCollection, "email");
+    await deduplicateCollection(merchantsCollection, "email");
+    await deduplicateCollection(ridersCollection, "email");
 
     // 1. usersCollection
     await usersCollection.createIndex({ email: 1 }, { unique: true });
