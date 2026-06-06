@@ -8,3 +8,5 @@ temp_interactive_push.bat
 .gitignore
 walkthrough.md
 branch_structure.json
+logs.txt
+*.log

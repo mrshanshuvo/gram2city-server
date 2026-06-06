@@ -61,7 +61,15 @@ app.use(limiter);
 // ─── Routes ───────────────────────────────────────────────────────────────────
 import apiRouter from "./modules/app.routes";
 
-app.get("/", (_req, res) => res.send("Parcel website server is running"));
+app.get("/", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Gram2City Logistics Enterprise API is running smoothly",
+    version: "2.3.0",
+    status: "healthy",
+    documentation: "/swagger",
+  });
+});
 app.use("/", apiRouter);
 
 // ─── Centralized Error Handler ───────────────────────────────────────────────
