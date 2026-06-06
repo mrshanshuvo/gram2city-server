@@ -4,7 +4,10 @@ import { z } from "zod";
 const envSchema = z.object({
   MONGODB_URI: z
     .string()
-    .url("MONGODB_URI must be a valid MongoDB connection string"),
+    .refine(
+      (val) => val.startsWith("mongodb://") || val.startsWith("mongodb+srv://"),
+      { message: "MONGODB_URI must be a valid MongoDB connection string" }
+    ),
   DB_NAME: z.string().min(1, "DB_NAME is required"),
   FB_SERVICE_KEY: z.string().min(1, "FB_SERVICE_KEY is required"),
   STRIPE_SECRET_KEY: z.string().min(1, "STRIPE_SECRET_KEY is required"),
