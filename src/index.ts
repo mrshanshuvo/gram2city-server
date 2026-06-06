@@ -71,47 +71,10 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
-import usersRouter from "./routes/users";
-import parcelsRouter from "./routes/parcels";
-import ridersRouter from "./routes/riders";
-import paymentsRouter from "./routes/payments";
-import trackingsRouter from "./routes/trackings";
-import reviewsRouter from "./routes/reviews";
-import notificationsRouter from "./routes/notifications";
-import cashoutsRouter from "./routes/cashouts";
-import uploadsRouter from "./routes/uploads";
-import authRouter from "./routes/auth";
-import adminRouter from "./routes/admin";
-import messagesRouter from "./routes/messages";
-import feedbackRouter from "./routes/feedback";
-import faqsRouter from "./routes/faqs";
-import landingRouter from "./routes/landing";
-import avatarsRouter from "./routes/avatars";
-import merchantsRouter from "./routes/merchants";
-import publicRouter from "./routes/public";
-
-import addressesRouter from "./routes/addresses";
+import apiRouter from "./modules/app.routes";
 
 app.get("/", (_req, res) => res.send("Parcel website server is running"));
-app.use("/admin", adminRouter);
-app.use("/addresses", addressesRouter);
-app.use("/", usersRouter);
-app.use("/", parcelsRouter);
-app.use("/", ridersRouter);
-app.use("/", paymentsRouter);
-app.use("/", trackingsRouter);
-app.use("/", reviewsRouter);
-app.use("/", notificationsRouter);
-app.use("/", cashoutsRouter);
-app.use("/", uploadsRouter);
-app.use("/", authRouter);
-app.use("/", messagesRouter);
-app.use("/", feedbackRouter);
-app.use("/", faqsRouter);
-app.use("/landing", landingRouter);
-app.use("/avatars", avatarsRouter);
-app.use("/merchants", merchantsRouter);
-app.use("/public", publicRouter);
+app.use("/", apiRouter);
 
 // ─── Centralized Error Handler ───────────────────────────────────────────────
 app.use(

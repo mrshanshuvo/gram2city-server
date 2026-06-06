@@ -24,7 +24,7 @@ export interface Parcel {
   parcelName: string;
   parcelType?: string;
   created_by: string; // User Email
-  weight: number; 
+  weight: number;
   parcelWeight?: number; // Alias for weight used in frontend
   creation_date?: string;
   createdAt?: string;
@@ -56,7 +56,9 @@ export interface Parcel {
     | "on_the_way"
     | "delivered"
     | "cancelled"
-    | "returned";
+    | "returned"
+    | "not_collected"
+    | "picked_up";
 
   assigned_rider_id?: ObjectId;
   assigned_rider_name?: string;
@@ -124,13 +126,14 @@ export interface Payment {
 
 export interface Cashout {
   _id?: ObjectId;
-  parcel_id: ObjectId;
+  parcel_id?: ObjectId;
   rider_email: string;
   rider_name?: string;
-  earning: number;
-  cashed_out_at: string;
-  trackingId: string;
-  parcel_name?: string;
+  amount: number;
+  status: "pending" | "approved" | "rejected";
+  requested_at: string;
+  processed_at?: string;
+  processed_by?: string;
 }
 
 export interface TrackingUpdate {
