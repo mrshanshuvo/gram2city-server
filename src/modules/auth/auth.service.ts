@@ -5,8 +5,10 @@ import { usersCollection } from "../../db";
 import type { User } from "../../types";
 import { FirebaseAuthResponse } from "./auth.interface";
 
-const API_KEY = process.env.FB_WEB_API_KEY;
-const IMGBB_KEY = process.env.IMGBB_API_KEY;
+import { config } from "../../config";
+
+const API_KEY = config.FB_WEB_API_KEY;
+const IMGBB_KEY = config.IMGBB_API_KEY;
 
 export class AuthService {
   static async uploadProfileImage(fileBuffer: Buffer): Promise<string> {

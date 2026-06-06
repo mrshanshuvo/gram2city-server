@@ -1,5 +1,6 @@
 import axios from "axios";
 import FormData from "form-data";
+import { config } from "../config";
 
 export const uploadToImgBB = async (file: Express.Multer.File): Promise<string> => {
   const formData = new FormData();
@@ -9,7 +10,7 @@ export const uploadToImgBB = async (file: Express.Multer.File): Promise<string> 
   });
 
   const response = await axios.post(
-    `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
+    `https://api.imgbb.com/1/upload?key=${config.IMGBB_API_KEY}`,
     formData,
     {
       headers: formData.getHeaders(),

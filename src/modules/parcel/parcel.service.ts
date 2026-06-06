@@ -1,6 +1,7 @@
 import { ObjectId, UpdateResult, InsertOneResult, DeleteResult } from "mongodb";
 import axios from "axios";
 import FormData from "form-data";
+import { config } from "../../config";
 import {
   parcelCollection,
   trackingCollection,
@@ -230,7 +231,7 @@ export class ParcelService {
     });
 
     const response = await axios.post(
-      `https://api.imgbb.com/1/upload?key=${process.env.IMGBB_API_KEY}`,
+      `https://api.imgbb.com/1/upload?key=${config.IMGBB_API_KEY}`,
       formData,
       {
         headers: formData.getHeaders(),

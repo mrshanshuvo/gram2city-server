@@ -2,13 +2,14 @@ import { Server } from "socket.io";
 import type { Server as HttpServer } from "http";
 import { messagesCollection } from "./db";
 import { ChatMessage } from "./types";
+import { config } from "./config";
 
 export let io: Server;
 
 export const initSocket = (server: HttpServer) => {
   io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_URL || "http://localhost:5173",
+      origin: config.CLIENT_URL,
       methods: ["GET", "POST"]
     }
   });

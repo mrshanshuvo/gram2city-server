@@ -9,24 +9,11 @@ import admin from "firebase-admin";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./swagger";
 
-// ─── Env Validation ───────────────────────────────────────────────────────────
-const REQUIRED_ENV = [
-  "MONGODB_URI",
-  "DB_NAME",
-  "FB_SERVICE_KEY",
-  "STRIPE_SECRET_KEY",
-  "STRIPE_CURRENCY",
-  "CLIENT_URL",
-  "IMGBB_API_KEY",
-  "FB_WEB_API_KEY",
-] as const;
-for (const key of REQUIRED_ENV) {
-  if (!process.env[key]) throw new Error(`Missing required env var: ${key}`);
-}
+import { config } from "./config";
 
 // ─── Firebase Admin ───────────────────────────────────────────────────────────
 const serviceAccount = JSON.parse(
-  Buffer.from(process.env.FB_SERVICE_KEY as string, "base64").toString("utf8"),
+  Buffer.from(config.FB_SERVICE_KEY, "base64").toString("utf8"),
 );
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 
@@ -54,7 +41,7 @@ app.use(
 );
 app.use(morgan("dev")); // Request logging
 app.use(compression()); // Gzip compression
-const clientOrigins = process.env.CLIENT_URL?.split(",") || [];
+const clientOrigins = config.CLIENT_URL.split(",");
 app.use(cors({ origin: clientOrigins }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -88,7 +75,7 @@ app.use(
     res.status(500).send({
       success: false,
       message: "A server error occurred. Please try again later.",
-      error: process.env.NODE_ENV === "development" ? err.message : undefined,
+      error: config.NODE_ENV === "development" ? err.message : undefined,
     });
   },
 );

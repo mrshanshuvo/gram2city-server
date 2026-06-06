@@ -2,8 +2,9 @@ import app from "./app";
 import { createServer } from "http";
 import { initSocket } from "./socket";
 import { initDB } from "./db";
+import { config } from "./config";
 
-const PORT = process.env.PORT || 5000;
+const PORT = config.PORT;
 const httpServer = createServer(app);
 
 // Initialize Real-time Engine

@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import Stripe from "stripe";
+import { config } from "../../config";
 import {
   parcelCollection,
   paymentCollection,
@@ -9,7 +10,7 @@ import {
 } from "../../db";
 import { Payment } from "./finance.interface";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+const stripe = new Stripe(config.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16" as any, // specify standard api version if needed or let it pick default
 });
 
@@ -33,7 +34,7 @@ export class FinanceService {
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(Number(amount) * 100),
-      currency: process.env.STRIPE_CURRENCY || "usd",
+      currency: config.STRIPE_CURRENCY,
       payment_method_types: ["card"],
       metadata: {
         parcelId: parcelId.toString(),

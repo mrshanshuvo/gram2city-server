@@ -23,9 +23,11 @@ import type {
   Address,
 } from "./types";
 
+import { config } from "./config";
+
 // ─── MongoDB Client ───────────────────────────────────────────────────────────
 
-const client = new MongoClient(process.env.MONGODB_URI as string, {
+const client = new MongoClient(config.MONGODB_URI, {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
@@ -35,7 +37,7 @@ const client = new MongoClient(process.env.MONGODB_URI as string, {
 
 // ─── Typed Collections ────────────────────────────────────────────────────────
 
-const db = client.db(process.env.DB_NAME as string);
+const db = client.db(config.DB_NAME);
 
 export const usersCollection = db.collection<User>("users");
 export const parcelCollection = db.collection<Parcel>("parcels");
