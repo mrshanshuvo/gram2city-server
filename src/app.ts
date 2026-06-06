@@ -2,12 +2,13 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import morgan from "morgan";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
 import admin from "firebase-admin";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./swagger/swagger";
+import logger from "./middleware/logger";
+import { globalErrorHandler } from "./middleware/globalErrorHandler";
 
 import { config } from "./config";
 
@@ -39,7 +40,7 @@ app.use(
     },
   }),
 );
-app.use(morgan("dev")); // Request logging
+app.use(logger); // Request logging
 app.use(compression()); // Gzip compression
 const clientOrigins = config.CLIENT_URL.split(",");
 app.use(cors({ origin: clientOrigins }));
@@ -64,21 +65,7 @@ app.get("/", (_req, res) => res.send("Parcel website server is running"));
 app.use("/", apiRouter);
 
 // ─── Centralized Error Handler ───────────────────────────────────────────────
-app.use(
-  (
-    err: any,
-    _req: express.Request,
-    res: express.Response,
-    _next: express.NextFunction,
-  ) => {
-    console.error("Global Error:", err.stack);
-    res.status(500).send({
-      success: false,
-      message: "A server error occurred. Please try again later.",
-      error: config.NODE_ENV === "development" ? err.message : undefined,
-    });
-  },
-);
+app.use(globalErrorHandler);
 
 // ─── Swagger Documentation ────────────────────────────────────────────────────
 const CSS_URL =
