@@ -2,7 +2,9 @@ import axios from "axios";
 import FormData from "form-data";
 import { config } from "../config";
 
-export const uploadToImgBB = async (file: Express.Multer.File): Promise<string> => {
+export const uploadToImgBB = async (
+  file: Express.Multer.File,
+): Promise<string> => {
   const formData = new FormData();
   formData.append("image", file.buffer, {
     filename: file.originalname,

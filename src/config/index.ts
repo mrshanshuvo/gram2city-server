@@ -6,7 +6,7 @@ const envSchema = z.object({
     .string()
     .refine(
       (val) => val.startsWith("mongodb://") || val.startsWith("mongodb+srv://"),
-      { message: "MONGODB_URI must be a valid MongoDB connection string" }
+      { message: "MONGODB_URI must be a valid MongoDB connection string" },
     ),
   DB_NAME: z.string().min(1, "DB_NAME is required"),
   FB_SERVICE_KEY: z.string().min(1, "FB_SERVICE_KEY is required"),
