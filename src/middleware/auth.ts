@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import admin from "firebase-admin";
-import { usersCollection } from "../db/db";
+import {
+  usersCollection,
+  merchantsCollection,
+  ridersCollection,
+} from "../db/db";
 
 // ─── Token Verification ───────────────────────────────────────────────────────
 
@@ -63,13 +67,19 @@ export const verifyMerchant = async (
 ): Promise<void> => {
   const email = req.user.email;
   const user = await usersCollection.findOne({ email });
-  if (user?.role !== "merchant" && user?.role !== "admin") {
-    res
-      .status(403)
-      .send({ success: false, message: "Merchant access required" });
-    return;
+
+  if (user?.role === "merchant") {
+    return next();
   }
-  next();
+
+  if (user?.role === "admin") {
+    const merchantProfile = await merchantsCollection.findOne({ email });
+    if (merchantProfile) {
+      return next();
+    }
+  }
+
+  res.status(403).send({ success: false, message: "Merchant access required" });
 };
 
 export const verifyRider = async (
@@ -79,9 +89,17 @@ export const verifyRider = async (
 ): Promise<void> => {
   const email = req.user.email;
   const user = await usersCollection.findOne({ email });
-  if (user?.role !== "rider" && user?.role !== "admin") {
-    res.status(403).send({ success: false, message: "Rider access required" });
-    return;
+
+  if (user?.role === "rider") {
+    return next();
   }
-  next();
+
+  if (user?.role === "admin") {
+    const riderProfile = await ridersCollection.findOne({ email });
+    if (riderProfile) {
+      return next();
+    }
+  }
+
+  res.status(403).send({ success: false, message: "Rider access required" });
 };
