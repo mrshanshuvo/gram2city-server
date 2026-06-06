@@ -56,8 +56,10 @@ export const bannersCollection = db.collection<BannerSlide>("banners");
 export const servicesCollection = db.collection<ServiceItem>("services");
 export const featuresCollection = db.collection<FeatureItem>("features");
 export const partnersCollection = db.collection<PartnerLogo>("partners");
-export const processStepsCollection = db.collection<ProcessStep>("process_steps");
-export const landingConfigCollection = db.collection<LandingConfig>("landing_config");
+export const processStepsCollection =
+  db.collection<ProcessStep>("process_steps");
+export const landingConfigCollection =
+  db.collection<LandingConfig>("landing_config");
 export const avatarsCollection = db.collection<Avatar>("avatars");
 export const merchantsCollection = db.collection<Merchant>("merchants");
 export const warehousesCollection = db.collection("warehouses");
@@ -68,25 +70,81 @@ export const addressesCollection = db.collection<Address>("addresses");
 // ─── DB Initialization (Indexing) ─────────────────────────────────────────────
 export const initDB = async () => {
   try {
-    // Unique tracking IDs
+    const dropIndexIfExists = async (collection: any, indexName: string) => {
+      try {
+        await collection.dropIndex(indexName);
+      } catch (err) {
+        // Ignore if index doesn't exist or cannot be dropped
+      }
+    };
+
+    // Safely drop old non-unique indexes before replacing them with unique indexes
+    await dropIndexIfExists(usersCollection, "email_1");
+    await dropIndexIfExists(merchantsCollection, "email_1");
+    await dropIndexIfExists(ridersCollection, "email_1");
+
+    // 1. usersCollection
+    await usersCollection.createIndex({ email: 1 }, { unique: true });
+
+    // 2. merchantsCollection
+    await merchantsCollection.createIndex({ email: 1 }, { unique: true });
+    await merchantsCollection.createIndex({ userId: 1 });
+
+    // 3. ridersCollection
+    await ridersCollection.createIndex({ email: 1 }, { unique: true });
+
+    // 4. parcelCollection
     await parcelCollection.createIndex({ trackingId: 1 }, { unique: true });
-    
-    // Fast user lookups
-    await usersCollection.createIndex({ email: 1 });
-    
-    // Merchant & Rider lookups
-    await merchantsCollection.createIndex({ email: 1 });
-    await ridersCollection.createIndex({ email: 1 });
-    
-    // High-density parcel queries
-    await parcelCollection.createIndex({ created_by: 1 });
-    await parcelCollection.createIndex({ delivery_status: 1 });
-    await parcelCollection.createIndex({ assigned_rider_email: 1 });
-    
-    // Performance: Recent activity feeds
-    await auditCollection.createIndex({ timestamp: -1 });
+    await parcelCollection.createIndex({
+      assigned_rider_email: 1,
+      delivery_status: 1,
+    });
+    await parcelCollection.createIndex({
+      assigned_rider_id: 1,
+      delivery_status: 1,
+    });
+    await parcelCollection.createIndex({ created_by: 1, payment_status: 1 });
+    await parcelCollection.createIndex({
+      delivery_status: 1,
+      creation_date: -1,
+    });
+
+    // 5. trackingCollection
     await trackingCollection.createIndex({ trackingId: 1, time: -1 });
-    
+
+    // 6. auditCollection
+    await auditCollection.createIndex({ timestamp: -1 });
+
+    // 7. messagesCollection
+    await messagesCollection.createIndex({ conversationId: 1, timestamp: 1 });
+    await messagesCollection.createIndex({ senderEmail: 1, timestamp: -1 });
+    await messagesCollection.createIndex({ receiverEmail: 1, timestamp: -1 });
+
+    // 8. notificationsCollection
+    await notificationsCollection.createIndex({
+      email: 1,
+      isRead: 1,
+      time: -1,
+    });
+
+    // 9. reviewsCollection
+    await reviewsCollection.createIndex({ rider_email: 1, date: -1 });
+
+    // 10. addressesCollection
+    await addressesCollection.createIndex({ userEmail: 1, isDefault: 1 });
+
+    // 11. cashoutsCollection
+    await cashoutsCollection.createIndex({ rider_email: 1, requested_at: -1 });
+
+    // 12. faqsCollection
+    await faqsCollection.createIndex({ category: 1, order: 1 });
+
+    // 13. faqVotesCollection
+    await faqVotesCollection.createIndex(
+      { faqId: 1, identifier: 1 },
+      { unique: true },
+    );
+
     console.log("✅ Database indexes verified.");
   } catch (error) {
     console.error("❌ Database indexing failed:", error);
