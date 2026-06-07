@@ -34,6 +34,37 @@ export const initSocket = (server: HttpServer) => {
       });
     });
 
+    // Support Chat: Join conversation room
+    socket.on("join_chat", (conversationId: string) => {
+      socket.join(conversationId);
+      console.log(`💬 Socket ${socket.id} joined chat room: ${conversationId}`);
+    });
+
+    // Support Chat: Handle messages
+    socket.on("send_message", async (data) => {
+      try {
+        const chatMessage: ChatMessage = {
+          senderEmail: data.senderEmail,
+          senderName: data.senderName,
+          senderRole: data.senderRole,
+          receiverEmail: data.receiverEmail,
+          message: data.message,
+          imageUrl: data.imageUrl || undefined,
+          timestamp: new Date().toISOString(),
+          isRead: false,
+          conversationId: data.conversationId,
+        };
+
+        // Save to DB
+        await messagesCollection.insertOne(chatMessage);
+
+        // Broadcast to everyone in the chat room
+        io.to(data.conversationId).emit("receive_message", chatMessage);
+      } catch (error) {
+        console.error("Failed to process socket message:", error);
+      }
+    });
+
     socket.on("disconnect", () => {
       console.log(`❌ Disconnected: ${socket.id}`);
     });
