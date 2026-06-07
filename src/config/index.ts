@@ -13,7 +13,9 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().min(1, "STRIPE_SECRET_KEY is required"),
   STRIPE_CURRENCY: z.string().default("usd"),
   CLIENT_URL: z.string().default("http://localhost:5173"),
-  IMGBB_API_KEY: z.string().min(1, "IMGBB_API_KEY is required"),
+  CLOUDINARY_CLOUD_NAME: z.string().min(1, "CLOUDINARY_CLOUD_NAME is required"),
+  CLOUDINARY_API_KEY: z.string().min(1, "CLOUDINARY_API_KEY is required"),
+  CLOUDINARY_API_SECRET: z.string().min(1, "CLOUDINARY_API_SECRET is required"),
   FB_WEB_API_KEY: z.string().min(1, "FB_WEB_API_KEY is required"),
   PORT: z.coerce.number().default(5000),
   NODE_ENV: z

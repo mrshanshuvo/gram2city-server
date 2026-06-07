@@ -1,27 +1,43 @@
-import axios from "axios";
-import FormData from "form-data";
+import { v2 as cloudinary } from "cloudinary";
 import { config } from "../config";
 
-export const uploadToImgBB = async (
+// Configure Cloudinary SDK once at module load
+cloudinary.config({
+  cloud_name: config.CLOUDINARY_CLOUD_NAME,
+  api_key: config.CLOUDINARY_API_KEY,
+  api_secret: config.CLOUDINARY_API_SECRET,
+});
+
+/**
+ * Uploads a file buffer to Cloudinary and returns the secure HTTPS URL.
+ * Drop-in replacement for uploadToImgBB — same signature.
+ *
+ * @param file  - Multer file object (memoryStorage)
+ * @param folder - Optional Cloudinary folder (e.g. "gram2city/banners")
+ */
+export const uploadToCloudinary = (
   file: Express.Multer.File,
+  folder = "gram2city",
 ): Promise<string> => {
-  const formData = new FormData();
-  formData.append("image", file.buffer, {
-    filename: file.originalname,
-    contentType: file.mimetype,
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: "image",
+        // Auto-select best format (WebP/AVIF where browser supports it)
+        fetch_format: "auto",
+        quality: "auto",
+      },
+      (error, result) => {
+        if (error || !result) {
+          return reject(
+            error ?? new Error("Cloudinary upload returned no result"),
+          );
+        }
+        resolve(result.secure_url);
+      },
+    );
+
+    uploadStream.end(file.buffer);
   });
-
-  const response = await axios.post(
-    `https://api.imgbb.com/1/upload?key=${config.IMGBB_API_KEY}`,
-    formData,
-    {
-      headers: formData.getHeaders(),
-    },
-  );
-
-  if (response.data && response.data.data && response.data.data.url) {
-    return response.data.data.url;
-  }
-
-  throw new Error("Failed to upload image to ImgBB");
 };

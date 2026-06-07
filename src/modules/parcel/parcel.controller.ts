@@ -3,7 +3,7 @@ import { ObjectId } from "mongodb";
 import { ParcelService } from "./parcel.service";
 import { Parcel } from "./parcel.interface";
 import { io } from "../../socket/socket";
-import { uploadToImgBB } from "../../utils/upload";
+import { uploadToCloudinary } from "../../utils/upload";
 
 export const getMyParcels = async (req: Request, res: Response) => {
   try {
@@ -396,11 +396,11 @@ export const uploadImage = async (req: Request, res: Response) => {
   }
 
   try {
-    const url = await uploadToImgBB(req.file);
+    const url = await uploadToCloudinary(req.file, "gram2city/parcels");
     res.send({ success: true, url });
   } catch (error) {
     res
       .status(500)
-      .send({ success: false, message: "Failed to upload image to ImgBB" });
+      .send({ success: false, message: "Failed to upload image" });
   }
 };

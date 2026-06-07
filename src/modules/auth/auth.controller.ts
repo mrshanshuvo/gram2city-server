@@ -10,9 +10,9 @@ export const register = async (req: Request, res: Response) => {
     // 1. Image Upload Phase
     if (req.file) {
       try {
-        photoURL = await AuthService.uploadProfileImage(req.file.buffer);
+        photoURL = await AuthService.uploadProfileImage(req.file);
       } catch (imgError) {
-        console.error("ImgBB Upload Error:", imgError);
+        console.error("Profile image upload error:", imgError);
         return res.status(400).send({
           success: false,
           message:

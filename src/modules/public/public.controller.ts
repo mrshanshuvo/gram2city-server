@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { PublicService } from "./public.service";
-import { uploadToImgBB } from "../../utils/upload";
+import { uploadToCloudinary } from "../../utils/upload";
 
 export const getPublicSettings = async (req: Request, res: Response) => {
   try {
@@ -220,7 +220,8 @@ export const createLandingItem = async (req: Request, res: Response) => {
     const item = req.body;
 
     if (imageField && req.file) {
-      item[imageField] = await uploadToImgBB(req.file);
+      const folder = `gram2city/${moduleName}`;
+      item[imageField] = await uploadToCloudinary(req.file, folder);
     }
 
     const result = await PublicService.createLandingItem(moduleName, item);
@@ -238,7 +239,8 @@ export const updateLandingItem = async (req: Request, res: Response) => {
     delete update._id;
 
     if (imageField && req.file) {
-      update[imageField] = await uploadToImgBB(req.file);
+      const folder = `gram2city/${moduleName}`;
+      update[imageField] = await uploadToCloudinary(req.file, folder);
     }
 
     const result = await PublicService.updateLandingItem(moduleName, id as string, update);

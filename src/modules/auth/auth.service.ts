@@ -1,25 +1,16 @@
 import axios from "axios";
 import admin from "firebase-admin";
-import FormData from "form-data";
 import { usersCollection } from "../../db/db";
 import type { User } from "../../types/types";
 import { FirebaseAuthResponse } from "./auth.interface";
-
+import { uploadToCloudinary } from "../../utils/upload";
 import { config } from "../../config";
 
 const API_KEY = config.FB_WEB_API_KEY;
-const IMGBB_KEY = config.IMGBB_API_KEY;
 
 export class AuthService {
-  static async uploadProfileImage(fileBuffer: Buffer): Promise<string> {
-    const formData = new FormData();
-    formData.append("image", fileBuffer.toString("base64"));
-    const imgRes = await axios.post(
-      `https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`,
-      formData,
-      { headers: formData.getHeaders() },
-    );
-    return imgRes.data.data.display_url;
+  static async uploadProfileImage(file: Express.Multer.File): Promise<string> {
+    return uploadToCloudinary(file, "gram2city/avatars");
   }
 
   static async registerFirebaseUser(

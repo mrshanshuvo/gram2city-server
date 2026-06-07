@@ -3,7 +3,7 @@ import admin from "firebase-admin";
 import { SupportService } from "./support.service";
 import { FAQ, Review } from "./support.interface";
 import { usersCollection } from "../../db/db";
-import { uploadToImgBB } from "../../utils/upload";
+import { uploadToCloudinary } from "../../utils/upload";
 
 // ─── FAQS CONTROLLERS ────────────────────────────────────────────────────────
 
@@ -280,7 +280,7 @@ export const uploadChatImage = async (req: Request, res: Response) => {
   }
 
   try {
-    const url = await uploadToImgBB(req.file);
+    const url = await uploadToCloudinary(req.file, "gram2city/chat");
     res.send({ success: true, url });
   } catch (error) {
     res.status(500).send({ success: false, message: "Failed to upload image" });
