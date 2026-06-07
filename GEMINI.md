@@ -7,7 +7,7 @@ Handles auth, parcel management, rider assignment, payments, real-time chat, and
 
 **Root path**: `gram2city-server/`  
 **Dev server**: `npm run dev` (ts-node-dev, `--respawn --transpile-only`)  
-**Package name**: `zap-shift-server` (rebrand to Gram2City in progress)  
+**Package name**: `gram2city-server`  
 **Deployed to**: Vercel (`vercel.json` present)  
 **API version**: `2.3.0`  
 **Swagger docs**: `GET /swagger`
@@ -128,4 +128,4 @@ All routes mounted under `/` via `app.routes.ts`:
 - Firebase service account loaded from `FB_SERVICE_KEY` (base64 env var), not from a file at runtime
 - Rate limiter is set to 1000 req / 15 min (intentionally high to support dashboard polling + dev)
 - `logs.txt` in root is generated at runtime — not committed to git
-- The project was previously named **ZapShift**; package name is still `zap-shift-server`
+- The project was previously named **ZapShift**; package name is now `gram2city-server`
