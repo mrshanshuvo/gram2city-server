@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import { ParcelService } from "./parcel.service";
 import { Parcel } from "./parcel.interface";
 import { io } from "../../socket/socket";
+import { uploadToImgBB } from "../../utils/upload";
 
 export const getMyParcels = async (req: Request, res: Response) => {
   try {
@@ -395,11 +396,7 @@ export const uploadImage = async (req: Request, res: Response) => {
   }
 
   try {
-    const url = await ParcelService.uploadImage(
-      req.file.buffer,
-      req.file.originalname,
-      req.file.mimetype,
-    );
+    const url = await uploadToImgBB(req.file);
     res.send({ success: true, url });
   } catch (error) {
     res

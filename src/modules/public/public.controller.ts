@@ -205,10 +205,11 @@ export const getMerchantStats = async (req: Request, res: Response) => {
 
 // Generic Landing Item Operations
 const getModuleNameAndField = (path: string) => {
-  // path could be e.g. "/banners" or "/partners/60d..."
+  // path could be e.g. "/landing/banners" or "/landing/partners/60d..."
   const cleanPath = path.replace(/^\//, "");
   const parts = cleanPath.split("/");
-  const moduleName = parts[0]; // "banners", "partners", etc.
+  // If the route is prefixed with "landing", the module name is the second part
+  const moduleName = parts[0] === "landing" ? parts[1] : parts[0];
   const imageField = moduleName === "process-steps" ? undefined : (moduleName === "partners" ? "logo" : "image");
   return { moduleName, imageField };
 };

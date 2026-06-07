@@ -4,11 +4,14 @@ import { ZodSchema, ZodError } from "zod";
 export const validate = (schema: ZodSchema) => {
   return async (req: Request, res: Response, Next: NextFunction) => {
     try {
-      await schema.parseAsync({
+      const parsed: any = await schema.parseAsync({
         body: req.body,
         query: req.query,
         params: req.params,
       });
+      if (parsed.body !== undefined) req.body = parsed.body;
+      if (parsed.query !== undefined) req.query = parsed.query;
+      if (parsed.params !== undefined) req.params = parsed.params;
       return Next();
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -21,9 +24,11 @@ export const validate = (schema: ZodSchema) => {
           })),
         });
       }
+      console.error("Validation middleware error:", error);
       return res.status(500).json({
         success: false,
-        message: "Internal server error during validation",
+        message: error.message || "Internal server error during validation",
+        stack: error.stack,
       });
     }
   };

@@ -1,6 +1,4 @@
 import { ObjectId, UpdateResult, InsertOneResult, DeleteResult } from "mongodb";
-import axios from "axios";
-import FormData from "form-data";
 import { config } from "../../config";
 import {
   parcelCollection,
@@ -217,27 +215,5 @@ export class ParcelService {
       time: new Date().toISOString(),
     };
     return trackingCollection.insertOne(update);
-  }
-
-  static async uploadImage(
-    fileBuffer: Buffer,
-    filename: string,
-    mimetype: string,
-  ): Promise<string> {
-    const formData = new FormData();
-    formData.append("image", fileBuffer, {
-      filename,
-      contentType: mimetype,
-    });
-
-    const response = await axios.post(
-      `https://api.imgbb.com/1/upload?key=${config.IMGBB_API_KEY}`,
-      formData,
-      {
-        headers: formData.getHeaders(),
-      },
-    );
-
-    return response.data.data.url;
   }
 }

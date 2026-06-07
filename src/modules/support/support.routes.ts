@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import {
   getFAQs,
   voteFAQHelpful,
@@ -16,12 +17,27 @@ import {
   markAllNotificationsRead,
   getChatHistory,
   getUserConversations,
+  uploadChatImage,
 } from "./support.controller";
 import { verifyFBToken, verifyAdmin } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import { reviewSchema, feedbackSchema } from "./support.schema";
 
 const router = Router();
+
+// Multer for chat image uploads
+const chatUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPEG, PNG, and WebP images are allowed"));
+    }
+  },
+});
 
 // FAQ Routes
 router.get("/faqs", getFAQs);
@@ -57,5 +73,11 @@ router.patch(
 // Messaging Routes
 router.get("/messages/:conversationId", verifyFBToken, getChatHistory);
 router.get("/messages/conversations", verifyFBToken, getUserConversations);
+router.post(
+  "/messages/upload-image",
+  verifyFBToken,
+  chatUpload.single("image"),
+  uploadChatImage,
+);
 
 export default router;

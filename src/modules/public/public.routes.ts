@@ -36,7 +36,18 @@ import {
 } from "./public.schema";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPEG, PNG, and WebP images are allowed"));
+    }
+  },
+});
 
 // ─── PUBLIC GENERAL ROUTES ──────────────────────────────────────────────────
 router.get("/public/settings", getPublicSettings);
@@ -112,5 +123,20 @@ registerCRUD("features", featureSchema, "image");
 registerCRUD("partners", partnerSchema, "logo");
 registerCRUD("process-steps", processStepSchema);
 registerCRUD("testimonials", testimonialSchema, "image");
+
+// ─── Multer Error Handler ──────────────────────────────────────────────────
+router.use((err: any, _req: any, res: any, next: any) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res
+        .status(400)
+        .send({ success: false, message: "File too large. Max limit is 5MB." });
+    }
+    return res.status(400).send({ success: false, message: err.message });
+  } else if (err) {
+    return res.status(400).send({ success: false, message: err.message });
+  }
+  next();
+});
 
 export default router;

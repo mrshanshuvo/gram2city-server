@@ -3,6 +3,7 @@ import admin from "firebase-admin";
 import { SupportService } from "./support.service";
 import { FAQ, Review } from "./support.interface";
 import { usersCollection } from "../../db/db";
+import { uploadToImgBB } from "../../utils/upload";
 
 // ─── FAQS CONTROLLERS ────────────────────────────────────────────────────────
 
@@ -265,5 +266,23 @@ export const getUserConversations = async (req: Request, res: Response) => {
     res
       .status(500)
       .send({ success: false, message: "Failed to fetch conversations" });
+  }
+};
+
+// ─── CHAT IMAGE UPLOAD ───────────────────────────────────────────────────────
+
+export const uploadChatImage = async (req: Request, res: Response) => {
+  if (!req.file) {
+    return res.status(400).send({
+      success: false,
+      message: "No file uploaded or file type not supported",
+    });
+  }
+
+  try {
+    const url = await uploadToImgBB(req.file);
+    res.send({ success: true, url });
+  } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to upload image" });
   }
 };
