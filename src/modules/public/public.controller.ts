@@ -23,7 +23,8 @@ export const getPublicTracking = async (req: Request, res: Response) => {
 
 export const getProcessSteps = async (req: Request, res: Response) => {
   try {
-    const steps = await PublicService.getProcessSteps();
+    const showAll = req.query.all === "true";
+    const steps = await PublicService.getProcessSteps(showAll);
     res.send({ success: true, data: steps });
   } catch (error) {
     res.status(500).send({ success: false, message: "Server error" });
@@ -52,7 +53,8 @@ export const updateLandingConfig = async (req: Request, res: Response) => {
 
 export const getBanners = async (req: Request, res: Response) => {
   try {
-    const banners = await PublicService.getBanners();
+    const showAll = req.query.all === "true";
+    const banners = await PublicService.getBanners(showAll);
     res.send({ success: true, data: banners });
   } catch (error) {
     res.status(500).send({ success: false, message: "Server error" });
@@ -61,7 +63,8 @@ export const getBanners = async (req: Request, res: Response) => {
 
 export const getServices = async (req: Request, res: Response) => {
   try {
-    const services = await PublicService.getServices();
+    const showAll = req.query.all === "true";
+    const services = await PublicService.getServices(showAll);
     res.send({ success: true, data: services });
   } catch (error) {
     res.status(500).send({ success: false, message: "Server error" });
@@ -70,7 +73,8 @@ export const getServices = async (req: Request, res: Response) => {
 
 export const getFeatures = async (req: Request, res: Response) => {
   try {
-    const features = await PublicService.getFeatures();
+    const showAll = req.query.all === "true";
+    const features = await PublicService.getFeatures(showAll);
     res.send({ success: true, data: features });
   } catch (error) {
     res.status(500).send({ success: false, message: "Server error" });
@@ -79,7 +83,8 @@ export const getFeatures = async (req: Request, res: Response) => {
 
 export const getPartners = async (req: Request, res: Response) => {
   try {
-    const partners = await PublicService.getPartners();
+    const showAll = req.query.all === "true";
+    const partners = await PublicService.getPartners(showAll);
     res.send({ success: true, data: partners });
   } catch (error) {
     res.status(500).send({ success: false, message: "Server error" });
@@ -88,7 +93,8 @@ export const getPartners = async (req: Request, res: Response) => {
 
 export const getTestimonials = async (req: Request, res: Response) => {
   try {
-    const testimonials = await PublicService.getTestimonials();
+    const showAll = req.query.all === "true";
+    const testimonials = await PublicService.getTestimonials(showAll);
     res.send({ success: true, data: testimonials });
   } catch (error) {
     res.status(500).send({ success: false, message: "Server error" });

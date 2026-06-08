@@ -47,9 +47,10 @@ export class PublicService {
   }
 
   // Landing endpoints
-  static async getProcessSteps(): Promise<ProcessStep[]> {
+  static async getProcessSteps(showAll?: boolean): Promise<ProcessStep[]> {
+    const query = showAll ? {} : { isActive: true };
     return (await processStepsCollection
-      .find({ isActive: true })
+      .find(query)
       .sort({ order: 1 })
       .toArray()) as unknown as ProcessStep[];
   }
@@ -70,37 +71,42 @@ export class PublicService {
     );
   }
 
-  static async getBanners(): Promise<BannerSlide[]> {
+  static async getBanners(showAll?: boolean): Promise<BannerSlide[]> {
+    const query = showAll ? {} : { isActive: true };
     return (await bannersCollection
-      .find({ isActive: true })
+      .find(query)
       .sort({ order: 1 })
       .toArray()) as unknown as BannerSlide[];
   }
 
-  static async getServices(): Promise<ServiceItem[]> {
+  static async getServices(showAll?: boolean): Promise<ServiceItem[]> {
+    const query = showAll ? {} : { isActive: true };
     return (await servicesCollection
-      .find({ isActive: true })
+      .find(query)
       .sort({ order: 1 })
       .toArray()) as unknown as ServiceItem[];
   }
 
-  static async getFeatures(): Promise<FeatureItem[]> {
+  static async getFeatures(showAll?: boolean): Promise<FeatureItem[]> {
+    const query = showAll ? {} : { isActive: true };
     return (await featuresCollection
-      .find({ isActive: true })
+      .find(query)
       .sort({ order: 1 })
       .toArray()) as unknown as FeatureItem[];
   }
 
-  static async getPartners(): Promise<PartnerLogo[]> {
+  static async getPartners(showAll?: boolean): Promise<PartnerLogo[]> {
+    const query = showAll ? {} : { isActive: true };
     return (await partnersCollection
-      .find({ isActive: true })
+      .find(query)
       .sort({ order: 1 })
       .toArray()) as unknown as PartnerLogo[];
   }
 
-  static async getTestimonials(): Promise<any[]> {
+  static async getTestimonials(showAll?: boolean): Promise<any[]> {
+    const query = showAll ? {} : { isActive: true };
     return testimonialsCollection
-      .find({ isActive: true })
+      .find(query)
       .sort({ createdAt: -1 })
       .toArray();
   }

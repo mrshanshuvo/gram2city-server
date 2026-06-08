@@ -17,11 +17,13 @@ export const newsletterSchema = z.object({
 export const bannerSchema = z.object({
   body: z.object({
     title: z.string().min(1, "Title is required"),
-    description: z.string().optional(),
+    subtitle: z.string().optional(),
     // image comes from req.file (multipart upload) — not validated in body
     image: z.string().url().optional(),
     ctaText: z.string().optional(),
     ctaLink: z.string().optional(),
+    icon: z.string().optional(),
+    color: z.string().optional(),
     order: z.coerce.number().default(0),
     isActive: preprocessBoolean.default(true),
   }),
@@ -42,6 +44,7 @@ export const featureSchema = z.object({
   body: z.object({
     title: z.string().min(1, "Title is required"),
     description: z.string().min(1, "Description is required"),
+    icon: z.string().optional(),
     image: z.string().optional(),
     order: z.coerce.number().default(0),
     isActive: preprocessBoolean.default(true),
@@ -74,6 +77,8 @@ export const processStepSchema = z.object({
   body: z.object({
     title: z.string().min(1, "Title is required"),
     description: z.string().min(1, "Description is required"),
+    icon: z.string().optional(),
+    steps: z.array(z.string()).optional(),
     order: z.coerce.number().default(0),
     isActive: preprocessBoolean.default(true),
   }),
