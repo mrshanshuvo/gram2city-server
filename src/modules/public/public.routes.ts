@@ -49,6 +49,42 @@ const upload = multer({
   },
 });
 
+const parseNestedBody = (req: any, _res: any, next: any) => {
+  if (req.body) {
+    const result: any = {};
+    for (const key in req.body) {
+      const value = req.body[key];
+      if (key.includes("[")) {
+        const parts = key.split(/[\[\]]+/).filter(Boolean);
+        const isArray = key.endsWith("[]");
+        let current = result;
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i];
+          if (i === parts.length - 1) {
+            if (isArray) {
+              current[part] = current[part] || [];
+              if (Array.isArray(value)) {
+                current[part].push(...value);
+              } else {
+                current[part].push(value);
+              }
+            } else {
+              current[part] = value;
+            }
+          } else {
+            current[part] = current[part] || {};
+            current = current[part];
+          }
+        }
+      } else {
+        result[key] = value;
+      }
+    }
+    req.body = result;
+  }
+  next();
+};
+
 // ─── PUBLIC GENERAL ROUTES ──────────────────────────────────────────────────
 router.get("/public/settings", getPublicSettings);
 router.get("/public/tracking/:trackingId", getPublicTracking);
@@ -74,6 +110,8 @@ router.patch(
   "/landing/config",
   verifyFBToken,
   verifyAdmin,
+  upload.single("ogImage"),
+  parseNestedBody,
   validate(landingConfigUpdateSchema),
   updateLandingConfig,
 );

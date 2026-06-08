@@ -44,10 +44,19 @@ export const updateLandingConfig = async (req: Request, res: Response) => {
   try {
     const update = req.body;
     delete update._id;
+
+    // If an OG image file was uploaded, push it to Cloudinary and store the URL
+    if (req.file) {
+      update.seo = update.seo || {};
+      update.seo.image = await uploadToCloudinary(req.file, "gram2city/config");
+    }
+
     await PublicService.updateLandingConfig(update);
     res.send({ success: true, message: "Configuration updated" });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to update config" });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to update config" });
   }
 };
 
@@ -114,7 +123,9 @@ export const subscribeNewsletter = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
     if (!email || !email.includes("@")) {
-      return res.status(400).send({ success: false, message: "Invalid email address" });
+      return res
+        .status(400)
+        .send({ success: false, message: "Invalid email address" });
     }
 
     const result = await PublicService.subscribeNewsletter(email);
@@ -127,12 +138,17 @@ export const subscribeNewsletter = async (req: Request, res: Response) => {
   }
 };
 
-export const getNewsletterSubscribers = async (_req: Request, res: Response) => {
+export const getNewsletterSubscribers = async (
+  _req: Request,
+  res: Response,
+) => {
   try {
     const subscribers = await PublicService.getNewsletterSubscribers();
     res.send({ success: true, data: subscribers });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch subscribers" });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch subscribers" });
   }
 };
 
@@ -146,18 +162,29 @@ export const getWarehouses = async (req: Request, res: Response) => {
     });
     res.send({ success: true, data });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Error fetching warehouses" });
+    res
+      .status(500)
+      .send({ success: false, message: "Error fetching warehouses" });
   }
 };
 
 // Merchant controllers
 export const applyMerchant = async (req: Request, res: Response) => {
   try {
-    const { businessName, businessType, tradeLicense, address, district, phone } = req.body;
+    const {
+      businessName,
+      businessType,
+      tradeLicense,
+      address,
+      district,
+      phone,
+    } = req.body;
     const email = req.user?.email as string;
 
     if (!email) {
-      return res.status(400).send({ success: false, message: "User email not found in token." });
+      return res
+        .status(400)
+        .send({ success: false, message: "User email not found in token." });
     }
 
     const result = await PublicService.applyMerchant({
@@ -179,7 +206,9 @@ export const applyMerchant = async (req: Request, res: Response) => {
 
     res.status(201).send(result);
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to submit application." });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to submit application." });
   }
 };
 
@@ -188,11 +217,15 @@ export const getMerchantProfile = async (req: Request, res: Response) => {
     const email = req.user?.email as string;
     const merchant = await PublicService.getMerchantProfile(email);
     if (!merchant) {
-      return res.status(404).send({ success: false, message: "Merchant profile not found." });
+      return res
+        .status(404)
+        .send({ success: false, message: "Merchant profile not found." });
     }
     res.send({ success: true, data: merchant });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch merchant profile." });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch merchant profile." });
   }
 };
 
@@ -201,11 +234,15 @@ export const getMerchantStats = async (req: Request, res: Response) => {
     const email = req.user?.email as string;
     const stats = await PublicService.getMerchantStats(email);
     if (!stats) {
-      return res.status(404).send({ success: false, message: "Merchant not found" });
+      return res
+        .status(404)
+        .send({ success: false, message: "Merchant not found" });
     }
     res.send({ success: true, stats });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch merchant stats" });
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch merchant stats" });
   }
 };
 
@@ -216,7 +253,12 @@ const getModuleNameAndField = (path: string) => {
   const parts = cleanPath.split("/");
   // If the route is prefixed with "landing", the module name is the second part
   const moduleName = parts[0] === "landing" ? parts[1] : parts[0];
-  const imageField = moduleName === "process-steps" ? undefined : (moduleName === "partners" ? "logo" : "image");
+  const imageField =
+    moduleName === "process-steps"
+      ? undefined
+      : moduleName === "partners"
+        ? "logo"
+        : "image";
   return { moduleName, imageField };
 };
 
@@ -233,7 +275,10 @@ export const createLandingItem = async (req: Request, res: Response) => {
     const result = await PublicService.createLandingItem(moduleName, item);
     res.send({ success: true, data: { ...item, _id: result.insertedId } });
   } catch (error: any) {
-    res.status(500).send({ success: false, message: error.message || "Failed to create item" });
+    res.status(500).send({
+      success: false,
+      message: error.message || "Failed to create item",
+    });
   }
 };
 
@@ -249,13 +294,20 @@ export const updateLandingItem = async (req: Request, res: Response) => {
       update[imageField] = await uploadToCloudinary(req.file, folder);
     }
 
-    const result = await PublicService.updateLandingItem(moduleName, id as string, update);
+    const result = await PublicService.updateLandingItem(
+      moduleName,
+      id as string,
+      update,
+    );
     if (result.matchedCount === 0) {
       return res.status(404).send({ success: false, message: "Not found" });
     }
     res.send({ success: true, message: "Item updated" });
   } catch (error: any) {
-    res.status(500).send({ success: false, message: error.message || "Failed to update item" });
+    res.status(500).send({
+      success: false,
+      message: error.message || "Failed to update item",
+    });
   }
 };
 
@@ -263,12 +315,18 @@ export const deleteLandingItem = async (req: Request, res: Response) => {
   try {
     const { moduleName } = getModuleNameAndField(req.path);
     const { id } = req.params;
-    const result = await PublicService.deleteLandingItem(moduleName, id as string);
+    const result = await PublicService.deleteLandingItem(
+      moduleName,
+      id as string,
+    );
     if (result.deletedCount === 0) {
       return res.status(404).send({ success: false, message: "Not found" });
     }
     res.send({ success: true, message: "Item deleted" });
   } catch (error: any) {
-    res.status(500).send({ success: false, message: error.message || "Failed to delete item" });
+    res.status(500).send({
+      success: false,
+      message: error.message || "Failed to delete item",
+    });
   }
 };

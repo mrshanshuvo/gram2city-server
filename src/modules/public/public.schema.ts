@@ -100,9 +100,27 @@ export const landingConfigUpdateSchema = z.object({
         address: z.string().optional(),
         phone: z.string().optional(),
         whatsapp: z.string().optional(),
-        email: z.string().email().optional(),
+        email: z.string().email().optional().or(z.literal("")),
+      })
+      .optional(),
+    socialLinks: z
+      .object({
+        twitter: z.string().optional(),
+        facebook: z.string().optional(),
+        linkedin: z.string().optional(),
+        instagram: z.string().optional(),
+        youtube: z.string().optional(),
+      })
+      .optional(),
+    seo: z
+      .object({
+        title: z.string().optional(),
+        description: z.string().optional(),
+        keywords: z.string().optional(),
+        image: z.string().optional(),
       })
       .optional(),
     howItWorksFooter: z.string().optional(),
   }),
 });
+
