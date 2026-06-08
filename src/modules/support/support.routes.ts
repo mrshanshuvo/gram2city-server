@@ -71,8 +71,8 @@ router.patch(
 );
 
 // Messaging Routes
-router.get("/messages/:conversationId", verifyFBToken, getChatHistory);
 router.get("/messages/conversations", verifyFBToken, getUserConversations);
+router.get("/messages/:conversationId", verifyFBToken, getChatHistory);
 router.post(
   "/messages/upload-image",
   verifyFBToken,

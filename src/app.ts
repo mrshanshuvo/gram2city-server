@@ -35,7 +35,7 @@ app.use(
           "fonts.googleapis.com",
         ],
         imgSrc: ["'self'", "data:", "validator.swagger.io"],
-        connectSrc: ["'self'"],
+        connectSrc: ["'self'", config.CLIENT_URL],
       },
     },
   }),

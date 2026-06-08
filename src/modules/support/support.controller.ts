@@ -257,12 +257,37 @@ export const getChatHistory = async (req: Request, res: Response) => {
   }
 };
 
+import * as fs from "fs";
+import * as path from "path";
+
+const logDebug = (msg: string) => {
+  try {
+    console.log(`[DEBUG] ${msg}`);
+    fs.appendFileSync(
+      path.join(__dirname, "../../../debug.log"),
+      `[${new Date().toISOString()}] ${msg}\n`,
+    );
+  } catch (err) {}
+};
+
 export const getUserConversations = async (req: Request, res: Response) => {
   try {
     const userEmail = req.user?.email as string;
-    const conversations = await SupportService.getUserConversations(userEmail);
+    const user = await usersCollection.findOne({ email: userEmail });
+    const isAdmin = user?.role === "admin" || user?.role === "superAdmin";
+    const queryEmail = isAdmin ? "admin@gram2city.com" : userEmail;
+
+    logDebug(
+      `getUserConversations: userEmail=${userEmail}, role=${user?.role}, queryEmail=${queryEmail}`,
+    );
+
+    const conversations = await SupportService.getUserConversations(queryEmail);
+
+    logDebug(`getUserConversations results count: ${conversations.length}`);
+
     res.send({ success: true, data: conversations });
-  } catch (error) {
+  } catch (error: any) {
+    logDebug(`getUserConversations ERROR: ${error.message || error}`);
     res
       .status(500)
       .send({ success: false, message: "Failed to fetch conversations" });

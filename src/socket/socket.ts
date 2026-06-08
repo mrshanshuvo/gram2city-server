@@ -1,8 +1,9 @@
 import { Server } from "socket.io";
 import type { Server as HttpServer } from "http";
-import { messagesCollection } from "../db/db";
+import { messagesCollection, usersCollection } from "../db/db";
 import { ChatMessage } from "../types/types";
 import { config } from "../config";
+import { verifyFBToken } from "../middleware/auth";
 
 export let io: Server;
 
@@ -26,7 +27,6 @@ export const initSocket = (server: HttpServer) => {
     // Handle rider location updates
     socket.on("rider_location_update", (data) => {
       const { trackingId, location } = data;
-      // Broadcast to everyone in the parcel's room
       io.to(trackingId).emit("location_received", {
         trackingId,
         location,
@@ -35,7 +35,32 @@ export const initSocket = (server: HttpServer) => {
     });
 
     // Support Chat: Join conversation room
-    socket.on("join_chat", (conversationId: string) => {
+    socket.on("join_chat", async (conversationId: string, token?: string) => {
+      if (token) {
+        try {
+          const decoded = await verifyFBTokenInSocket(token);
+          if (decoded.email) {
+            socket.join(decoded.email);
+            console.log(
+              `👤 Socket ${socket.id} joined user room: ${decoded.email}`,
+            );
+
+            // If the user has an admin or superAdmin role, join them to the shared 'admins' room
+            const dbUser = await usersCollection.findOne({
+              email: decoded.email,
+            });
+            if (dbUser?.role === "admin" || dbUser?.role === "superAdmin") {
+              socket.join("admins");
+              console.log(`🛠️ Socket ${socket.id} joined admins room`);
+            }
+          }
+        } catch (err) {
+          socket.emit("message_error", {
+            message: "Unauthorized: invalid join token",
+          });
+          return;
+        }
+      }
       socket.join(conversationId);
       console.log(`💬 Socket ${socket.id} joined chat room: ${conversationId}`);
     });
@@ -43,10 +68,44 @@ export const initSocket = (server: HttpServer) => {
     // Support Chat: Handle messages
     socket.on("send_message", async (data) => {
       try {
+        const token = data?.token as string | undefined;
+        if (!token) {
+          socket.emit("message_error", {
+            message: "Unauthorized: missing auth token",
+          });
+          return;
+        }
+
+        let decoded;
+        try {
+          decoded = await verifyFBTokenInSocket(token);
+        } catch (err) {
+          socket.emit("message_error", {
+            message: "Unauthorized: invalid token",
+          });
+          return;
+        }
+
+        if (!decoded.email) {
+          socket.emit("message_error", {
+            message: "Unauthorized: missing email",
+          });
+          return;
+        }
+
+        let senderEmail = decoded.email;
+        let senderRole = data.senderRole ?? "user";
+
+        const dbUser = await usersCollection.findOne({ email: decoded.email });
+        if (dbUser?.role === "admin" || dbUser?.role === "superAdmin") {
+          senderEmail = "admin@gram2city.com";
+          senderRole = dbUser.role;
+        }
+
         const chatMessage: ChatMessage = {
-          senderEmail: data.senderEmail,
-          senderName: data.senderName,
-          senderRole: data.senderRole,
+          senderEmail,
+          senderName: data.senderName ?? decoded.email,
+          senderRole,
           receiverEmail: data.receiverEmail,
           message: data.message,
           imageUrl: data.imageUrl || undefined,
@@ -55,13 +114,74 @@ export const initSocket = (server: HttpServer) => {
           conversationId: data.conversationId,
         };
 
-        // Save to DB
         await messagesCollection.insertOne(chatMessage);
-
-        // Broadcast to everyone in the chat room
-        io.to(data.conversationId).emit("receive_message", chatMessage);
+        let broadcast = io.to(data.conversationId).to("admins");
+        if (chatMessage.receiverEmail) {
+          broadcast = broadcast.to(chatMessage.receiverEmail);
+        }
+        broadcast.emit("receive_message", chatMessage);
       } catch (error) {
         console.error("Failed to process socket message:", error);
+        socket.emit("message_error", {
+          message: "Failed to send message",
+        });
+      }
+    });
+
+    socket.on("typing", async (data) => {
+      const token = data?.token as string | undefined;
+      if (!token) return;
+      try {
+        const decoded = await verifyFBTokenInSocket(token);
+        io.to(data.conversationId).emit("user_typing", {
+          senderEmail: decoded.email,
+          conversationId: data.conversationId,
+        });
+      } catch (err) {
+        // ignore typing auth errors
+      }
+    });
+
+    socket.on("mark_messages_read", async (data) => {
+      const token = data?.token as string | undefined;
+      if (!token) {
+        socket.emit("message_error", {
+          message: "Unauthorized: missing read token",
+        });
+        return;
+      }
+
+      let decoded;
+      try {
+        decoded = await verifyFBTokenInSocket(token);
+      } catch (err) {
+        socket.emit("message_error", {
+          message: "Unauthorized: invalid read token",
+        });
+        return;
+      }
+
+      try {
+        let readByEmail = decoded.email ?? data.readByEmail;
+        const dbUser = await usersCollection.findOne({ email: readByEmail });
+        if (dbUser?.role === "admin" || dbUser?.role === "superAdmin") {
+          readByEmail = "admin@gram2city.com";
+        }
+
+        await messagesCollection.updateMany(
+          {
+            conversationId: data.conversationId,
+            receiverEmail: readByEmail,
+            isRead: false,
+          },
+          { $set: { isRead: true } },
+        );
+        io.to(data.conversationId).emit("messages_marked_read", {
+          conversationId: data.conversationId,
+          readByEmail: readByEmail,
+        });
+      } catch (error) {
+        console.error("Failed to mark messages read:", error);
       }
     });
 
@@ -72,3 +192,8 @@ export const initSocket = (server: HttpServer) => {
 
   return io;
 };
+
+async function verifyFBTokenInSocket(token: string) {
+  const { getAuth } = await import("firebase-admin/auth");
+  return getAuth().verifyIdToken(token);
+}
