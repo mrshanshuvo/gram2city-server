@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import { RiderService } from "./rider.service";
 import { io } from "../../socket/socket";
 import { usersCollection } from "../../db/db";
+import { createNotification } from "../notification/notification.controller";
 
 export const submitApplication = async (req: Request, res: Response) => {
   try {
@@ -32,6 +33,16 @@ export const submitApplication = async (req: Request, res: Response) => {
         name: user.name || req.body.name,
         email: email,
         district: application.district,
+      });
+    }
+
+    // Save persistent notifications for admins
+    const admins = await usersCollection.find({ role: { $in: ["admin", "superAdmin"] } }).toArray();
+    for (const adminUser of admins) {
+      await createNotification({
+        email: adminUser.email,
+        message: `New Rider Application: ${user.name || req.body.name} has applied from ${application.district}.`,
+        type: "admin_alert",
       });
     }
 

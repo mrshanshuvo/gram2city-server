@@ -7,10 +7,12 @@ import riderRoutes from "./rider/rider.routes";
 import financeRoutes from "./finance/finance.routes";
 import supportRoutes from "./support/support.routes";
 import publicRoutes from "./public/public.routes";
+import notificationRoutes from "./notification/notification.routes";
 
 const router = Router();
 
 router.use("/admin", adminRoutes);
+router.use("/notifications", notificationRoutes);
 router.use("/", authRoutes);
 router.use("/", userRoutes);
 router.use("/", parcelRoutes);

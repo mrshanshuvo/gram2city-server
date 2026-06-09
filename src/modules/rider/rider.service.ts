@@ -9,6 +9,7 @@ import {
   auditCollection,
   addTrackingUpdate,
 } from "../../db/db";
+import { createNotification } from "../notification/notification.controller";
 import { Rider, Cashout } from "./rider.interface";
 import { Parcel } from "../parcel/parcel.interface";
 
@@ -133,11 +134,9 @@ export class RiderService {
       `Parcel has been ${statusMsg}.`,
     );
 
-    await notificationsCollection.insertOne({
+    await createNotification({
       email: parcel.created_by,
       message: `Status Update: Your parcel "${parcel.parcelName}" is ${statusMsg}!`,
-      time: new Date().toISOString(),
-      isRead: false,
       type: "status_update",
     });
 
@@ -217,6 +216,18 @@ export class RiderService {
 
     await cashoutsCollection.insertOne(payoutRequest as any);
 
+    // Notify all admins of the new payout request
+    const admins = await usersCollection
+      .find({ role: { $in: ["admin", "superAdmin"] } })
+      .toArray();
+    for (const adminUser of admins) {
+      await createNotification({
+        email: adminUser.email,
+        message: `Payout Request: ${rider.name || email} has requested a payout of ৳${Number(amount)} BDT.`,
+        type: "payment",
+      });
+    }
+
     return { success: true, message: "Payout request submitted successfully." };
   }
 
@@ -251,6 +262,17 @@ export class RiderService {
           { $set: { role: "rider" } },
         );
       }
+    }
+
+    const emailToNotify =
+      rider.email ||
+      (await usersCollection.findOne({ _id: rider.userId }))?.email;
+    if (emailToNotify) {
+      await createNotification({
+        email: emailToNotify,
+        message: `Application Update: Your application to become a Rider has been ${status}.`,
+        type: "admin_alert",
+      });
     }
 
     await auditCollection.insertOne({

@@ -12,9 +12,6 @@ import {
   submitReview,
   submitFeedback,
   getAllFeedback,
-  getUnreadNotifications,
-  markNotificationRead,
-  markAllNotificationsRead,
   getChatHistory,
   getUserConversations,
   uploadChatImage,
@@ -60,15 +57,6 @@ router.post(
   submitFeedback,
 );
 router.get("/feedback", verifyFBToken, verifyAdmin, getAllFeedback);
-
-// Notification Routes
-router.get("/notifications/:email", verifyFBToken, getUnreadNotifications);
-router.patch("/notifications/:id/read", verifyFBToken, markNotificationRead);
-router.patch(
-  "/notifications/read-all/:email",
-  verifyFBToken,
-  markAllNotificationsRead,
-);
 
 // Messaging Routes
 router.get("/messages/conversations", verifyFBToken, getUserConversations);

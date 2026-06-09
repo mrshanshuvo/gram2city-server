@@ -4,6 +4,8 @@ import { ParcelService } from "./parcel.service";
 import { Parcel } from "./parcel.interface";
 import { io } from "../../socket/socket";
 import { uploadToCloudinary } from "../../utils/upload";
+import { usersCollection } from "../../db/db";
+import { createNotification } from "../notification/notification.controller";
 
 export const getMyParcels = async (req: Request, res: Response) => {
   try {
@@ -110,6 +112,18 @@ export const bookParcel = async (req: Request, res: Response) => {
         sender: newParcel.senderName,
         destination: newParcel.receiverDistrict,
         cost: totalCost,
+      });
+    }
+
+    // Persistent notification for all admins
+    const admins = await usersCollection
+      .find({ role: { $in: ["admin", "superAdmin"] } })
+      .toArray();
+    for (const adminUser of admins) {
+      await createNotification({
+        email: adminUser.email,
+        message: `New Shipment: Parcel ${trackingId} booked by ${newParcel.senderName} to ${newParcel.receiverDistrict} (৳${totalCost}).`,
+        type: "admin_alert",
       });
     }
 
@@ -231,6 +245,27 @@ export const deleteParcel = async (req: Request, res: Response) => {
     }
 
     await ParcelService.deleteParcel(id as string);
+
+    // Notify assigned rider if any, otherwise notify admins
+    if (parcel.assigned_rider_email) {
+      await createNotification({
+        email: parcel.assigned_rider_email,
+        message: `Cancellation: Parcel "${parcel.parcelName}" (${parcel.trackingId}) assigned to you has been cancelled by the sender.`,
+        type: "admin_alert",
+      });
+    } else {
+      const admins = await usersCollection
+        .find({ role: { $in: ["admin", "superAdmin"] } })
+        .toArray();
+      for (const adminUser of admins) {
+        await createNotification({
+          email: adminUser.email,
+          message: `Parcel Cancelled: "${parcel.parcelName}" (${parcel.trackingId}) was cancelled by ${email}.`,
+          type: "admin_alert",
+        });
+      }
+    }
+
     res.send({ success: true, message: "Parcel cancelled successfully." });
   } catch (error) {
     res

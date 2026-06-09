@@ -8,6 +8,7 @@ import {
   notificationsCollection,
   addTrackingUpdate,
 } from "../../db/db";
+import { createNotification } from "../notification/notification.controller";
 import { Payment } from "./finance.interface";
 
 const stripe = new Stripe(config.STRIPE_SECRET_KEY, {
@@ -103,11 +104,9 @@ export class FinanceService {
       `Payment received. Transaction ID: ${transactionId}`,
     );
 
-    await notificationsCollection.insertOne({
+    await createNotification({
       email: email,
       message: `Payment Successful: Your parcel "${parcel.parcelName}" is now confirmed for delivery!`,
-      time: new Date().toISOString(),
-      isRead: false,
       type: "payment",
     });
 

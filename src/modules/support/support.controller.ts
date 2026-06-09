@@ -189,46 +189,6 @@ export const getAllFeedback = async (_req: Request, res: Response) => {
   }
 };
 
-// ─── NOTIFICATIONS CONTROLLERS ───────────────────────────────────────────────
-
-export const getUnreadNotifications = async (req: Request, res: Response) => {
-  const { email } = req.params;
-  if (req.user?.email !== email)
-    return res.status(403).send({ success: false, message: "Unauthorized" });
-  try {
-    const notifications = await SupportService.getUnreadNotifications(
-      email as string,
-    );
-    res.send(notifications);
-  } catch {
-    res.status(500).send({ error: "Failed to fetch notifications" });
-  }
-};
-
-export const markNotificationRead = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  try {
-    const result = await SupportService.markNotificationRead(id as string);
-    res.send(result);
-  } catch {
-    res.status(500).send({ error: "Failed to mark as read" });
-  }
-};
-
-export const markAllNotificationsRead = async (req: Request, res: Response) => {
-  const { email } = req.params;
-  if ((req.user as any)?.email !== email)
-    return res.status(403).send({ success: false, message: "Unauthorized" });
-  try {
-    const result = await SupportService.markAllNotificationsRead(
-      email as string,
-    );
-    res.send(result);
-  } catch {
-    res.status(500).send({ error: "Failed to mark all as read" });
-  }
-};
-
 // ─── MESSAGES/CHAT CONTROLLERS ───────────────────────────────────────────────
 
 export const getChatHistory = async (req: Request, res: Response) => {

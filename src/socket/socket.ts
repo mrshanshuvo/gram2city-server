@@ -1,6 +1,10 @@
 import { Server } from "socket.io";
 import type { Server as HttpServer } from "http";
-import { messagesCollection, usersCollection } from "../db/db";
+import {
+  messagesCollection,
+  usersCollection,
+  notificationsCollection,
+} from "../db/db";
 import { ChatMessage } from "../types/types";
 import { config } from "../config";
 import { verifyFBToken } from "../middleware/auth";
@@ -32,6 +36,32 @@ export const initSocket = (server: HttpServer) => {
         location,
         timestamp: new Date().toISOString(),
       });
+    });
+
+    // Register user email room on authentication
+    socket.on("register_user", async (token: string) => {
+      try {
+        const decoded = await verifyFBTokenInSocket(token);
+        if (decoded.email) {
+          socket.join(decoded.email);
+          console.log(
+            `👤 Socket ${socket.id} joined user room: ${decoded.email}`,
+          );
+
+          // Also join admins room if user is admin or superAdmin
+          const dbUser = await usersCollection.findOne({
+            email: decoded.email,
+          });
+          if (dbUser?.role === "admin" || dbUser?.role === "superAdmin") {
+            socket.join("admins");
+            console.log(
+              `🛠️ Socket ${socket.id} joined admins room via registration`,
+            );
+          }
+        }
+      } catch (err) {
+        console.error("Failed to register user socket:", err);
+      }
     });
 
     // Support Chat: Join conversation room
@@ -120,6 +150,36 @@ export const initSocket = (server: HttpServer) => {
           broadcast = broadcast.to(chatMessage.receiverEmail);
         }
         broadcast.emit("receive_message", chatMessage);
+
+        // Send notifications
+        if (senderEmail === "admin@gram2city.com") {
+          if (chatMessage.receiverEmail) {
+            const newNotif = {
+              email: chatMessage.receiverEmail,
+              message: `New message from Support: "${chatMessage.message.substring(0, 40)}${chatMessage.message.length > 40 ? "..." : ""}"`,
+              time: new Date().toISOString(),
+              isRead: false,
+              type: "chat",
+            };
+            await notificationsCollection.insertOne(newNotif);
+            io.to(chatMessage.receiverEmail).emit("new_notification", newNotif);
+          }
+        } else {
+          const admins = await usersCollection
+            .find({ role: { $in: ["admin", "superAdmin"] } })
+            .toArray();
+          for (const adminUser of admins) {
+            const newNotif = {
+              email: adminUser.email,
+              message: `New support message from ${chatMessage.senderName}: "${chatMessage.message.substring(0, 40)}${chatMessage.message.length > 40 ? "..." : ""}"`,
+              time: new Date().toISOString(),
+              isRead: false,
+              type: "chat",
+            };
+            await notificationsCollection.insertOne(newNotif);
+            io.to(adminUser.email).emit("new_notification", newNotif);
+          }
+        }
       } catch (error) {
         console.error("Failed to process socket message:", error);
         socket.emit("message_error", {

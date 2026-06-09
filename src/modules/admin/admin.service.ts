@@ -11,6 +11,7 @@ import {
   notificationsCollection,
   addTrackingUpdate,
 } from "../../db/db";
+import { createNotification } from "../notification/notification.controller";
 import { AuditLog, SystemSettings } from "./admin.interface";
 
 export class AdminService {
@@ -407,6 +408,12 @@ export class AdminService {
       "Admin Dashboard",
     );
 
+    await createNotification({
+      email: parcel.created_by,
+      message: `Shipment Update: Your parcel "${parcel.parcelName}" has been assigned to rider ${riderName} (${rider.phone}).`,
+      type: "status_update",
+    });
+
     return { success: true, message: "Rider assigned successfully" };
   }
 
@@ -463,6 +470,14 @@ export class AdminService {
       );
     }
 
+    if (merchant.email) {
+      await createNotification({
+        email: merchant.email,
+        message: `Application Update: Your application to become a Merchant for "${merchant.businessName}" has been ${status}.`,
+        type: "admin_alert",
+      });
+    }
+
     await auditCollection.insertOne({
       admin_email: adminEmail,
       action: "MERCHANT_STATUS_CHANGE",
@@ -507,11 +522,9 @@ export class AdminService {
       },
     );
 
-    await notificationsCollection.insertOne({
+    await createNotification({
       email: payout.rider_email,
       message: `Your payout request of ${payout.amount} BDT has been ${status}.`,
-      time: new Date().toISOString(),
-      isRead: false,
       type: "payment",
     });
 
