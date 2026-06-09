@@ -178,6 +178,8 @@ export const applyMerchant = async (req: Request, res: Response) => {
       address,
       district,
       phone,
+      contactNumber,
+      shopAddress,
     } = req.body;
     const email = req.user?.email as string;
 
@@ -192,10 +194,10 @@ export const applyMerchant = async (req: Request, res: Response) => {
       email,
       businessName,
       businessType,
-      tradeLicense,
-      address,
-      district,
-      phone,
+      tradeLicense: tradeLicense || "Pending",
+      address: address || shopAddress || "",
+      district: district || "Dhaka",
+      phone: phone || contactNumber || "",
       status: "pending",
       createdAt: new Date().toISOString(),
     });

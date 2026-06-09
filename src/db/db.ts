@@ -124,11 +124,13 @@ export const initDB = async () => {
     await usersCollection.createIndex({ email: 1 }, { unique: true });
 
     // 2. merchantsCollection
-    await merchantsCollection.createIndex({ email: 1 }, { unique: true });
-    await merchantsCollection.createIndex({ userId: 1 });
+    await dropIndexIfExists(merchantsCollection, "email_1");
+    await dropIndexIfExists(merchantsCollection, "userId_1");
+    await merchantsCollection.createIndex({ userId: 1 }, { unique: true });
 
     // 3. ridersCollection
-    await ridersCollection.createIndex({ email: 1 }, { unique: true });
+    await dropIndexIfExists(ridersCollection, "email_1");
+    await ridersCollection.createIndex({ userId: 1 }, { unique: true });
 
     // 4. parcelCollection
     await parcelCollection.createIndex({ trackingId: 1 }, { unique: true });

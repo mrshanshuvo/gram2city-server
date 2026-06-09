@@ -5,6 +5,8 @@ import {
   cashoutsCollection,
   notificationsCollection,
   reviewsCollection,
+  usersCollection,
+  auditCollection,
   addTrackingUpdate,
 } from "../../db/db";
 import { Rider, Cashout } from "./rider.interface";
@@ -30,19 +32,54 @@ export class RiderService {
     }
 
     const totalItems = await ridersCollection.countDocuments(query);
+
+    const pipeline: any[] = [
+      { $match: query },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "userDetails",
+        },
+      },
+      { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          name: { $ifNull: ["$userDetails.name", "$name"] },
+          email: { $ifNull: ["$userDetails.email", "$email"] },
+          photoURL: { $ifNull: ["$userDetails.photoURL", "$photoURL"] },
+        },
+      },
+      { $project: { userDetails: 0 } },
+      { $skip: (pageNum - 1) * sizeNum },
+      { $limit: sizeNum },
+    ];
+
     const riders = (await ridersCollection
-      .find(query)
-      .skip((pageNum - 1) * sizeNum)
-      .limit(sizeNum)
+      .aggregate(pipeline)
       .toArray()) as unknown as Rider[];
 
     return { riders, totalItems };
   }
 
   static async getRiderByEmail(email: string): Promise<Rider | null> {
-    return (await ridersCollection.findOne({
-      email,
-    })) as unknown as Rider | null;
+    const user = await usersCollection.findOne({ email });
+    if (!user) {
+      return (await ridersCollection.findOne({
+        email,
+      })) as unknown as Rider | null;
+    }
+    const rider = (await ridersCollection.findOne({
+      $or: [{ userId: user._id }, { email }],
+    })) as any;
+
+    if (rider) {
+      rider.name = user.name || rider.name;
+      rider.email = user.email || rider.email;
+      rider.photoURL = user.photoURL || rider.photoURL;
+    }
+    return rider as Rider | null;
   }
 
   static async getAssignedParcels(riderId: ObjectId): Promise<Parcel[]> {
@@ -181,5 +218,53 @@ export class RiderService {
     await cashoutsCollection.insertOne(payoutRequest as any);
 
     return { success: true, message: "Payout request submitted successfully." };
+  }
+
+  static async updateRiderStatus(
+    id: string,
+    status: string,
+    adminEmail: string,
+  ): Promise<{ success: boolean; message: string; modifiedCount: number }> {
+    const rider = await ridersCollection.findOne({
+      _id: new ObjectId(String(id)),
+    });
+    if (!rider) {
+      return {
+        success: false,
+        message: "Rider application not found",
+        modifiedCount: 0,
+      };
+    }
+
+    const updateResult = await ridersCollection.updateOne(
+      { _id: new ObjectId(String(id)) },
+      { $set: { status: status as any } },
+    );
+
+    if (status === "approved") {
+      const emailToLookup =
+        rider.email ||
+        (await usersCollection.findOne({ _id: rider.userId }))?.email;
+      if (emailToLookup) {
+        await usersCollection.updateOne(
+          { email: emailToLookup },
+          { $set: { role: "rider" } },
+        );
+      }
+    }
+
+    await auditCollection.insertOne({
+      admin_email: adminEmail,
+      action: "RIDER_STATUS_CHANGE",
+      target_id: id,
+      details: `Changed rider application status to ${status}`,
+      timestamp: new Date().toISOString(),
+    });
+
+    return {
+      success: true,
+      message: `Rider status updated to ${status}`,
+      modifiedCount: updateResult.modifiedCount,
+    };
   }
 }

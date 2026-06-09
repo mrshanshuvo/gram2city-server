@@ -378,13 +378,18 @@ export class AdminService {
       };
     }
 
+    // Lookup user details dynamically since they are not duplicated on the rider profile
+    const user = await usersCollection.findOne({ _id: rider.userId });
+    const riderName = user?.name || rider.name || "Unknown Rider";
+    const riderEmail = user?.email || rider.email || "";
+
     const result = await parcelCollection.updateOne(
       { _id: new ObjectId(String(parcelId)) },
       {
         $set: {
           assigned_rider_id: rider._id,
-          assigned_rider_name: rider.name,
-          assigned_rider_email: rider.email,
+          assigned_rider_name: riderName,
+          assigned_rider_email: riderEmail,
           assigned_rider_phone: rider.phone,
           delivery_status: "assigned",
         },
@@ -409,7 +414,29 @@ export class AdminService {
     const query: any = {};
     if (status) query.status = status;
 
-    return merchantsCollection.find(query).sort({ createdAt: -1 }).toArray();
+    const pipeline = [
+      { $match: query },
+      { $sort: { createdAt: -1 } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "userDetails",
+        },
+      },
+      { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          userName: { $ifNull: ["$userDetails.name", "$name"] },
+          email: { $ifNull: ["$userDetails.email", "$email"] },
+          userPhoto: "$userDetails.photoURL",
+        },
+      },
+      { $project: { userDetails: 0 } },
+    ];
+
+    return merchantsCollection.aggregate(pipeline).toArray();
   }
 
   static async updateMerchantStatus(

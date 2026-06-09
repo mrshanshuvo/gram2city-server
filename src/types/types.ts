@@ -78,8 +78,9 @@ export interface Parcel {
 
 export interface Rider {
   _id?: ObjectId;
-  name: string;
-  email: string;
+  userId?: ObjectId;
+  name?: string;
+  email?: string;
   phone: string;
   photoURL?: string;
   district?: string;
@@ -95,12 +96,20 @@ export interface Rider {
   vehicleType?: "bike" | "car" | "mini_pickup" | "large_pickup";
   vehicleNumber?: string;
   drivingLicense?: string;
+
+  // Additional details from application form wizard
+  age?: number;
+  nid?: string;
+  bikeBrand?: string;
+  bikeRegNo?: string;
+  additionalInfo?: string;
+  createdAt?: string;
 }
 
 export interface Merchant {
   _id?: ObjectId;
   userId: ObjectId;
-  email: string;
+  email?: string;
   businessName: string;
   businessType?: string;
   tradeLicense?: string;

@@ -73,7 +73,9 @@ export const verifyMerchant = async (
   }
 
   if (user?.role === "admin") {
-    const merchantProfile = await merchantsCollection.findOne({ email });
+    const merchantProfile = await merchantsCollection.findOne({
+      $or: [{ userId: user._id }, { email }],
+    });
     if (merchantProfile) {
       return next();
     }
@@ -95,7 +97,9 @@ export const verifyRider = async (
   }
 
   if (user?.role === "admin") {
-    const riderProfile = await ridersCollection.findOne({ email });
+    const riderProfile = await ridersCollection.findOne({
+      $or: [{ userId: user?._id }, { email }],
+    });
     if (riderProfile) {
       return next();
     }

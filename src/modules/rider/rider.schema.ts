@@ -25,5 +25,6 @@ export const riderApplicationSchema = z.object({
 export const updateRiderStatusSchema = z.object({
   body: z.object({
     status: z.enum(["pending", "approved", "rejected"]),
+    email: z.string().optional(),
   }),
 });
