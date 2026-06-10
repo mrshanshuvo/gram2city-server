@@ -9,9 +9,11 @@ import {
   usersCollection,
   parcelCollection,
   avatarsCollection,
-  addressesCollection,
+  merchantsCollection,
+  auditCollection,
 } from "../../db/db";
-import { User, Avatar, UserStats, Address } from "./user.interface";
+import { createNotification } from "../notification/notification.controller";
+import { User, Avatar, UserStats } from "./user.interface";
 
 export class UserService {
   static async searchUsers(emailQuery: string): Promise<User[]> {
@@ -168,35 +170,182 @@ export class UserService {
     return avatarsCollection.deleteOne({ _id: new ObjectId(id) });
   }
 
-  static async getAddresses(email: string): Promise<Address[]> {
-    return (await addressesCollection
-      .find({ userEmail: email })
-      .sort({ isDefault: -1, createdAt: -1 })
-      .toArray()) as unknown as Address[];
-  }
 
-  static async addAddress(
-    address: Omit<Address, "_id">,
+  static async updateUserStatus(
     email: string,
-  ): Promise<InsertOneResult> {
-    if (address.isDefault) {
-      await addressesCollection.updateMany(
-        { userEmail: email },
-        { $set: { isDefault: false } },
-      );
-    }
-    const newAddress: Address = {
-      ...address,
-      userEmail: email,
-      createdAt: new Date().toISOString(),
-    };
-    return addressesCollection.insertOne(newAddress);
-  }
+    status: string,
+    adminEmail: string,
+  ): Promise<void> {
+    await usersCollection.updateOne(
+      { email },
+      { $set: { status: status as any } },
+    );
 
-  static async deleteAddress(id: string, email: string): Promise<DeleteResult> {
-    return addressesCollection.deleteOne({
-      _id: new ObjectId(String(id)),
-      userEmail: email,
+    await auditCollection.insertOne({
+      admin_email: adminEmail,
+      action: "USER_STATUS_CHANGE",
+      target_id: email,
+      details: `Changed user ${email} status to ${status}`,
+      timestamp: new Date().toISOString(),
     });
   }
+
+  static async getMerchants(status?: string): Promise<any[]> {
+    const query: any = {};
+    if (status) query.status = status;
+
+    const pipeline = [
+      { $match: query },
+      { $sort: { createdAt: -1 } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "userDetails",
+        },
+      },
+      { $unwind: { path: "$userDetails", preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          userName: { $ifNull: ["$userDetails.name", "$name"] },
+          email: { $ifNull: ["$userDetails.email", "$email"] },
+          userPhoto: "$userDetails.photoURL",
+        },
+      },
+      { $project: { userDetails: 0 } },
+    ];
+
+    return merchantsCollection.aggregate(pipeline).toArray();
+  }
+
+  static async updateMerchantStatus(
+    id: string,
+    status: string,
+    adminEmail: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const merchant = await merchantsCollection.findOne({
+      _id: new ObjectId(String(id)),
+    });
+    if (!merchant) {
+      return { success: false, message: "Merchant not found" };
+    }
+
+    await merchantsCollection.updateOne(
+      { _id: new ObjectId(String(id)) },
+      { $set: { status: status as any, updatedAt: new Date().toISOString() } },
+    );
+
+    if (status === "approved") {
+      await usersCollection.updateOne(
+        { email: merchant.email },
+        { $set: { role: "merchant" } },
+      );
+    }
+
+    if (merchant.email) {
+      await createNotification({
+        email: merchant.email,
+        message: `Application Update: Your application to become a Merchant for "${merchant.businessName}" has been ${status}.`,
+        type: "admin_alert",
+      });
+    }
+
+    await auditCollection.insertOne({
+      admin_email: adminEmail,
+      action: "MERCHANT_STATUS_CHANGE",
+      target_id: id,
+      details: `Changed merchant ${merchant.businessName} status to ${status}`,
+      timestamp: new Date().toISOString(),
+    });
+
+    return { success: true, message: `Merchant status updated to ${status}` };
+  }
+
+  static async applyMerchant(merchantData: any) {
+    const existing = await merchantsCollection.findOne({
+      email: merchantData.email,
+    });
+    if (existing) {
+      return {
+        success: false,
+        message: "A merchant application already exists for this email.",
+      };
+    }
+
+    const user = await usersCollection.findOne({ email: merchantData.email });
+    if (!user) {
+      return { success: false, message: "User not found in system." };
+    }
+
+    const newMerchant = {
+      ...merchantData,
+      userId: user._id as ObjectId,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+
+    const result = await merchantsCollection.insertOne(newMerchant);
+    return {
+      success: true,
+      message: "Application submitted successfully and is pending approval.",
+      merchantId: result.insertedId,
+    };
+  }
+
+  static async getMerchantProfile(email: string) {
+    return merchantsCollection.findOne({ email });
+  }
+
+  static async getMerchantStats(email: string) {
+    const merchant = await this.getMerchantProfile(email);
+    if (!merchant) {
+      return null;
+    }
+
+    const stats = await parcelCollection
+      .aggregate([
+        { $match: { merchantId: merchant._id } },
+        {
+          $group: {
+            _id: null,
+            totalBookings: { $sum: 1 },
+            totalCODCollected: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$delivery_status", "delivered"] },
+                  "$codAmount",
+                  0,
+                ],
+              },
+            },
+            pendingCOD: {
+              $sum: {
+                $cond: [
+                  { $ne: ["$delivery_status", "delivered"] },
+                  "$codAmount",
+                  0,
+                ],
+              },
+            },
+            deliveredCount: {
+              $sum: {
+                $cond: [{ $eq: ["$delivery_status", "delivered"] }, 1, 0],
+              },
+            },
+          },
+        },
+      ])
+      .toArray();
+
+    return (
+      stats[0] || {
+        totalBookings: 0,
+        totalCODCollected: 0,
+        pendingCOD: 0,
+        deliveredCount: 0,
+      }
+    );
+  }
 }
+

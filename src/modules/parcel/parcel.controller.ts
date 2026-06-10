@@ -363,65 +363,6 @@ export const markDelivered = async (req: Request, res: Response) => {
   }
 };
 
-export const getTrackingHistory = async (req: Request, res: Response) => {
-  try {
-    const { trackingId } = req.params;
-    const updates = await ParcelService.getTrackingHistory(
-      trackingId as string,
-    );
-
-    if (updates.length === 0) {
-      return res.status(404).send({
-        success: false,
-        message: "No tracking history found for this ID.",
-      });
-    }
-
-    res.send({ success: true, trackingId, history: updates });
-  } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to fetch tracking info." });
-  }
-};
-
-export const getRecentTrackings = async (req: Request, res: Response) => {
-  try {
-    const recentUpdates = await ParcelService.getRecentTrackings();
-    res.send({ success: true, history: recentUpdates });
-  } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to fetch recent trackings" });
-  }
-};
-
-export const addManualTrackingUpdate = async (req: Request, res: Response) => {
-  try {
-    const { trackingId, status, details, location } = req.body;
-
-    if (!trackingId || !status || !details) {
-      return res
-        .status(400)
-        .send({ success: false, message: "Missing required fields" });
-    }
-
-    const result = await ParcelService.addManualTrackingUpdate(
-      trackingId,
-      status,
-      details,
-      location,
-    );
-    res.status(201).send({
-      success: true,
-      message: "Tracking update added.",
-      id: result.insertedId,
-    });
-  } catch (error) {
-    res.status(500).send({ success: false, message: "Server error" });
-  }
-};
-
 export const uploadImage = async (req: Request, res: Response) => {
   if (!req.file) {
     return res.status(400).send({
@@ -434,8 +375,43 @@ export const uploadImage = async (req: Request, res: Response) => {
     const url = await uploadToCloudinary(req.file, "gram2city/parcels");
     res.send({ success: true, url });
   } catch (error) {
+    res.status(500).send({ success: false, message: "Failed to upload image" });
+  }
+};
+
+export const getAllParcels = async (req: Request, res: Response) => {
+  try {
+    const { delivery_status, startDate, endDate } = req.query;
+    const page = parseInt(req.query.page as string) || 1;
+    const size = parseInt(req.query.size as string) || 10;
+
+    const { parcels, totalItems } = await ParcelService.getAllParcels(
+      {
+        delivery_status: delivery_status as string,
+        startDate: startDate as string,
+        endDate: endDate as string,
+      },
+      page,
+      size,
+    );
+
+    const totalPages = Math.ceil(totalItems / size);
+
+    res.send({
+      status: "success",
+      data: parcels,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        limit: size,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
     res
       .status(500)
-      .send({ success: false, message: "Failed to upload image" });
+      .send({ success: false, message: "Failed to fetch all parcels" });
   }
 };

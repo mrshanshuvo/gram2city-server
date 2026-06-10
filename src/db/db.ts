@@ -20,7 +20,6 @@ import type {
   LandingConfig,
   Avatar,
   Merchant,
-  Address,
 } from "../types/types";
 
 import { config } from "../config";
@@ -67,7 +66,6 @@ export const merchantsCollection = db.collection<Merchant>("merchants");
 export const warehousesCollection = db.collection("warehouses");
 export const newsletterCollection = db.collection("newsletter");
 export const testimonialsCollection = db.collection<any>("testimonials");
-export const addressesCollection = db.collection<Address>("addresses");
 
 // ─── DB Initialization (Indexing) ─────────────────────────────────────────────
 export const initDB = async () => {
@@ -168,9 +166,6 @@ export const initDB = async () => {
 
     // 9. reviewsCollection
     await reviewsCollection.createIndex({ rider_email: 1, date: -1 });
-
-    // 10. addressesCollection
-    await addressesCollection.createIndex({ userEmail: 1, isDefault: 1 });
 
     // 11. cashoutsCollection
     await cashoutsCollection.createIndex({ rider_email: 1, requested_at: -1 });

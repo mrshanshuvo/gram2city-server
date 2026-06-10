@@ -252,46 +252,136 @@ export const deleteAvatar = async (req: Request, res: Response) => {
   }
 };
 
-export const getMyAddresses = async (req: Request, res: Response) => {
-  try {
-    const addresses = await UserService.getAddresses(req.user?.email as string);
-    res.send({ success: true, data: addresses });
-  } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to fetch addresses" });
-  }
-};
 
-export const addAddress = async (req: Request, res: Response) => {
+export const updateUserStatus = async (req: Request, res: Response) => {
+  const email = req.params.email as string;
+  const { status } = req.body;
   try {
-    const { label, fullName, phone, address, district, region, isDefault } =
-      req.body;
-    const result = await UserService.addAddress(
-      {
-        label,
-        fullName,
-        phone,
-        address,
-        district,
-        region,
-        isDefault: !!isDefault,
-      } as any,
+    await UserService.updateUserStatus(
+      email,
+      status,
       req.user?.email as string,
     );
-    res.status(201).send({ success: true, id: result.insertedId });
-  } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to save address" });
-  }
-};
-
-export const deleteAddress = async (req: Request, res: Response) => {
-  try {
-    await UserService.deleteAddress(req.params.id as string, req.user?.email as string);
-    res.send({ success: true, message: "Address deleted" });
+    res.send({
+      success: true,
+      message: `User account ${status} successfully.`,
+    });
   } catch (error) {
     res
       .status(500)
-      .send({ success: false, message: "Failed to delete address" });
+      .send({ success: false, message: "Failed to update user status" });
   }
 };
+
+export const getMerchants = async (req: Request, res: Response) => {
+  try {
+    const { status } = req.query;
+    const merchants = await UserService.getMerchants(status as string);
+    res.send({ success: true, data: merchants });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch merchants" });
+  }
+};
+
+export const updateMerchantStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const result = await UserService.updateMerchantStatus(
+      id as string,
+      status,
+      req.user?.email as string,
+    );
+    if (!result.success) {
+      return res.status(404).send(result);
+    }
+    res.send(result);
+  } catch (error) {
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to update status" });
+  }
+};
+
+export const applyMerchant = async (req: Request, res: Response) => {
+  try {
+    const {
+      businessName,
+      businessType,
+      tradeLicense,
+      address,
+      district,
+      phone,
+      contactNumber,
+      shopAddress,
+    } = req.body;
+    const email = req.user?.email as string;
+
+    if (!email) {
+      return res
+        .status(400)
+        .send({ success: false, message: "User email not found in token." });
+    }
+
+    const result = await UserService.applyMerchant({
+      userId: undefined as any,
+      email,
+      businessName,
+      businessType,
+      tradeLicense: tradeLicense || "Pending",
+      address: address || shopAddress || "",
+      district: district || "Dhaka",
+      phone: phone || contactNumber || "",
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    });
+
+    if (!result.success) {
+      return res.status(400).send(result);
+    }
+
+    res.status(201).send(result);
+  } catch (error) {
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to submit application." });
+  }
+};
+
+export const getMerchantProfile = async (req: Request, res: Response) => {
+  try {
+    const email = req.user?.email as string;
+    const merchant = await UserService.getMerchantProfile(email);
+    if (!merchant) {
+      return res
+        .status(404)
+        .send({ success: false, message: "Merchant profile not found." });
+    }
+    res.send({ success: true, data: merchant });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch merchant profile." });
+  }
+};
+
+export const getMerchantStats = async (req: Request, res: Response) => {
+  try {
+    const email = req.user?.email as string;
+    const stats = await UserService.getMerchantStats(email);
+    if (!stats) {
+      return res
+        .status(404)
+        .send({ success: false, message: "Merchant not found" });
+    }
+    res.send({ success: true, stats });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch merchant stats" });
+  }
+};
+

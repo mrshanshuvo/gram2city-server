@@ -4,8 +4,10 @@ import {
   createPaymentIntent,
   recordPayment,
   getCashoutHistory,
+  getPayouts,
+  updatePayoutStatus,
 } from "./finance.controller";
-import { verifyFBToken } from "../../middleware/auth";
+import { verifyFBToken, verifyAdmin } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import { paymentSchema } from "./finance.schema";
 
@@ -20,5 +22,9 @@ router.post(
 );
 router.post("/payments", verifyFBToken, validate(paymentSchema), recordPayment);
 router.get("/cashouts", verifyFBToken, getCashoutHistory);
+
+// Admin Payout Routes
+router.get("/payouts", verifyFBToken, verifyAdmin, getPayouts);
+router.patch("/payouts/:id/status", verifyFBToken, verifyAdmin, updatePayoutStatus);
 
 export default router;
