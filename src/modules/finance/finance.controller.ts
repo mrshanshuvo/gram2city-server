@@ -70,3 +70,35 @@ export const getCashoutHistory = async (req: Request, res: Response) => {
     res.status(500).send({ success: false, message: "Server error" });
   }
 };
+
+export const getPayouts = async (req: Request, res: Response) => {
+  try {
+    const payouts = await FinanceService.getPayouts();
+    res.send({ success: true, data: payouts });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to fetch payouts" });
+  }
+};
+
+export const updatePayoutStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const result = await FinanceService.updatePayoutStatus(
+      id as string,
+      status,
+      req.user?.email as string,
+    );
+    if (!result.success) {
+      return res.status(404).send(result);
+    }
+    res.send(result);
+  } catch (error) {
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to update payout status" });
+  }
+};

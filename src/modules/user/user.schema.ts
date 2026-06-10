@@ -21,3 +21,9 @@ export const updateProfileSchema = z.object({
       .optional(),
   }),
 });
+
+export const userStatusSchema = z.object({
+  body: z.object({
+    status: z.enum(["active", "suspended"]),
+  }),
+});

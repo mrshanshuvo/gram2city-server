@@ -10,14 +10,24 @@ import {
   markPicked,
   bulkIngestParcels,
   markDelivered,
+  uploadImage,
+  getAllParcels,
+} from "./parcel.controller";
+import {
   getTrackingHistory,
   getRecentTrackings,
   addManualTrackingUpdate,
-  uploadImage,
-} from "./parcel.controller";
+  getPublicTracking,
+} from "./tracking/tracking.controller";
+import { assignRider } from "./assignment/assignment.controller";
 import { verifyFBToken, verifyAdmin } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
-import { parcelSchema, updateParcelSchema, trackingSchema } from "./parcel.schema";
+import {
+  parcelSchema,
+  updateParcelSchema,
+  trackingSchema,
+  assignRiderSchema,
+} from "./parcel.schema";
 
 const router = Router();
 
@@ -40,8 +50,16 @@ const upload = multer({
 // Parcel Routes
 router.get("/parcels", verifyFBToken, getMyParcels);
 router.get("/parcels/stats", verifyFBToken, getMyParcelStats);
+router.get("/parcels/all", verifyFBToken, verifyAdmin, getAllParcels);
 router.post("/parcels", verifyFBToken, validate(parcelSchema), bookParcel);
 router.get("/parcels/:id", verifyFBToken, getParcelById);
+router.patch(
+  "/parcels/:id/assign",
+  verifyFBToken,
+  verifyAdmin,
+  validate(assignRiderSchema),
+  assignRider,
+);
 router.patch(
   "/parcels/:id",
   verifyFBToken,
@@ -59,6 +77,7 @@ router.post("/parcels/bulk", verifyFBToken, bulkIngestParcels);
 
 // Tracking Routes
 router.get("/trackings/:trackingId", getTrackingHistory);
+router.get("/public/tracking/:trackingId", getPublicTracking);
 router.get(
   "/trackings/all/recent",
   verifyFBToken,

@@ -1,27 +1,61 @@
 import { Router } from "express";
 import multer from "multer";
+
 import {
   getPublicSettings,
-  getPublicTracking,
-  getProcessSteps,
-  getLandingConfig,
-  updateLandingConfig,
-  getBanners,
-  getServices,
-  getFeatures,
-  getPartners,
-  getTestimonials,
+  getContentConfig,
+  updateContentConfig,
   getStats,
+  getWarehouses,
+} from "./settings/settings.controller";
+
+import {
+  getBanners,
+  createBanner,
+  updateBanner,
+  deleteBanner,
+} from "./banners/banners.controller";
+
+import {
+  getServices,
+  createService,
+  updateService,
+  deleteService,
+} from "./services/services.controller";
+
+import {
+  getFeatures,
+  createFeature,
+  updateFeature,
+  deleteFeature,
+} from "./features/features.controller";
+
+import {
+  getPartners,
+  createPartner,
+  updatePartner,
+  deletePartner,
+} from "./partners/partners.controller";
+
+import {
+  getProcessSteps,
+  createProcessStep,
+  updateProcessStep,
+  deleteProcessStep,
+} from "./process-steps/process-steps.controller";
+
+import {
+  getTestimonials,
+  createTestimonial,
+  updateTestimonial,
+  deleteTestimonial,
+} from "./testimonials/testimonials.controller";
+
+import {
   subscribeNewsletter,
   getNewsletterSubscribers,
-  getWarehouses,
-  applyMerchant,
-  getMerchantProfile,
-  getMerchantStats,
-  createLandingItem,
-  updateLandingItem,
-  deleteLandingItem,
-} from "./public.controller";
+} from "./newsletter/newsletter.controller";
+
 import { verifyFBToken, verifyAdmin } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import {
@@ -32,8 +66,8 @@ import {
   partnerSchema,
   testimonialSchema,
   processStepSchema,
-  landingConfigUpdateSchema,
-} from "./public.schema";
+  contentConfigUpdateSchema,
+} from "./content.schema";
 
 const router = Router();
 const upload = multer({
@@ -87,11 +121,10 @@ const parseNestedBody = (req: any, _res: any, next: any) => {
 
 // ─── PUBLIC GENERAL ROUTES ──────────────────────────────────────────────────
 router.get("/public/settings", getPublicSettings);
-router.get("/public/tracking/:trackingId", getPublicTracking);
 
 // ─── LANDING PAGE PUBLIC ROUTES ──────────────────────────────────────────────
 router.get("/landing/process-steps", getProcessSteps);
-router.get("/landing/config", getLandingConfig);
+router.get("/landing/config", getContentConfig);
 router.get("/landing/banners", getBanners);
 router.get("/landing/services", getServices);
 router.get("/landing/features", getFeatures);
@@ -112,8 +145,8 @@ router.patch(
   verifyAdmin,
   upload.single("ogImage"),
   parseNestedBody,
-  validate(landingConfigUpdateSchema),
-  updateLandingConfig,
+  validate(contentConfigUpdateSchema),
+  updateContentConfig,
 );
 router.get(
   "/landing/newsletter",
@@ -122,45 +155,144 @@ router.get(
   getNewsletterSubscribers,
 );
 
-// ─── MERCHANT ONBOARDING & PERFORMANCE ───────────────────────────────────────
-router.post("/merchants", verifyFBToken, applyMerchant);
-router.get("/merchants/me", verifyFBToken, getMerchantProfile);
-router.get("/merchants/stats", verifyFBToken, getMerchantStats);
-
 // ─── LANDING ELEMENTS CRUD ADMIN ROUTES ──────────────────────────────────────
-const registerCRUD = (name: string, schema?: any, imageField?: string) => {
-  const middleware: any[] = [];
-  if (imageField) middleware.push(upload.single(imageField));
-  if (schema) middleware.push(validate(schema));
 
-  router.post(
-    `/landing/${name}`,
-    verifyFBToken,
-    verifyAdmin,
-    ...middleware,
-    createLandingItem,
-  );
-  router.patch(
-    `/landing/${name}/:id`,
-    verifyFBToken,
-    verifyAdmin,
-    ...middleware,
-    updateLandingItem,
-  );
-  router.delete(
-    `/landing/${name}/:id`,
-    verifyFBToken,
-    verifyAdmin,
-    deleteLandingItem,
-  );
-};
+// Banners CRUD
+router.post(
+  "/landing/banners",
+  verifyFBToken,
+  verifyAdmin,
+  upload.single("image"),
+  validate(bannerSchema),
+  createBanner,
+);
+router.patch(
+  "/landing/banners/:id",
+  verifyFBToken,
+  verifyAdmin,
+  upload.single("image"),
+  validate(bannerSchema),
+  updateBanner,
+);
+router.delete("/landing/banners/:id", verifyFBToken, verifyAdmin, deleteBanner);
 
-registerCRUD("banners", bannerSchema, "image");
-registerCRUD("services", serviceSchema, "image");
-registerCRUD("features", featureSchema, "image");
-registerCRUD("partners", partnerSchema, "logo");
-registerCRUD("process-steps", processStepSchema);
-registerCRUD("testimonials", testimonialSchema, "image");
+// Services CRUD
+router.post(
+  "/landing/services",
+  verifyFBToken,
+  verifyAdmin,
+  upload.single("image"),
+  validate(serviceSchema),
+  createService,
+);
+router.patch(
+  "/landing/services/:id",
+  verifyFBToken,
+  verifyAdmin,
+  upload.single("image"),
+  validate(serviceSchema),
+  updateService,
+);
+router.delete(
+  "/landing/services/:id",
+  verifyFBToken,
+  verifyAdmin,
+  deleteService,
+);
+
+// Features CRUD
+router.post(
+  "/landing/features",
+  verifyFBToken,
+  verifyAdmin,
+  upload.single("image"),
+  validate(featureSchema),
+  createFeature,
+);
+router.patch(
+  "/landing/features/:id",
+  verifyFBToken,
+  verifyAdmin,
+  upload.single("image"),
+  validate(featureSchema),
+  updateFeature,
+);
+router.delete(
+  "/landing/features/:id",
+  verifyFBToken,
+  verifyAdmin,
+  deleteFeature,
+);
+
+// Partners CRUD
+router.post(
+  "/landing/partners",
+  verifyFBToken,
+  verifyAdmin,
+  upload.single("logo"),
+  validate(partnerSchema),
+  createPartner,
+);
+router.patch(
+  "/landing/partners/:id",
+  verifyFBToken,
+  verifyAdmin,
+  upload.single("logo"),
+  validate(partnerSchema),
+  updatePartner,
+);
+router.delete(
+  "/landing/partners/:id",
+  verifyFBToken,
+  verifyAdmin,
+  deletePartner,
+);
+
+// Process Steps CRUD
+router.post(
+  "/landing/process-steps",
+  verifyFBToken,
+  verifyAdmin,
+  validate(processStepSchema),
+  createProcessStep,
+);
+router.patch(
+  "/landing/process-steps/:id",
+  verifyFBToken,
+  verifyAdmin,
+  validate(processStepSchema),
+  updateProcessStep,
+);
+router.delete(
+  "/landing/process-steps/:id",
+  verifyFBToken,
+  verifyAdmin,
+  deleteProcessStep,
+);
+
+// Testimonials CRUD
+router.post(
+  "/landing/testimonials",
+  verifyFBToken,
+  verifyAdmin,
+  upload.single("image"),
+  validate(testimonialSchema),
+  createTestimonial,
+);
+router.patch(
+  "/landing/testimonials/:id",
+  verifyFBToken,
+  verifyAdmin,
+  upload.single("image"),
+  validate(testimonialSchema),
+  updateTestimonial,
+);
+router.delete(
+  "/landing/testimonials/:id",
+  verifyFBToken,
+  verifyAdmin,
+  deleteTestimonial,
+);
 
 // ─── Multer Error Handler ──────────────────────────────────────────────────
 router.use((err: any, _req: any, res: any, next: any) => {

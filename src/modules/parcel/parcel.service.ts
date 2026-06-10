@@ -6,7 +6,10 @@ import {
   settingsCollection,
   auditCollection,
   addTrackingUpdate,
+  ridersCollection,
+  usersCollection,
 } from "../../db/db";
+import { createNotification } from "../notification/notification.controller";
 import { Parcel, TrackingUpdate } from "./parcel.interface";
 import { SystemSettings } from "../admin/admin.interface";
 
@@ -184,36 +187,35 @@ export class ParcelService {
     });
   }
 
-  static async getTrackingHistory(
-    trackingId: string,
-  ): Promise<TrackingUpdate[]> {
-    return (await trackingCollection
-      .find({ trackingId })
-      .sort({ time: -1 })
-      .toArray()) as unknown as TrackingUpdate[];
-  }
+  static async getAllParcels(
+    filter: { delivery_status?: string; startDate?: string; endDate?: string },
+    page: number,
+    size: number,
+  ) {
+    const skip = (page - 1) * size;
+    const query: any = {};
 
-  static async getRecentTrackings(): Promise<TrackingUpdate[]> {
-    return (await trackingCollection
-      .find({})
-      .sort({ time: -1 })
-      .limit(10)
-      .toArray()) as unknown as TrackingUpdate[];
-  }
+    if (filter.delivery_status && filter.delivery_status !== "all") {
+      query.delivery_status = filter.delivery_status;
+    }
 
-  static async addManualTrackingUpdate(
-    trackingId: string,
-    status: string,
-    details: string,
-    location: string = "Processing Center",
-  ): Promise<InsertOneResult> {
-    const update = {
-      trackingId,
-      status,
-      details,
-      location,
-      time: new Date().toISOString(),
-    };
-    return trackingCollection.insertOne(update);
+    if (filter.startDate || filter.endDate) {
+      query.creation_date = {};
+      if (filter.startDate)
+        query.creation_date.$gte = new Date(filter.startDate).toISOString();
+      if (filter.endDate)
+        query.creation_date.$lte = new Date(filter.endDate).toISOString();
+    }
+
+    const totalItems = await parcelCollection.countDocuments(query);
+    const parcels = await parcelCollection
+      .find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(size)
+      .toArray();
+
+    return { parcels, totalItems };
   }
 }
+
