@@ -30,15 +30,3 @@ export interface UserStats {
   totalSpent: number;
 }
 
-export interface Address {
-  _id?: ObjectId;
-  userEmail: string;
-  label: string; // e.g. "Home", "Office", "Main Warehouse"
-  fullName: string;
-  phone: string;
-  address: string;
-  district: string;
-  region: string;
-  isDefault: boolean;
-  createdAt: string;
-}

@@ -7,6 +7,7 @@ import {
   cashoutsCollection,
   notificationsCollection,
   addTrackingUpdate,
+  auditCollection,
 } from "../../db/db";
 import { createNotification } from "../notification/notification.controller";
 import { Payment } from "./finance.interface";
@@ -124,5 +125,49 @@ export class FinanceService {
         parcel_name: 1,
       })
       .toArray();
+  }
+
+  static async getPayouts(): Promise<any[]> {
+    return cashoutsCollection.find().sort({ requested_at: -1 }).toArray();
+  }
+
+  static async updatePayoutStatus(
+    id: string,
+    status: string,
+    adminEmail: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const payout = await cashoutsCollection.findOne({
+      _id: new ObjectId(String(id)),
+    });
+    if (!payout) {
+      return { success: false, message: "Payout request not found" };
+    }
+
+    await cashoutsCollection.updateOne(
+      { _id: new ObjectId(String(id)) },
+      {
+        $set: {
+          status: status as any,
+          processed_at: new Date().toISOString(),
+          processed_by: adminEmail,
+        },
+      },
+    );
+
+    await createNotification({
+      email: payout.rider_email,
+      message: `Your payout request of ${payout.amount} BDT has been ${status}.`,
+      type: "payment",
+    });
+
+    await auditCollection.insertOne({
+      admin_email: adminEmail,
+      action: "PAYOUT_STATUS_CHANGE",
+      target_id: id,
+      details: `Set payout status for ${payout.rider_email} to ${status}`,
+      timestamp: new Date().toISOString(),
+    });
+
+    return { success: true, message: `Payout request ${status} successfully.` };
   }
 }

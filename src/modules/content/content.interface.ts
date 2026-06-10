@@ -51,7 +51,7 @@ export interface ProcessStep {
   order: number;
 }
 
-export interface LandingConfig {
+export interface ContentConfig {
   _id?: ObjectId;
   merchantSection: {
     title: string;
@@ -71,22 +71,6 @@ export interface LandingConfig {
       linkedin?: string;
     };
   };
-}
-
-export interface Merchant {
-  _id?: ObjectId;
-  userId: ObjectId;
-  email: string;
-  businessName: string;
-  businessType?: string;
-  tradeLicense?: string;
-  logo?: string;
-  address: string;
-  district: string;
-  phone: string;
-  status: "pending" | "approved" | "suspended" | "rejected";
-  createdAt: string;
-  updatedAt?: string;
 }
 
 export interface Warehouse {

@@ -18,7 +18,6 @@ export const bannerSchema = z.object({
   body: z.object({
     title: z.string().min(1, "Title is required"),
     subtitle: z.string().optional(),
-    // image comes from req.file (multipart upload) — not validated in body
     image: z.string().url().optional(),
     ctaText: z.string().optional(),
     ctaLink: z.string().optional(),
@@ -54,7 +53,6 @@ export const featureSchema = z.object({
 export const partnerSchema = z.object({
   body: z.object({
     name: z.string().min(1, "Name is required"),
-    // logo comes from req.file (multipart upload) — not validated in body
     logo: z.string().url().optional(),
     website: z.string().url().optional().or(z.literal("")),
     order: z.coerce.number().default(0),
@@ -84,7 +82,7 @@ export const processStepSchema = z.object({
   }),
 });
 
-export const landingConfigUpdateSchema = z.object({
+export const contentConfigUpdateSchema = z.object({
   body: z.object({
     merchantSection: z
       .object({
@@ -123,4 +121,3 @@ export const landingConfigUpdateSchema = z.object({
     howItWorksFooter: z.string().optional(),
   }),
 });
-

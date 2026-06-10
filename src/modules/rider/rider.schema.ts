@@ -28,3 +28,12 @@ export const updateRiderStatusSchema = z.object({
     email: z.string().optional(),
   }),
 });
+
+export const reviewSchema = z.object({
+  body: z.object({
+    rider_email: z.string().email(),
+    rating: z.coerce.number().min(1).max(5),
+    comment: z.string().optional(),
+    parcelId: z.string().optional(),
+  }),
+});

@@ -9,11 +9,16 @@ import {
   requestPayout,
   updateRiderStatus,
 } from "./rider.controller";
+import {
+  getPublicRiderReviews,
+  submitRiderReview,
+} from "./review/review.controller";
 import { verifyFBToken, verifyAdmin } from "../../middleware/auth";
 import { validate } from "../../middleware/validate";
 import {
   riderApplicationSchema,
   updateRiderStatusSchema,
+  reviewSchema,
 } from "./rider.schema";
 
 const router = Router();
@@ -39,6 +44,8 @@ router.patch(
   updateParcelDeliveryStatus,
 );
 router.get("/reviews", verifyFBToken, getRiderReviews);
+router.get("/reviews/rider/:email", getPublicRiderReviews);
+router.post("/reviews", verifyFBToken, validate(reviewSchema), submitRiderReview);
 router.get("/rider/stats", verifyFBToken, getRiderStats);
 router.post("/payout", verifyFBToken, requestPayout);
 

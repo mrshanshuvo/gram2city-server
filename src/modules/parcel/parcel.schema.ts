@@ -65,3 +65,9 @@ export const trackingSchema = z.object({
     location: z.string().optional(),
   }),
 });
+
+export const assignRiderSchema = z.object({
+  body: z.object({
+    riderId: z.string().min(1, "Rider ID is required"),
+  }),
+});
