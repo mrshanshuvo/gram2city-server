@@ -474,4 +474,24 @@ export class AdminService {
 
     return { success: true, message: `Payout request ${status} successfully.` };
   }
+
+  static async getAllUsers(search?: string, page: number = 1, size: number = 10) {
+    const skip = (page - 1) * size;
+    const query: any = { role: 'user' };
+
+    if (search) {
+      query.email = { $regex: search, $options: 'i' };
+    }
+
+    const totalItems = await usersCollection.countDocuments(query);
+    const users = await usersCollection
+      .find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(size)
+      .toArray();
+
+    return { users, totalItems };
+  }
 }
+

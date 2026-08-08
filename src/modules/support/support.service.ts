@@ -106,7 +106,16 @@ export class SupportService {
     return feedbackCollection.insertOne(feedback);
   }
 
+  static async submitContactMessage(data: { name: string; email: string; subject: string; message: string }) {
+    return feedbackCollection.insertOne({
+      ...data,
+      type: 'contact_inquiry',
+      timestamp: new Date().toISOString(),
+    } as any);
+  }
+
   static async getAllFeedback(): Promise<Feedback[]> {
+
     return (await feedbackCollection
       .find()
       .sort({ timestamp: -1 })

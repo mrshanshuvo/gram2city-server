@@ -167,7 +167,21 @@ export const submitFeedback = async (req: Request, res: Response) => {
   }
 };
 
+export const submitContactMessage = async (req: Request, res: Response) => {
+  try {
+    const { name, email, subject, message } = req.body;
+    if (!name || !email || !message) {
+      return res.status(400).send({ success: false, message: 'Name, email and message are required' });
+    }
+    const result = await SupportService.submitContactMessage({ name, email, subject, message });
+    res.status(201).send({ success: true, insertedId: result.insertedId });
+  } catch (error) {
+    res.status(500).send({ success: false, message: 'Failed to send message' });
+  }
+};
+
 export const getAllFeedback = async (_req: Request, res: Response) => {
+
   try {
     const feedback = await SupportService.getAllFeedback();
     res.send({ success: true, data: feedback });

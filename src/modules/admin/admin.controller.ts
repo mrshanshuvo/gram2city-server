@@ -186,3 +186,23 @@ export const updatePayoutStatus = async (req: Request, res: Response) => {
     res.status(500).send({ success: false, message: 'Failed to update payout status' });
   }
 };
+
+export const getAllUsers = async (req: Request, res: Response) => {
+  try {
+    const search = req.query.search as string;
+    const page = parseInt(req.query.page as string) || 1;
+    const size = parseInt(req.query.size as string) || 10;
+
+    const result = await AdminService.getAllUsers(search, page, size);
+    res.send({
+      success: true,
+      users: result.users,
+      totalItems: result.totalItems,
+      totalPages: Math.ceil(result.totalItems / size),
+      currentPage: page,
+    });
+  } catch (error) {
+    res.status(500).send({ success: false, message: 'Failed to fetch users' });
+  }
+};
+

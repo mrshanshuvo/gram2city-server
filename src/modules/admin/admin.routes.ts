@@ -13,6 +13,7 @@ import {
   getFleet,
   getPayouts,
   updatePayoutStatus,
+  getAllUsers,
 } from './admin.controller';
 import { verifyFBToken, verifyAdmin } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
@@ -33,6 +34,7 @@ router.get('/stats', getStats);
 router.post('/announce', validate(announceSchema), announce);
 router.get('/settings', getSettings);
 router.patch('/settings', validate(adminSettingsSchema), updateSettings);
+router.get('/users', getAllUsers);
 router.patch('/users/:email/status', validate(userStatusSchema), updateUserStatus);
 router.get('/all-parcels', getAllParcels);
 router.patch('/parcels/:id/assign', validate(assignRiderSchema), assignRider);
@@ -43,3 +45,4 @@ router.get('/payouts', getPayouts);
 router.patch('/payouts/:id/status', updatePayoutStatus);
 
 export default router;
+

@@ -11,6 +11,7 @@ import {
   getRiderReviews,
   submitReview,
   submitFeedback,
+  submitContactMessage,
   getAllFeedback,
   getUnreadNotifications,
   markNotificationRead,
@@ -39,7 +40,11 @@ const chatUpload = multer({
   },
 });
 
+// Contact Route
+router.post('/contact', submitContactMessage);
+
 // FAQ Routes
+
 router.get('/faqs', getFAQs);
 router.patch('/faqs/:id/helpful', voteFAQHelpful);
 router.get('/faqs/categories', getFAQCategories);
