@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { ObjectId } from 'mongodb';
 
 export interface Parcel {
   _id?: ObjectId;
@@ -31,16 +31,16 @@ export interface Parcel {
   cost: number;
   rider_earning?: number;
   admin_profit?: number;
-  payment_status?: "paid" | "unpaid";
+  payment_status?: 'paid' | 'unpaid';
   delivery_status?:
-    | "pending"
-    | "assigned"
-    | "on_the_way"
-    | "delivered"
-    | "cancelled"
-    | "returned"
-    | "not_collected"
-    | "picked_up";
+    | 'pending'
+    | 'assigned'
+    | 'on_the_way'
+    | 'delivered'
+    | 'cancelled'
+    | 'returned'
+    | 'not_collected'
+    | 'picked_up';
 
   assigned_rider_id?: ObjectId;
   assigned_rider_name?: string;
@@ -54,7 +54,7 @@ export interface Parcel {
 
   // Multi-Role Support
   merchantId?: ObjectId;
-  requiredVehicle?: "bike" | "car" | "mini_pickup" | "large_pickup";
+  requiredVehicle?: 'bike' | 'car' | 'mini_pickup' | 'large_pickup';
   codAmount?: number;
 }
 

@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { ObjectId } from 'mongodb';
 
 export interface FAQ {
   _id?: ObjectId;
@@ -35,7 +35,7 @@ export interface Feedback {
   userName: string;
   rating: number; // 1-5
   comment: string;
-  category: "service" | "app" | "rider" | "other";
+  category: 'service' | 'app' | 'rider' | 'other';
   timestamp: string;
   isResolved?: boolean;
 }
@@ -46,7 +46,7 @@ export interface Notification {
   message: string;
   time: string;
   isRead: boolean;
-  type: "status_update" | "payment" | "admin_alert" | string;
+  type: 'status_update' | 'payment' | 'admin_alert' | string;
 }
 
 export interface ChatMessage {

@@ -1,10 +1,6 @@
-import { Request, Response, NextFunction } from "express";
-import admin from "firebase-admin";
-import {
-  usersCollection,
-  merchantsCollection,
-  ridersCollection,
-} from "../db/db";
+import { Request, Response, NextFunction } from 'express';
+import admin from 'firebase-admin';
+import { usersCollection, merchantsCollection, ridersCollection } from '../db/db';
 
 // ─── Token Verification ───────────────────────────────────────────────────────
 
@@ -15,22 +11,18 @@ export const verifyFBToken = async (
 ): Promise<void> => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
-    res
-      .status(401)
-      .send({ success: false, message: "Unauthorized: No token provided" });
+    res.status(401).send({ success: false, message: 'Unauthorized: No token provided' });
     return;
   }
 
   // Robust token extraction: Remove "Bearer" (case-insensitive) and any leading/trailing spaces
   const token = authHeader
-    .replace(/^Bearer\s+/i, "")
-    .replace(/^Bearer\s+/i, "")
+    .replace(/^Bearer\s+/i, '')
+    .replace(/^Bearer\s+/i, '')
     .trim();
 
   if (!token) {
-    res
-      .status(401)
-      .send({ success: false, message: "Unauthorized: Invalid token format" });
+    res.status(401).send({ success: false, message: 'Unauthorized: Invalid token format' });
     return;
   }
   try {
@@ -38,7 +30,7 @@ export const verifyFBToken = async (
     req.user = decoded;
     next();
   } catch (error) {
-    res.status(401).send({ success: false, message: "Unauthorized" });
+    res.status(401).send({ success: false, message: 'Unauthorized' });
   }
 };
 
@@ -51,8 +43,8 @@ export const verifyAdmin = async (
 ): Promise<void> => {
   const email = req.user.email;
   const user = await usersCollection.findOne({ email });
-  if (user?.role !== "admin") {
-    res.status(403).send({ success: false, message: "Forbidden" });
+  if (user?.role !== 'admin') {
+    res.status(403).send({ success: false, message: 'Forbidden' });
     return;
   }
   next();
@@ -68,18 +60,18 @@ export const verifyMerchant = async (
   const email = req.user.email;
   const user = await usersCollection.findOne({ email });
 
-  if (user?.role === "merchant") {
+  if (user?.role === 'merchant') {
     return next();
   }
 
-  if (user?.role === "admin") {
+  if (user?.role === 'admin') {
     const merchantProfile = await merchantsCollection.findOne({ email });
     if (merchantProfile) {
       return next();
     }
   }
 
-  res.status(403).send({ success: false, message: "Merchant access required" });
+  res.status(403).send({ success: false, message: 'Merchant access required' });
 };
 
 export const verifyRider = async (
@@ -90,16 +82,16 @@ export const verifyRider = async (
   const email = req.user.email;
   const user = await usersCollection.findOne({ email });
 
-  if (user?.role === "rider") {
+  if (user?.role === 'rider') {
     return next();
   }
 
-  if (user?.role === "admin") {
+  if (user?.role === 'admin') {
     const riderProfile = await ridersCollection.findOne({ email });
     if (riderProfile) {
       return next();
     }
   }
 
-  res.status(403).send({ success: false, message: "Rider access required" });
+  res.status(403).send({ success: false, message: 'Rider access required' });
 };

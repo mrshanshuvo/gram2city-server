@@ -1,9 +1,9 @@
-import { Server } from "socket.io";
-import type { Server as HttpServer } from "http";
-import { messagesCollection, usersCollection } from "../db/db";
-import { ChatMessage } from "../types/types";
-import { config } from "../config";
-import { verifyFBToken } from "../middleware/auth";
+import { Server } from 'socket.io';
+import type { Server as HttpServer } from 'http';
+import { messagesCollection, usersCollection } from '../db/db';
+import { ChatMessage } from '../types/types';
+import { config } from '../config';
+import { verifyFBToken } from '../middleware/auth';
 
 export let io: Server;
 
@@ -11,23 +11,23 @@ export const initSocket = (server: HttpServer) => {
   io = new Server(server, {
     cors: {
       origin: config.CLIENT_URL,
-      methods: ["GET", "POST"],
+      methods: ['GET', 'POST'],
     },
   });
 
-  io.on("connection", (socket) => {
+  io.on('connection', (socket) => {
     console.log(`⚡ New connection: ${socket.id}`);
 
     // Join room for specific parcel tracking
-    socket.on("join_parcel", (trackingId: string) => {
+    socket.on('join_parcel', (trackingId: string) => {
       socket.join(trackingId);
       console.log(`📍 Socket ${socket.id} joined tracking: ${trackingId}`);
     });
 
     // Handle rider location updates
-    socket.on("rider_location_update", (data) => {
+    socket.on('rider_location_update', (data) => {
       const { trackingId, location } = data;
-      io.to(trackingId).emit("location_received", {
+      io.to(trackingId).emit('location_received', {
         trackingId,
         location,
         timestamp: new Date().toISOString(),
@@ -35,28 +35,26 @@ export const initSocket = (server: HttpServer) => {
     });
 
     // Support Chat: Join conversation room
-    socket.on("join_chat", async (conversationId: string, token?: string) => {
+    socket.on('join_chat', async (conversationId: string, token?: string) => {
       if (token) {
         try {
           const decoded = await verifyFBTokenInSocket(token);
           if (decoded.email) {
             socket.join(decoded.email);
-            console.log(
-              `👤 Socket ${socket.id} joined user room: ${decoded.email}`,
-            );
+            console.log(`👤 Socket ${socket.id} joined user room: ${decoded.email}`);
 
             // If the user has an admin or superAdmin role, join them to the shared 'admins' room
             const dbUser = await usersCollection.findOne({
               email: decoded.email,
             });
-            if (dbUser?.role === "admin" || dbUser?.role === "superAdmin") {
-              socket.join("admins");
+            if (dbUser?.role === 'admin' || dbUser?.role === 'superAdmin') {
+              socket.join('admins');
               console.log(`🛠️ Socket ${socket.id} joined admins room`);
             }
           }
         } catch (err) {
-          socket.emit("message_error", {
-            message: "Unauthorized: invalid join token",
+          socket.emit('message_error', {
+            message: 'Unauthorized: invalid join token',
           });
           return;
         }
@@ -66,12 +64,12 @@ export const initSocket = (server: HttpServer) => {
     });
 
     // Support Chat: Handle messages
-    socket.on("send_message", async (data) => {
+    socket.on('send_message', async (data) => {
       try {
         const token = data?.token as string | undefined;
         if (!token) {
-          socket.emit("message_error", {
-            message: "Unauthorized: missing auth token",
+          socket.emit('message_error', {
+            message: 'Unauthorized: missing auth token',
           });
           return;
         }
@@ -80,25 +78,25 @@ export const initSocket = (server: HttpServer) => {
         try {
           decoded = await verifyFBTokenInSocket(token);
         } catch (err) {
-          socket.emit("message_error", {
-            message: "Unauthorized: invalid token",
+          socket.emit('message_error', {
+            message: 'Unauthorized: invalid token',
           });
           return;
         }
 
         if (!decoded.email) {
-          socket.emit("message_error", {
-            message: "Unauthorized: missing email",
+          socket.emit('message_error', {
+            message: 'Unauthorized: missing email',
           });
           return;
         }
 
         let senderEmail = decoded.email;
-        let senderRole = data.senderRole ?? "user";
+        let senderRole = data.senderRole ?? 'user';
 
         const dbUser = await usersCollection.findOne({ email: decoded.email });
-        if (dbUser?.role === "admin" || dbUser?.role === "superAdmin") {
-          senderEmail = "admin@gram2city.com";
+        if (dbUser?.role === 'admin' || dbUser?.role === 'superAdmin') {
+          senderEmail = 'admin@gram2city.com';
           senderRole = dbUser.role;
         }
 
@@ -115,25 +113,25 @@ export const initSocket = (server: HttpServer) => {
         };
 
         await messagesCollection.insertOne(chatMessage);
-        let broadcast = io.to(data.conversationId).to("admins");
+        let broadcast = io.to(data.conversationId).to('admins');
         if (chatMessage.receiverEmail) {
           broadcast = broadcast.to(chatMessage.receiverEmail);
         }
-        broadcast.emit("receive_message", chatMessage);
+        broadcast.emit('receive_message', chatMessage);
       } catch (error) {
-        console.error("Failed to process socket message:", error);
-        socket.emit("message_error", {
-          message: "Failed to send message",
+        console.error('Failed to process socket message:', error);
+        socket.emit('message_error', {
+          message: 'Failed to send message',
         });
       }
     });
 
-    socket.on("typing", async (data) => {
+    socket.on('typing', async (data) => {
       const token = data?.token as string | undefined;
       if (!token) return;
       try {
         const decoded = await verifyFBTokenInSocket(token);
-        io.to(data.conversationId).emit("user_typing", {
+        io.to(data.conversationId).emit('user_typing', {
           senderEmail: decoded.email,
           conversationId: data.conversationId,
         });
@@ -142,11 +140,11 @@ export const initSocket = (server: HttpServer) => {
       }
     });
 
-    socket.on("mark_messages_read", async (data) => {
+    socket.on('mark_messages_read', async (data) => {
       const token = data?.token as string | undefined;
       if (!token) {
-        socket.emit("message_error", {
-          message: "Unauthorized: missing read token",
+        socket.emit('message_error', {
+          message: 'Unauthorized: missing read token',
         });
         return;
       }
@@ -155,8 +153,8 @@ export const initSocket = (server: HttpServer) => {
       try {
         decoded = await verifyFBTokenInSocket(token);
       } catch (err) {
-        socket.emit("message_error", {
-          message: "Unauthorized: invalid read token",
+        socket.emit('message_error', {
+          message: 'Unauthorized: invalid read token',
         });
         return;
       }
@@ -164,8 +162,8 @@ export const initSocket = (server: HttpServer) => {
       try {
         let readByEmail = decoded.email ?? data.readByEmail;
         const dbUser = await usersCollection.findOne({ email: readByEmail });
-        if (dbUser?.role === "admin" || dbUser?.role === "superAdmin") {
-          readByEmail = "admin@gram2city.com";
+        if (dbUser?.role === 'admin' || dbUser?.role === 'superAdmin') {
+          readByEmail = 'admin@gram2city.com';
         }
 
         await messagesCollection.updateMany(
@@ -176,16 +174,16 @@ export const initSocket = (server: HttpServer) => {
           },
           { $set: { isRead: true } },
         );
-        io.to(data.conversationId).emit("messages_marked_read", {
+        io.to(data.conversationId).emit('messages_marked_read', {
           conversationId: data.conversationId,
           readByEmail: readByEmail,
         });
       } catch (error) {
-        console.error("Failed to mark messages read:", error);
+        console.error('Failed to mark messages read:', error);
       }
     });
 
-    socket.on("disconnect", () => {
+    socket.on('disconnect', () => {
       console.log(`❌ Disconnected: ${socket.id}`);
     });
   });
@@ -194,6 +192,6 @@ export const initSocket = (server: HttpServer) => {
 };
 
 async function verifyFBTokenInSocket(token: string) {
-  const { getAuth } = await import("firebase-admin/auth");
+  const { getAuth } = await import('firebase-admin/auth');
   return getAuth().verifyIdToken(token);
 }

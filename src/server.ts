@@ -1,8 +1,8 @@
-import app from "./app";
-import { createServer } from "http";
-import { initSocket } from "./socket/socket";
-import { initDB } from "./db/db";
-import { config } from "./config";
+import app from './app';
+import { createServer } from 'http';
+import { initSocket } from './socket/socket';
+import { initDB } from './db/db';
+import { config } from './config';
 
 const PORT = config.PORT;
 const httpServer = createServer(app);
@@ -14,7 +14,5 @@ initSocket(httpServer);
 initDB();
 
 httpServer.listen(PORT, () => {
-  console.log(
-    `🚀 Gram2City Real-time Engine running on http://localhost:${PORT}`,
-  );
+  console.log(`🚀 Gram2City Real-time Engine running on http://localhost:${PORT}`);
 });

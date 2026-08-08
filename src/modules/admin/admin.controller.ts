@@ -1,12 +1,12 @@
-import { Request, Response } from "express";
-import { AdminService } from "./admin.service";
+import { Request, Response } from 'express';
+import { AdminService } from './admin.service';
 
 export const getAuditLogs = async (req: Request, res: Response) => {
   try {
     const logs = await AdminService.getAuditLogs();
     res.send({ success: true, logs });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch logs" });
+    res.status(500).send({ success: false, message: 'Failed to fetch logs' });
   }
 };
 
@@ -15,27 +15,20 @@ export const getStats = async (req: Request, res: Response) => {
     const stats = await AdminService.getStats();
     res.send({ success: true, stats });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to aggregate stats" });
+    res.status(500).send({ success: false, message: 'Failed to aggregate stats' });
   }
 };
 
 export const announce = async (req: Request, res: Response) => {
   const { message } = req.body;
   try {
-    const userCount = await AdminService.createAnnouncement(
-      message,
-      req.user?.email as string,
-    );
+    const userCount = await AdminService.createAnnouncement(message, req.user?.email as string);
     res.send({
       success: true,
       message: `Announcement sent to ${userCount} users.`,
     });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to send announcement" });
+    res.status(500).send({ success: false, message: 'Failed to send announcement' });
   }
 };
 
@@ -44,23 +37,20 @@ export const getSettings = async (req: Request, res: Response) => {
     const settings = await AdminService.getSettings();
     res.send({ success: true, settings });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Server error" });
+    res.status(500).send({ success: false, message: 'Server error' });
   }
 };
 
 export const updateSettings = async (req: Request, res: Response) => {
-  const { base_delivery_fee, cost_per_kg, rider_commission_percentage } =
-    req.body;
+  const { base_delivery_fee, cost_per_kg, rider_commission_percentage } = req.body;
   try {
     await AdminService.updateSettings(
       { base_delivery_fee, cost_per_kg, rider_commission_percentage },
       req.user?.email as string,
     );
-    res.send({ success: true, message: "Settings updated and logged." });
+    res.send({ success: true, message: 'Settings updated and logged.' });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to update settings" });
+    res.status(500).send({ success: false, message: 'Failed to update settings' });
   }
 };
 
@@ -68,19 +58,13 @@ export const updateUserStatus = async (req: Request, res: Response) => {
   const email = req.params.email as string;
   const { status } = req.body;
   try {
-    await AdminService.updateUserStatus(
-      email,
-      status,
-      req.user?.email as string,
-    );
+    await AdminService.updateUserStatus(email, status, req.user?.email as string);
     res.send({
       success: true,
       message: `User account ${status} successfully.`,
     });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to update user status" });
+    res.status(500).send({ success: false, message: 'Failed to update user status' });
   }
 };
 
@@ -103,7 +87,7 @@ export const getAllParcels = async (req: Request, res: Response) => {
     const totalPages = Math.ceil(totalItems / size);
 
     res.send({
-      status: "success",
+      status: 'success',
       data: parcels,
       pagination: {
         totalItems,
@@ -115,9 +99,7 @@ export const getAllParcels = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to fetch all parcels" });
+    res.status(500).send({ success: false, message: 'Failed to fetch all parcels' });
   }
 };
 
@@ -135,7 +117,7 @@ export const assignRider = async (req: Request, res: Response) => {
     }
     res.send(result);
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to assign rider" });
+    res.status(500).send({ success: false, message: 'Failed to assign rider' });
   }
 };
 
@@ -145,9 +127,7 @@ export const getMerchants = async (req: Request, res: Response) => {
     const merchants = await AdminService.getMerchants(status as string);
     res.send({ success: true, data: merchants });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to fetch merchants" });
+    res.status(500).send({ success: false, message: 'Failed to fetch merchants' });
   }
 };
 
@@ -166,9 +146,7 @@ export const updateMerchantStatus = async (req: Request, res: Response) => {
     }
     res.send(result);
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to update status" });
+    res.status(500).send({ success: false, message: 'Failed to update status' });
   }
 };
 
@@ -177,9 +155,7 @@ export const getFleet = async (req: Request, res: Response) => {
     const fleetStats = await AdminService.getFleetDistribution();
     res.send({ success: true, data: fleetStats });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to fetch fleet stats" });
+    res.status(500).send({ success: false, message: 'Failed to fetch fleet stats' });
   }
 };
 
@@ -188,9 +164,7 @@ export const getPayouts = async (req: Request, res: Response) => {
     const payouts = await AdminService.getPayouts();
     res.send({ success: true, data: payouts });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to fetch payouts" });
+    res.status(500).send({ success: false, message: 'Failed to fetch payouts' });
   }
 };
 
@@ -209,8 +183,6 @@ export const updatePayoutStatus = async (req: Request, res: Response) => {
     }
     res.send(result);
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to update payout status" });
+    res.status(500).send({ success: false, message: 'Failed to update payout status' });
   }
 };

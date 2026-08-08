@@ -1,5 +1,5 @@
-import { Router } from "express";
-import multer from "multer";
+import { Router } from 'express';
+import multer from 'multer';
 import {
   getPublicSettings,
   getPublicTracking,
@@ -21,9 +21,9 @@ import {
   createLandingItem,
   updateLandingItem,
   deleteLandingItem,
-} from "./public.controller";
-import { verifyFBToken, verifyAdmin } from "../../middleware/auth";
-import { validate } from "../../middleware/validate";
+} from './public.controller';
+import { verifyFBToken, verifyAdmin } from '../../middleware/auth';
+import { validate } from '../../middleware/validate';
 import {
   newsletterSchema,
   bannerSchema,
@@ -33,18 +33,18 @@ import {
   testimonialSchema,
   processStepSchema,
   landingConfigUpdateSchema,
-} from "./public.schema";
+} from './public.schema';
 
 const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (_req, file, cb) => {
-    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
     if (allowed.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Only JPEG, PNG, and WebP images are allowed"));
+      cb(new Error('Only JPEG, PNG, and WebP images are allowed'));
     }
   },
 });
@@ -54,9 +54,9 @@ const parseNestedBody = (req: any, _res: any, next: any) => {
     const result: any = {};
     for (const key in req.body) {
       const value = req.body[key];
-      if (key.includes("[")) {
+      if (key.includes('[')) {
         const parts = key.split(/[\[\]]+/).filter(Boolean);
-        const isArray = key.endsWith("[]");
+        const isArray = key.endsWith('[]');
         let current = result;
         for (let i = 0; i < parts.length; i++) {
           const part = parts[i];
@@ -86,46 +86,37 @@ const parseNestedBody = (req: any, _res: any, next: any) => {
 };
 
 // ─── PUBLIC GENERAL ROUTES ──────────────────────────────────────────────────
-router.get("/public/settings", getPublicSettings);
-router.get("/public/tracking/:trackingId", getPublicTracking);
+router.get('/public/settings', getPublicSettings);
+router.get('/public/tracking/:trackingId', getPublicTracking);
 
 // ─── LANDING PAGE PUBLIC ROUTES ──────────────────────────────────────────────
-router.get("/landing/process-steps", getProcessSteps);
-router.get("/landing/config", getLandingConfig);
-router.get("/landing/banners", getBanners);
-router.get("/landing/services", getServices);
-router.get("/landing/features", getFeatures);
-router.get("/landing/partners", getPartners);
-router.get("/landing/testimonials", getTestimonials);
-router.get("/landing/stats", getStats);
-router.post(
-  "/landing/subscribe",
-  validate(newsletterSchema),
-  subscribeNewsletter,
-);
-router.get("/landing/warehouses", getWarehouses);
+router.get('/landing/process-steps', getProcessSteps);
+router.get('/landing/config', getLandingConfig);
+router.get('/landing/banners', getBanners);
+router.get('/landing/services', getServices);
+router.get('/landing/features', getFeatures);
+router.get('/landing/partners', getPartners);
+router.get('/landing/testimonials', getTestimonials);
+router.get('/landing/stats', getStats);
+router.post('/landing/subscribe', validate(newsletterSchema), subscribeNewsletter);
+router.get('/landing/warehouses', getWarehouses);
 
 // ─── LANDING CONFIG ADMIN ROUTES ─────────────────────────────────────────────
 router.patch(
-  "/landing/config",
+  '/landing/config',
   verifyFBToken,
   verifyAdmin,
-  upload.single("ogImage"),
+  upload.single('ogImage'),
   parseNestedBody,
   validate(landingConfigUpdateSchema),
   updateLandingConfig,
 );
-router.get(
-  "/landing/newsletter",
-  verifyFBToken,
-  verifyAdmin,
-  getNewsletterSubscribers,
-);
+router.get('/landing/newsletter', verifyFBToken, verifyAdmin, getNewsletterSubscribers);
 
 // ─── MERCHANT ONBOARDING & PERFORMANCE ───────────────────────────────────────
-router.post("/merchants", verifyFBToken, applyMerchant);
-router.get("/merchants/me", verifyFBToken, getMerchantProfile);
-router.get("/merchants/stats", verifyFBToken, getMerchantStats);
+router.post('/merchants', verifyFBToken, applyMerchant);
+router.get('/merchants/me', verifyFBToken, getMerchantProfile);
+router.get('/merchants/stats', verifyFBToken, getMerchantStats);
 
 // ─── LANDING ELEMENTS CRUD ADMIN ROUTES ──────────────────────────────────────
 const registerCRUD = (name: string, schema?: any, imageField?: string) => {
@@ -133,13 +124,7 @@ const registerCRUD = (name: string, schema?: any, imageField?: string) => {
   if (imageField) middleware.push(upload.single(imageField));
   if (schema) middleware.push(validate(schema));
 
-  router.post(
-    `/landing/${name}`,
-    verifyFBToken,
-    verifyAdmin,
-    ...middleware,
-    createLandingItem,
-  );
+  router.post(`/landing/${name}`, verifyFBToken, verifyAdmin, ...middleware, createLandingItem);
   router.patch(
     `/landing/${name}/:id`,
     verifyFBToken,
@@ -147,28 +132,21 @@ const registerCRUD = (name: string, schema?: any, imageField?: string) => {
     ...middleware,
     updateLandingItem,
   );
-  router.delete(
-    `/landing/${name}/:id`,
-    verifyFBToken,
-    verifyAdmin,
-    deleteLandingItem,
-  );
+  router.delete(`/landing/${name}/:id`, verifyFBToken, verifyAdmin, deleteLandingItem);
 };
 
-registerCRUD("banners", bannerSchema, "image");
-registerCRUD("services", serviceSchema, "image");
-registerCRUD("features", featureSchema, "image");
-registerCRUD("partners", partnerSchema, "logo");
-registerCRUD("process-steps", processStepSchema);
-registerCRUD("testimonials", testimonialSchema, "image");
+registerCRUD('banners', bannerSchema, 'image');
+registerCRUD('services', serviceSchema, 'image');
+registerCRUD('features', featureSchema, 'image');
+registerCRUD('partners', partnerSchema, 'logo');
+registerCRUD('process-steps', processStepSchema);
+registerCRUD('testimonials', testimonialSchema, 'image');
 
 // ─── Multer Error Handler ──────────────────────────────────────────────────
 router.use((err: any, _req: any, res: any, next: any) => {
   if (err instanceof multer.MulterError) {
-    if (err.code === "LIMIT_FILE_SIZE") {
-      return res
-        .status(400)
-        .send({ success: false, message: "File too large. Max limit is 5MB." });
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).send({ success: false, message: 'File too large. Max limit is 5MB.' });
     }
     return res.status(400).send({ success: false, message: err.message });
   } else if (err) {

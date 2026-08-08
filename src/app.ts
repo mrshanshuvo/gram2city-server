@@ -1,21 +1,19 @@
-import "dotenv/config";
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import compression from "compression";
-import rateLimit from "express-rate-limit";
-import admin from "firebase-admin";
-import swaggerUi from "swagger-ui-express";
-import { swaggerSpec } from "./swagger/swagger";
-import logger from "./middleware/logger";
-import { globalErrorHandler } from "./middleware/globalErrorHandler";
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
+import admin from 'firebase-admin';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './swagger/swagger';
+import logger from './middleware/logger';
+import { globalErrorHandler } from './middleware/globalErrorHandler';
 
-import { config } from "./config";
+import { config } from './config';
 
 // ─── Firebase Admin ───────────────────────────────────────────────────────────
-const serviceAccount = JSON.parse(
-  Buffer.from(config.FB_SERVICE_KEY, "base64").toString("utf8"),
-);
+const serviceAccount = JSON.parse(Buffer.from(config.FB_SERVICE_KEY, 'base64').toString('utf8'));
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 
 // ─── Express App ──────────────────────────────────────────────────────────────
@@ -27,14 +25,9 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "cdnjs.cloudflare.com"],
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "cdnjs.cloudflare.com",
-          "fonts.googleapis.com",
-        ],
-        imgSrc: ["'self'", "data:", "validator.swagger.io"],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'cdnjs.cloudflare.com'],
+        styleSrc: ["'self'", "'unsafe-inline'", 'cdnjs.cloudflare.com', 'fonts.googleapis.com'],
+        imgSrc: ["'self'", 'data:', 'validator.swagger.io'],
         connectSrc: ["'self'", config.CLIENT_URL],
       },
     },
@@ -42,7 +35,7 @@ app.use(
 );
 app.use(logger); // Request logging
 app.use(compression()); // Gzip compression
-const clientOrigins = config.CLIENT_URL.split(",");
+const clientOrigins = config.CLIENT_URL.split(',');
 app.use(cors({ origin: clientOrigins }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -53,33 +46,32 @@ const limiter = rateLimit({
   max: 1000, // Increased for dashboard polling and development
   message: {
     success: false,
-    message: "Too many requests, please try again later.",
+    message: 'Too many requests, please try again later.',
   },
 });
 app.use(limiter);
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
-import apiRouter from "./modules/app.routes";
+import apiRouter from './modules/app.routes';
 
-app.get("/", (_req, res) => {
+app.get('/', (_req, res) => {
   res.status(200).json({
     success: true,
-    message: "Gram2City Logistics Enterprise API is running smoothly",
-    version: "2.3.0",
-    status: "healthy",
-    documentation: "/swagger",
+    message: 'Gram2City Logistics Enterprise API is running smoothly',
+    version: '2.3.0',
+    status: 'healthy',
+    documentation: '/swagger',
   });
 });
-app.use("/", apiRouter);
+app.use('/', apiRouter);
 
 // ─── Centralized Error Handler ───────────────────────────────────────────────
 app.use(globalErrorHandler);
 
 // ─── Swagger Documentation ────────────────────────────────────────────────────
-const CSS_URL =
-  "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css";
+const CSS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css';
 app.use(
-  "/swagger",
+  '/swagger',
   swaggerUi.serve,
   swaggerUi.setup(swaggerSpec, {
     customCss: `
@@ -130,8 +122,8 @@ app.use(
     `,
     customCssUrl: CSS_URL,
     customJs: [
-      "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js",
-      "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.js",
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.js',
     ],
   }),
 );

@@ -1,17 +1,17 @@
-import { ObjectId } from "mongodb";
-import Stripe from "stripe";
-import { config } from "../../config";
+import { ObjectId } from 'mongodb';
+import Stripe from 'stripe';
+import { config } from '../../config';
 import {
   parcelCollection,
   paymentCollection,
   cashoutsCollection,
   notificationsCollection,
   addTrackingUpdate,
-} from "../../db/db";
-import { Payment } from "./finance.interface";
+} from '../../db/db';
+import { Payment } from './finance.interface';
 
 const stripe = new Stripe(config.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16" as any, // specify standard api version if needed or let it pick default
+  apiVersion: '2023-10-16' as any, // specify standard api version if needed or let it pick default
 });
 
 export class FinanceService {
@@ -33,13 +33,13 @@ export class FinanceService {
     });
 
     if (!parcel) {
-      throw new Error("Unauthorized: You do not own this parcel.");
+      throw new Error('Unauthorized: You do not own this parcel.');
     }
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(Number(amount) * 100),
       currency: config.STRIPE_CURRENCY,
-      payment_method_types: ["card"],
+      payment_method_types: ['card'],
       metadata: {
         parcelId: parcelId.toString(),
         userEmail: email,
@@ -47,7 +47,7 @@ export class FinanceService {
     });
 
     if (!paymentIntent.client_secret) {
-      throw new Error("Failed to create client secret");
+      throw new Error('Failed to create client secret');
     }
 
     return paymentIntent.client_secret;
@@ -72,17 +72,17 @@ export class FinanceService {
     if (!parcel) {
       return {
         success: false,
-        message: "Unauthorized: Parcel not found or not yours.",
+        message: 'Unauthorized: Parcel not found or not yours.',
       };
     }
 
-    if (parcel.payment_status === "paid") {
-      return { success: false, message: "Parcel is already paid." };
+    if (parcel.payment_status === 'paid') {
+      return { success: false, message: 'Parcel is already paid.' };
     }
 
     await parcelCollection.updateOne(
       { _id: new ObjectId(parcelId) },
-      { $set: { payment_status: "paid" } },
+      { $set: { payment_status: 'paid' } },
     );
 
     const paymentRecord = {
@@ -90,7 +90,7 @@ export class FinanceService {
       email: email,
       transactionId,
       amount: Number(amount) / 100,
-      paymentMethod: paymentMethod || "card",
+      paymentMethod: paymentMethod || 'card',
       paid_at: new Date().toISOString(),
       payment_time: new Date().toISOString(),
     };
@@ -99,7 +99,7 @@ export class FinanceService {
 
     await addTrackingUpdate(
       parcel.trackingId,
-      "paid",
+      'paid',
       `Payment received. Transaction ID: ${transactionId}`,
     );
 
@@ -108,10 +108,10 @@ export class FinanceService {
       message: `Payment Successful: Your parcel "${parcel.parcelName}" is now confirmed for delivery!`,
       time: new Date().toISOString(),
       isRead: false,
-      type: "payment",
+      type: 'payment',
     });
 
-    return { success: true, message: "Payment recorded successfully." };
+    return { success: true, message: 'Payment recorded successfully.' };
   }
 
   static async getCashoutHistory(riderEmail: string): Promise<any[]> {

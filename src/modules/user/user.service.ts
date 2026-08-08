@@ -1,22 +1,16 @@
-import {
-  ObjectId,
-  UpdateResult,
-  InsertOneResult,
-  InsertManyResult,
-  DeleteResult,
-} from "mongodb";
+import { ObjectId, UpdateResult, InsertOneResult, InsertManyResult, DeleteResult } from 'mongodb';
 import {
   usersCollection,
   parcelCollection,
   avatarsCollection,
   addressesCollection,
-} from "../../db/db";
-import { User, Avatar, UserStats, Address } from "./user.interface";
+} from '../../db/db';
+import { User, Avatar, UserStats, Address } from './user.interface';
 
 export class UserService {
   static async searchUsers(emailQuery: string): Promise<User[]> {
     return (await usersCollection
-      .find({ email: { $regex: emailQuery, $options: "i" } })
+      .find({ email: { $regex: emailQuery, $options: 'i' } })
       .project({ email: 1, createdAt: 1, role: 1, name: 1, photoURL: 1 })
       .limit(10)
       .toArray()) as unknown as User[];
@@ -24,7 +18,7 @@ export class UserService {
 
   static async getStaffList(): Promise<User[]> {
     return (await usersCollection
-      .find({ role: { $in: ["admin", "superAdmin"] } })
+      .find({ role: { $in: ['admin', 'superAdmin'] } })
       .project({ email: 1, role: 1, name: 1, last_login: 1 })
       .toArray()) as unknown as User[];
   }
@@ -38,14 +32,14 @@ export class UserService {
       .aggregate([
         {
           $facet: {
-            roleCounts: [{ $group: { _id: "$role", count: { $sum: 1 } } }],
+            roleCounts: [{ $group: { _id: '$role', count: { $sum: 1 } } }],
             recentlyJoined: [
               { $match: { created_at: { $gte: sevenDaysAgo.toISOString() } } },
-              { $count: "count" },
+              { $count: 'count' },
             ],
             activeToday: [
               { $match: { last_login: { $gte: startOfToday.toISOString() } } },
-              { $count: "count" },
+              { $count: 'count' },
             ],
           },
         },
@@ -72,20 +66,11 @@ export class UserService {
     };
   }
 
-  static async updateUserRole(
-    email: string,
-    role: string,
-  ): Promise<UpdateResult> {
-    return usersCollection.updateOne(
-      { email },
-      { $set: { role: role as any } },
-    );
+  static async updateUserRole(email: string, role: string): Promise<UpdateResult> {
+    return usersCollection.updateOne({ email }, { $set: { role: role as any } });
   }
 
-  static async updateUserProfile(
-    email: string,
-    updateData: Partial<User>,
-  ): Promise<UpdateResult> {
+  static async updateUserProfile(email: string, updateData: Partial<User>): Promise<UpdateResult> {
     return usersCollection.updateOne({ email }, { $set: updateData });
   }
 
@@ -112,11 +97,11 @@ export class UserService {
             _id: null,
             totalBooked: { $sum: 1 },
             unpaidCount: {
-              $sum: { $cond: [{ $ne: ["$payment_status", "paid"] }, 1, 0] },
+              $sum: { $cond: [{ $ne: ['$payment_status', 'paid'] }, 1, 0] },
             },
             totalSpent: {
               $sum: {
-                $cond: [{ $eq: ["$payment_status", "paid"] }, "$cost", 0],
+                $cond: [{ $eq: ['$payment_status', 'paid'] }, '$cost', 0],
               },
             },
           },
@@ -138,7 +123,7 @@ export class UserService {
     if (avatars.length === 0) {
       return {
         url:
-          "https://api.dicebear.com/7.x/lorelei/svg?seed=" +
+          'https://api.dicebear.com/7.x/lorelei/svg?seed=' +
           Math.random().toString(36).substring(7),
       };
     }
@@ -147,20 +132,14 @@ export class UserService {
   }
 
   static async getAllAvatars(): Promise<Avatar[]> {
-    return (await avatarsCollection
-      .find({ isActive: true })
-      .toArray()) as unknown as Avatar[];
+    return (await avatarsCollection.find({ isActive: true }).toArray()) as unknown as Avatar[];
   }
 
-  static async addAvatar(
-    avatar: Omit<Avatar, "_id">,
-  ): Promise<InsertOneResult> {
+  static async addAvatar(avatar: Omit<Avatar, '_id'>): Promise<InsertOneResult> {
     return avatarsCollection.insertOne(avatar);
   }
 
-  static async magicGenerateAvatars(
-    newAvatars: Omit<Avatar, "_id">[],
-  ): Promise<InsertManyResult> {
+  static async magicGenerateAvatars(newAvatars: Omit<Avatar, '_id'>[]): Promise<InsertManyResult> {
     return avatarsCollection.insertMany(newAvatars);
   }
 
@@ -175,15 +154,9 @@ export class UserService {
       .toArray()) as unknown as Address[];
   }
 
-  static async addAddress(
-    address: Omit<Address, "_id">,
-    email: string,
-  ): Promise<InsertOneResult> {
+  static async addAddress(address: Omit<Address, '_id'>, email: string): Promise<InsertOneResult> {
     if (address.isDefault) {
-      await addressesCollection.updateMany(
-        { userEmail: email },
-        { $set: { isDefault: false } },
-      );
+      await addressesCollection.updateMany({ userEmail: email }, { $set: { isDefault: false } });
     }
     const newAddress: Address = {
       ...address,

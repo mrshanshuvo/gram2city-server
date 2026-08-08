@@ -1,4 +1,4 @@
-import { ObjectId, InsertOneResult, UpdateResult, DeleteResult } from "mongodb";
+import { ObjectId, InsertOneResult, UpdateResult, DeleteResult } from 'mongodb';
 import {
   faqsCollection,
   faqVotesCollection,
@@ -6,29 +6,18 @@ import {
   feedbackCollection,
   notificationsCollection,
   messagesCollection,
-} from "../../db/db";
-import {
-  FAQ,
-  Review,
-  Feedback,
-  Notification,
-  ChatMessage,
-} from "./support.interface";
+} from '../../db/db';
+import { FAQ, Review, Feedback, Notification, ChatMessage } from './support.interface';
 
 export class SupportService {
   // FAQs
-  static async getFAQs(
-    page: number,
-    limit: number,
-    category?: string,
-    sortBy: string = "order",
-  ) {
+  static async getFAQs(page: number, limit: number, category?: string, sortBy: string = 'order') {
     const skip = (page - 1) * limit;
     const query: any = { isActive: true };
     if (category) query.category = category;
 
     const sortObj: any = {};
-    if (sortBy === "helpful") {
+    if (sortBy === 'helpful') {
       sortObj.helpfulCount = -1;
     } else {
       sortObj.order = 1;
@@ -55,7 +44,7 @@ export class SupportService {
     if (existingVote) {
       return {
         success: false,
-        message: "You have already voted for this question.",
+        message: 'You have already voted for this question.',
       };
     }
 
@@ -71,16 +60,14 @@ export class SupportService {
     );
 
     if (result.matchedCount === 0) {
-      return { success: false, message: "FAQ not found" };
+      return { success: false, message: 'FAQ not found' };
     }
 
-    return { success: true, message: "Thank you for your feedback!" };
+    return { success: true, message: 'Thank you for your feedback!' };
   }
 
   static async getFAQCategories(): Promise<string[]> {
-    return faqsCollection.distinct("category", { isActive: true }) as Promise<
-      string[]
-    >;
+    return faqsCollection.distinct('category', { isActive: true }) as Promise<string[]>;
   }
 
   static async getAllFAQsAdmin(): Promise<FAQ[]> {
@@ -90,18 +77,12 @@ export class SupportService {
       .toArray()) as unknown as FAQ[];
   }
 
-  static async createFAQ(faq: Omit<FAQ, "_id">): Promise<InsertOneResult> {
+  static async createFAQ(faq: Omit<FAQ, '_id'>): Promise<InsertOneResult> {
     return faqsCollection.insertOne(faq);
   }
 
-  static async updateFAQ(
-    faqId: string,
-    updates: Partial<FAQ>,
-  ): Promise<UpdateResult> {
-    return faqsCollection.updateOne(
-      { _id: new ObjectId(faqId) },
-      { $set: updates },
-    );
+  static async updateFAQ(faqId: string, updates: Partial<FAQ>): Promise<UpdateResult> {
+    return faqsCollection.updateOne({ _id: new ObjectId(faqId) }, { $set: updates });
   }
 
   static async deleteFAQ(faqId: string): Promise<DeleteResult> {
@@ -121,9 +102,7 @@ export class SupportService {
   }
 
   // Feedback
-  static async submitFeedback(
-    feedback: Omit<Feedback, "_id">,
-  ): Promise<InsertOneResult> {
+  static async submitFeedback(feedback: Omit<Feedback, '_id'>): Promise<InsertOneResult> {
     return feedbackCollection.insertOne(feedback);
   }
 
@@ -143,17 +122,11 @@ export class SupportService {
   }
 
   static async markNotificationRead(id: string): Promise<UpdateResult> {
-    return notificationsCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { isRead: true } },
-    );
+    return notificationsCollection.updateOne({ _id: new ObjectId(id) }, { $set: { isRead: true } });
   }
 
   static async markAllNotificationsRead(email: string): Promise<UpdateResult> {
-    return notificationsCollection.updateMany(
-      { email, isRead: false },
-      { $set: { isRead: true } },
-    );
+    return notificationsCollection.updateMany({ email, isRead: false }, { $set: { isRead: true } });
   }
 
   // Messages
@@ -175,16 +148,13 @@ export class SupportService {
         { $sort: { timestamp: -1 } },
         {
           $group: {
-            _id: "$conversationId",
-            lastMessage: { $first: "$$ROOT" },
+            _id: '$conversationId',
+            lastMessage: { $first: '$$ROOT' },
             unreadCount: {
               $sum: {
                 $cond: [
                   {
-                    $and: [
-                      { $eq: ["$receiverEmail", email] },
-                      { $eq: ["$isRead", false] },
-                    ],
+                    $and: [{ $eq: ['$receiverEmail', email] }, { $eq: ['$isRead', false] }],
                   },
                   1,
                   0,
@@ -193,7 +163,7 @@ export class SupportService {
             },
           },
         },
-        { $sort: { "lastMessage.timestamp": -1 } },
+        { $sort: { 'lastMessage.timestamp': -1 } },
       ])
       .toArray();
   }

@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { ObjectId } from 'mongodb';
 
 export interface Rider {
   _id?: ObjectId;
@@ -8,7 +8,7 @@ export interface Rider {
   photoURL?: string;
   district?: string;
   region?: string;
-  status: "pending" | "approved" | "rejected";
+  status: 'pending' | 'approved' | 'rejected';
 
   // Rider Metrics
   average_rating?: number;
@@ -16,7 +16,7 @@ export interface Rider {
   is_available?: boolean;
 
   // Vehicle Details
-  vehicleType?: "bike" | "car" | "mini_pickup" | "large_pickup";
+  vehicleType?: 'bike' | 'car' | 'mini_pickup' | 'large_pickup';
   vehicleNumber?: string;
   drivingLicense?: string;
 }
@@ -27,7 +27,7 @@ export interface Cashout {
   rider_email: string;
   rider_name?: string;
   amount: number;
-  status: "pending" | "approved" | "rejected";
+  status: 'pending' | 'approved' | 'rejected';
   requested_at: string;
   processed_at?: string;
   processed_by?: string;

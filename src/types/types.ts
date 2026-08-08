@@ -1,5 +1,5 @@
-import { ObjectId } from "mongodb";
-import type * as admin from "firebase-admin";
+import { ObjectId } from 'mongodb';
+import type * as admin from 'firebase-admin';
 
 // ─── MongoDB Document Interfaces ────────────────────────────────────────────
 
@@ -8,10 +8,10 @@ export interface User {
   email: string;
   name?: string;
   photoURL?: string;
-  role?: "user" | "admin" | "rider" | "merchant" | "superAdmin";
+  role?: 'user' | 'admin' | 'rider' | 'merchant' | 'superAdmin';
   phone?: string;
   address?: string;
-  status?: "active" | "suspended" | "pending"; // Added: User status management
+  status?: 'active' | 'suspended' | 'pending'; // Added: User status management
   emailVerified?: boolean; // Added: Synced from Firebase
   isProfileComplete?: boolean;
   created_at?: string;
@@ -49,16 +49,16 @@ export interface Parcel {
   cost: number;
   rider_earning?: number;
   admin_profit?: number;
-  payment_status?: "paid" | "unpaid";
+  payment_status?: 'paid' | 'unpaid';
   delivery_status?:
-    | "pending"
-    | "assigned"
-    | "on_the_way"
-    | "delivered"
-    | "cancelled"
-    | "returned"
-    | "not_collected"
-    | "picked_up";
+    | 'pending'
+    | 'assigned'
+    | 'on_the_way'
+    | 'delivered'
+    | 'cancelled'
+    | 'returned'
+    | 'not_collected'
+    | 'picked_up';
 
   assigned_rider_id?: ObjectId;
   assigned_rider_name?: string;
@@ -72,7 +72,7 @@ export interface Parcel {
 
   // Multi-Role Support
   merchantId?: ObjectId;
-  requiredVehicle?: "bike" | "car" | "mini_pickup" | "large_pickup";
+  requiredVehicle?: 'bike' | 'car' | 'mini_pickup' | 'large_pickup';
   codAmount?: number;
 }
 
@@ -84,7 +84,7 @@ export interface Rider {
   photoURL?: string;
   district?: string;
   region?: string;
-  status: "pending" | "approved" | "rejected";
+  status: 'pending' | 'approved' | 'rejected';
 
   // Rider Metrics (Added for Admin Dashboard)
   average_rating?: number;
@@ -92,7 +92,7 @@ export interface Rider {
   is_available?: boolean;
 
   // Vehicle Details
-  vehicleType?: "bike" | "car" | "mini_pickup" | "large_pickup";
+  vehicleType?: 'bike' | 'car' | 'mini_pickup' | 'large_pickup';
   vehicleNumber?: string;
   drivingLicense?: string;
 }
@@ -108,7 +108,7 @@ export interface Merchant {
   address: string;
   district: string;
   phone: string;
-  status: "pending" | "approved" | "suspended" | "rejected";
+  status: 'pending' | 'approved' | 'suspended' | 'rejected';
   createdAt: string;
   updatedAt?: string;
 }
@@ -130,7 +130,7 @@ export interface Cashout {
   rider_email: string;
   rider_name?: string;
   amount: number;
-  status: "pending" | "approved" | "rejected";
+  status: 'pending' | 'approved' | 'rejected';
   requested_at: string;
   processed_at?: string;
   processed_by?: string;
@@ -162,7 +162,7 @@ export interface Notification {
   message: string;
   time: string;
   isRead: boolean;
-  type: "status_update" | "payment" | "admin_alert" | string;
+  type: 'status_update' | 'payment' | 'admin_alert' | string;
 }
 
 // ─── NEW: Administrative Intelligence ────────────────────────────────────────
@@ -183,7 +183,7 @@ export interface Feedback {
   userName: string;
   rating: number; // 1-5
   comment: string;
-  category: "service" | "app" | "rider" | "other";
+  category: 'service' | 'app' | 'rider' | 'other';
   timestamp: string;
   isResolved?: boolean;
 }

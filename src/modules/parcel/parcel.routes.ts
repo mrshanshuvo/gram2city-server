@@ -1,5 +1,5 @@
-import { Router } from "express";
-import multer from "multer";
+import { Router } from 'express';
+import multer from 'multer';
 import {
   getMyParcels,
   getMyParcelStats,
@@ -14,10 +14,10 @@ import {
   getRecentTrackings,
   addManualTrackingUpdate,
   uploadImage,
-} from "./parcel.controller";
-import { verifyFBToken, verifyAdmin } from "../../middleware/auth";
-import { validate } from "../../middleware/validate";
-import { parcelSchema, updateParcelSchema, trackingSchema } from "./parcel.schema";
+} from './parcel.controller';
+import { verifyFBToken, verifyAdmin } from '../../middleware/auth';
+import { validate } from '../../middleware/validate';
+import { parcelSchema, updateParcelSchema, trackingSchema } from './parcel.schema';
 
 const router = Router();
 
@@ -28,45 +28,35 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024, // 5MB Limit
   },
   fileFilter: (_req, file, cb) => {
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Only JPEG, PNG, and WebP images are allowed"));
+      cb(new Error('Only JPEG, PNG, and WebP images are allowed'));
     }
   },
 });
 
 // Parcel Routes
-router.get("/parcels", verifyFBToken, getMyParcels);
-router.get("/parcels/stats", verifyFBToken, getMyParcelStats);
-router.post("/parcels", verifyFBToken, validate(parcelSchema), bookParcel);
-router.get("/parcels/:id", verifyFBToken, getParcelById);
-router.patch(
-  "/parcels/:id",
-  verifyFBToken,
-  validate(updateParcelSchema),
-  updateParcel,
-);
-router.delete("/parcels/:id", verifyFBToken, deleteParcel);
+router.get('/parcels', verifyFBToken, getMyParcels);
+router.get('/parcels/stats', verifyFBToken, getMyParcelStats);
+router.post('/parcels', verifyFBToken, validate(parcelSchema), bookParcel);
+router.get('/parcels/:id', verifyFBToken, getParcelById);
+router.patch('/parcels/:id', verifyFBToken, validate(updateParcelSchema), updateParcel);
+router.delete('/parcels/:id', verifyFBToken, deleteParcel);
 
 // Rider Operations
-router.patch("/parcels/:id/pick", verifyFBToken, markPicked);
-router.patch("/parcels/:id/deliver", verifyFBToken, markDelivered);
+router.patch('/parcels/:id/pick', verifyFBToken, markPicked);
+router.patch('/parcels/:id/deliver', verifyFBToken, markDelivered);
 
 // Merchant Bulk Upload
-router.post("/parcels/bulk", verifyFBToken, bulkIngestParcels);
+router.post('/parcels/bulk', verifyFBToken, bulkIngestParcels);
 
 // Tracking Routes
-router.get("/trackings/:trackingId", getTrackingHistory);
-router.get(
-  "/trackings/all/recent",
-  verifyFBToken,
-  verifyAdmin,
-  getRecentTrackings,
-);
+router.get('/trackings/:trackingId', getTrackingHistory);
+router.get('/trackings/all/recent', verifyFBToken, verifyAdmin, getRecentTrackings);
 router.post(
-  "/trackings",
+  '/trackings',
   verifyFBToken,
   verifyAdmin,
   validate(trackingSchema),
@@ -74,15 +64,13 @@ router.post(
 );
 
 // Image Uploads Route
-router.post("/upload", verifyFBToken, upload.single("image"), uploadImage);
+router.post('/upload', verifyFBToken, upload.single('image'), uploadImage);
 
 // Multer Error Handler
 router.use((err: any, _req: any, res: any, next: any) => {
   if (err instanceof multer.MulterError) {
-    if (err.code === "LIMIT_FILE_SIZE") {
-      return res
-        .status(400)
-        .send({ success: false, message: "File too large. Max limit is 5MB." });
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).send({ success: false, message: 'File too large. Max limit is 5MB.' });
     }
     return res.status(400).send({ success: false, message: err.message });
   } else if (err) {

@@ -1,4 +1,4 @@
-import { ObjectId, InsertOneResult, UpdateResult, DeleteResult } from "mongodb";
+import { ObjectId, InsertOneResult, UpdateResult, DeleteResult } from 'mongodb';
 import {
   settingsCollection,
   trackingCollection,
@@ -15,7 +15,7 @@ import {
   merchantsCollection,
   usersCollection,
   parcelCollection,
-} from "../../db/db";
+} from '../../db/db';
 import {
   ProcessStep,
   LandingConfig,
@@ -25,14 +25,14 @@ import {
   PartnerLogo,
   Warehouse,
   Merchant,
-} from "./public.interface";
+} from './public.interface';
 
 const collectionMap: { [key: string]: any } = {
   banners: bannersCollection,
   services: servicesCollection,
   features: featuresCollection,
   partners: partnersCollection,
-  "process-steps": processStepsCollection,
+  'process-steps': processStepsCollection,
   testimonials: testimonialsCollection,
 };
 
@@ -56,19 +56,11 @@ export class PublicService {
   }
 
   static async getLandingConfig(): Promise<LandingConfig | null> {
-    return landingConfigCollection.findOne(
-      {},
-    ) as unknown as LandingConfig | null;
+    return landingConfigCollection.findOne({}) as unknown as LandingConfig | null;
   }
 
-  static async updateLandingConfig(
-    update: Partial<LandingConfig>,
-  ): Promise<void> {
-    await landingConfigCollection.updateOne(
-      {},
-      { $set: update },
-      { upsert: true },
-    );
+  static async updateLandingConfig(update: Partial<LandingConfig>): Promise<void> {
+    await landingConfigCollection.updateOne({}, { $set: update }, { upsert: true });
   }
 
   static async getBanners(showAll?: boolean): Promise<BannerSlide[]> {
@@ -105,21 +97,16 @@ export class PublicService {
 
   static async getTestimonials(showAll?: boolean): Promise<any[]> {
     const query = showAll ? {} : { isActive: true };
-    return testimonialsCollection
-      .find(query)
-      .sort({ createdAt: -1 })
-      .toArray();
+    return testimonialsCollection.find(query).sort({ createdAt: -1 }).toArray();
   }
 
   static async getStats() {
     const warehouses = await warehousesCollection.find({}).toArray();
     const totalDistricts = [...new Set(warehouses.map((w) => w.district))];
-    const activeHubs = warehouses.filter((w) => w.status === "active").length;
-    const expressZones = warehouses.filter(
-      (w) => w.status === "limited",
-    ).length;
+    const activeHubs = warehouses.filter((w) => w.status === 'active').length;
+    const expressZones = warehouses.filter((w) => w.status === 'limited').length;
     const approvedRiders = await ridersCollection.countDocuments({
-      status: "approved",
+      status: 'approved',
     });
 
     return {
@@ -133,7 +120,7 @@ export class PublicService {
   static async subscribeNewsletter(email: string) {
     const existing = await newsletterCollection.findOne({ email });
     if (existing) {
-      return { success: false, message: "Already subscribed!" };
+      return { success: false, message: 'Already subscribed!' };
     }
 
     await newsletterCollection.insertOne({
@@ -141,7 +128,7 @@ export class PublicService {
       subscribedAt: new Date().toISOString(),
     });
 
-    return { success: true, message: "Welcome to the family!" };
+    return { success: true, message: 'Welcome to the family!' };
   }
 
   static async getNewsletterSubscribers(): Promise<any[]> {
@@ -157,48 +144,46 @@ export class PublicService {
 
     if (filter.search) {
       query.$or = [
-        { district: { $regex: filter.search, $options: "i" } },
-        { city: { $regex: filter.search, $options: "i" } },
-        { region: { $regex: filter.search, $options: "i" } },
+        { district: { $regex: filter.search, $options: 'i' } },
+        { city: { $regex: filter.search, $options: 'i' } },
+        { region: { $regex: filter.search, $options: 'i' } },
       ];
     }
 
     if (filter.district) query.district = filter.district;
     if (filter.status) query.status = filter.status;
 
-    return (await warehousesCollection
-      .find(query)
-      .toArray()) as unknown as Warehouse[];
+    return (await warehousesCollection.find(query).toArray()) as unknown as Warehouse[];
   }
 
   // Merchant operations
-  static async applyMerchant(merchantData: Omit<Merchant, "_id">) {
+  static async applyMerchant(merchantData: Omit<Merchant, '_id'>) {
     const existing = await merchantsCollection.findOne({
       email: merchantData.email,
     });
     if (existing) {
       return {
         success: false,
-        message: "A merchant application already exists for this email.",
+        message: 'A merchant application already exists for this email.',
       };
     }
 
     const user = await usersCollection.findOne({ email: merchantData.email });
     if (!user) {
-      return { success: false, message: "User not found in system." };
+      return { success: false, message: 'User not found in system.' };
     }
 
     const newMerchant: Merchant = {
       ...merchantData,
       userId: user._id as ObjectId,
-      status: "pending",
+      status: 'pending',
       createdAt: new Date().toISOString(),
     };
 
     const result = await merchantsCollection.insertOne(newMerchant);
     return {
       success: true,
-      message: "Application submitted successfully and is pending approval.",
+      message: 'Application submitted successfully and is pending approval.',
       merchantId: result.insertedId,
     };
   }
@@ -224,25 +209,17 @@ export class PublicService {
             totalBookings: { $sum: 1 },
             totalCODCollected: {
               $sum: {
-                $cond: [
-                  { $eq: ["$delivery_status", "delivered"] },
-                  "$codAmount",
-                  0,
-                ],
+                $cond: [{ $eq: ['$delivery_status', 'delivered'] }, '$codAmount', 0],
               },
             },
             pendingCOD: {
               $sum: {
-                $cond: [
-                  { $ne: ["$delivery_status", "delivered"] },
-                  "$codAmount",
-                  0,
-                ],
+                $cond: [{ $ne: ['$delivery_status', 'delivered'] }, '$codAmount', 0],
               },
             },
             deliveredCount: {
               $sum: {
-                $cond: [{ $eq: ["$delivery_status", "delivered"] }, 1, 0],
+                $cond: [{ $eq: ['$delivery_status', 'delivered'] }, 1, 0],
               },
             },
           },
@@ -261,10 +238,7 @@ export class PublicService {
   }
 
   // Generic landing CRUD helpers
-  static async createLandingItem(
-    name: string,
-    item: any,
-  ): Promise<InsertOneResult> {
+  static async createLandingItem(name: string, item: any): Promise<InsertOneResult> {
     const collection = collectionMap[name];
     if (!collection) throw new Error(`Collection not found for: ${name}`);
 
@@ -274,21 +248,14 @@ export class PublicService {
     return collection.insertOne(item);
   }
 
-  static async updateLandingItem(
-    name: string,
-    id: string,
-    update: any,
-  ): Promise<UpdateResult> {
+  static async updateLandingItem(name: string, id: string, update: any): Promise<UpdateResult> {
     const collection = collectionMap[name];
     if (!collection) throw new Error(`Collection not found for: ${name}`);
 
     return collection.updateOne({ _id: new ObjectId(id) }, { $set: update });
   }
 
-  static async deleteLandingItem(
-    name: string,
-    id: string,
-  ): Promise<DeleteResult> {
+  static async deleteLandingItem(name: string, id: string): Promise<DeleteResult> {
     const collection = collectionMap[name];
     if (!collection) throw new Error(`Collection not found for: ${name}`);
 

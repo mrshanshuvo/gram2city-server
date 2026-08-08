@@ -11,11 +11,11 @@
  */
 
 /* eslint-disable @typescript-eslint/no-var-requires */
-require("dotenv").config();
+require('dotenv').config();
 
-const axios = require("axios");
-const { MongoClient } = require("mongodb");
-const cloudinaryPkg = require("cloudinary");
+const axios = require('axios');
+const { MongoClient } = require('mongodb');
+const cloudinaryPkg = require('cloudinary');
 const cloudinary = cloudinaryPkg.v2;
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -26,9 +26,7 @@ const API_KEY = process.env.CLOUDINARY_API_KEY as string;
 const API_SECRET = process.env.CLOUDINARY_API_SECRET as string;
 
 if (!MONGODB_URI || !DB_NAME || !CLOUD_NAME || !API_KEY || !API_SECRET) {
-  console.error(
-    "❌ Missing required environment variables. Check your .env file.",
-  );
+  console.error('❌ Missing required environment variables. Check your .env file.');
   process.exit(1);
 }
 
@@ -41,32 +39,28 @@ cloudinary.config({
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 async function downloadBuffer(url: string): Promise<Buffer> {
   const res = await axios.get(url, {
-    responseType: "arraybuffer",
+    responseType: 'arraybuffer',
     timeout: 20000,
     headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; Gram2City-migrator/1.0)",
-      Referer: "https://ibb.co/",
+      'User-Agent': 'Mozilla/5.0 (compatible; Gram2City-migrator/1.0)',
+      Referer: 'https://ibb.co/',
     },
   });
   return Buffer.from(res.data);
 }
 
-function uploadBufferToCloudinary(
-  buffer: Buffer,
-  folder: string,
-): Promise<string> {
+function uploadBufferToCloudinary(buffer: Buffer, folder: string): Promise<string> {
   return new Promise((resolve, reject) => {
     cloudinary.uploader
       .upload_stream(
         {
           folder,
-          resource_type: "image",
-          fetch_format: "auto",
-          quality: "auto",
+          resource_type: 'image',
+          fetch_format: 'auto',
+          quality: 'auto',
         },
         (err: any, result: any) => {
-          if (err || !result)
-            return reject(err ?? new Error("No Cloudinary result"));
+          if (err || !result) return reject(err ?? new Error('No Cloudinary result'));
           resolve(result.secure_url);
         },
       )
@@ -76,24 +70,24 @@ function uploadBufferToCloudinary(
 
 // ─── Targets ─────────────────────────────────────────────────────────────────
 const targets = [
-  { collection: "banners", field: "image", folder: "gram2city/banners" },
-  { collection: "features", field: "image", folder: "gram2city/features" },
+  { collection: 'banners', field: 'image', folder: 'gram2city/banners' },
+  { collection: 'features', field: 'image', folder: 'gram2city/features' },
   {
-    collection: "testimonials",
-    field: "image",
-    folder: "gram2city/testimonials",
+    collection: 'testimonials',
+    field: 'image',
+    folder: 'gram2city/testimonials',
   },
-  { collection: "partners", field: "logo", folder: "gram2city/partners" },
-  { collection: "users", field: "photoURL", folder: "gram2city/avatars" },
-  { collection: "avatars", field: "image", folder: "gram2city/avatars" },
-  { collection: "messages", field: "imageUrl", folder: "gram2city/chat" },
+  { collection: 'partners', field: 'logo', folder: 'gram2city/partners' },
+  { collection: 'users', field: 'photoURL', folder: 'gram2city/avatars' },
+  { collection: 'avatars', field: 'image', folder: 'gram2city/avatars' },
+  { collection: 'messages', field: 'imageUrl', folder: 'gram2city/chat' },
 ];
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function migrate() {
   const client = new MongoClient(MONGODB_URI);
   await client.connect();
-  console.log("✅ Connected to MongoDB\n");
+  console.log('✅ Connected to MongoDB\n');
 
   const db = client.db(DB_NAME);
   let totalUpdated = 0;
@@ -103,7 +97,7 @@ async function migrate() {
     const col = db.collection(target.collection);
 
     const docs = await col
-      .find({ [target.field]: { $regex: "i\\.ibb\\.co", $options: "i" } })
+      .find({ [target.field]: { $regex: 'i\\.ibb\\.co', $options: 'i' } })
       .toArray();
 
     if (docs.length === 0) {
@@ -111,9 +105,7 @@ async function migrate() {
       continue;
     }
 
-    console.log(
-      `\n📦 ${target.collection}.${target.field} — ${docs.length} record(s)`,
-    );
+    console.log(`\n📦 ${target.collection}.${target.field} — ${docs.length} record(s)`);
 
     for (const doc of docs) {
       const oldUrl: string = doc[target.field];
@@ -123,23 +115,23 @@ async function migrate() {
         process.stdout.write(`   ↳ [${id}] Downloading... `);
         const buffer = await downloadBuffer(oldUrl);
 
-        process.stdout.write("Uploading... ");
+        process.stdout.write('Uploading... ');
         const newUrl = await uploadBufferToCloudinary(buffer, target.folder);
 
         await col.updateOne({ _id: id }, { $set: { [target.field]: newUrl } });
-        console.log("✅");
+        console.log('✅');
         console.log(`      OLD: ${oldUrl}`);
         console.log(`      NEW: ${newUrl}`);
         totalUpdated++;
       } catch (err: any) {
-        console.log("❌ FAILED");
+        console.log('❌ FAILED');
         console.error(`      ${err?.message ?? err}`);
         totalFailed++;
       }
     }
   }
 
-  console.log(`\n${"─".repeat(60)}`);
+  console.log(`\n${'─'.repeat(60)}`);
   console.log(`✅ Updated : ${totalUpdated}`);
   console.log(`❌ Failed  : ${totalFailed}`);
 
@@ -148,6 +140,6 @@ async function migrate() {
 }
 
 migrate().catch((err) => {
-  console.error("Fatal:", err);
+  console.error('Fatal:', err);
   process.exit(1);
 });

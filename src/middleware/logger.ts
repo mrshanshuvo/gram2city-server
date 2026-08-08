@@ -1,10 +1,10 @@
-import fs from "fs";
-import type { NextFunction, Request, Response } from "express";
+import fs from 'fs';
+import type { NextFunction, Request, Response } from 'express';
 
 const logger = (req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
 
-  res.on("finish", () => {
+  res.on('finish', () => {
     const duration = Date.now() - start;
 
     const log = `[${new Date().toISOString()}] ${req.method} ${
@@ -13,9 +13,9 @@ const logger = (req: Request, res: Response, next: NextFunction) => {
 
     console.log(log);
     try {
-      fs.appendFileSync("logs.txt", log + "\n");
+      fs.appendFileSync('logs.txt', log + '\n');
     } catch (err) {
-      console.error("Failed to write log to logs.txt:", err);
+      console.error('Failed to write log to logs.txt:', err);
     }
   });
 

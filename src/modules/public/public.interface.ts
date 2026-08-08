@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { ObjectId } from 'mongodb';
 
 export interface BannerSlide {
   _id?: ObjectId;
@@ -84,7 +84,7 @@ export interface Merchant {
   address: string;
   district: string;
   phone: string;
-  status: "pending" | "approved" | "suspended" | "rejected";
+  status: 'pending' | 'approved' | 'suspended' | 'rejected';
   createdAt: string;
   updatedAt?: string;
 }
@@ -95,5 +95,5 @@ export interface Warehouse {
   district: string;
   city: string;
   region: string;
-  status: "active" | "limited" | "inactive";
+  status: 'active' | 'limited' | 'inactive';
 }

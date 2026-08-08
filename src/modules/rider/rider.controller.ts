@@ -1,20 +1,20 @@
-import { Request, Response } from "express";
-import { ObjectId } from "mongodb";
-import { RiderService } from "./rider.service";
-import { io } from "../../socket/socket";
+import { Request, Response } from 'express';
+import { ObjectId } from 'mongodb';
+import { RiderService } from './rider.service';
+import { io } from '../../socket/socket';
 
 export const submitApplication = async (req: Request, res: Response) => {
   try {
     const application = {
       ...req.body,
-      status: "pending",
+      status: 'pending',
       createdAt: new Date().toISOString(),
     };
 
     const result = await RiderService.submitApplication(application);
 
     if (io) {
-      io.emit("new_rider_application", {
+      io.emit('new_rider_application', {
         name: application.name,
         email: application.email,
         district: application.district,
@@ -23,9 +23,7 @@ export const submitApplication = async (req: Request, res: Response) => {
 
     res.status(201).send({ success: true, insertedId: result.insertedId });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to submit application" });
+    res.status(500).send({ success: false, message: 'Failed to submit application' });
   }
 };
 
@@ -43,7 +41,7 @@ export const getAllRiders = async (req: Request, res: Response) => {
     const totalPages = Math.ceil(totalItems / sizeNum);
 
     res.send({
-      status: "success",
+      status: 'success',
       data: riders,
       pagination: {
         totalItems,
@@ -55,7 +53,7 @@ export const getAllRiders = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch riders" });
+    res.status(500).send({ success: false, message: 'Failed to fetch riders' });
   }
 };
 
@@ -65,35 +63,23 @@ export const getAssignedParcels = async (req: Request, res: Response) => {
     const rider = await RiderService.getRiderByEmail(riderEmail);
 
     if (!rider)
-      return res
-        .status(404)
-        .send({ success: false, message: "Rider profile not found." });
+      return res.status(404).send({ success: false, message: 'Rider profile not found.' });
 
-    const parcels = await RiderService.getAssignedParcels(
-      new ObjectId(String(rider._id)),
-    );
+    const parcels = await RiderService.getAssignedParcels(new ObjectId(String(rider._id)));
     res.send({ success: true, count: parcels.length, data: parcels });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to fetch assigned parcels." });
+    res.status(500).send({ success: false, message: 'Failed to fetch assigned parcels.' });
   }
 };
 
-export const updateParcelDeliveryStatus = async (
-  req: Request,
-  res: Response,
-) => {
+export const updateParcelDeliveryStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { delivery_status } = req.body;
     const riderEmail = req.user?.email as string;
 
     const rider = await RiderService.getRiderByEmail(riderEmail);
-    if (!rider)
-      return res
-        .status(404)
-        .send({ success: false, message: "Rider not found." });
+    if (!rider) return res.status(404).send({ success: false, message: 'Rider not found.' });
 
     const result = await RiderService.updateParcelDeliveryStatus(
       id as string,
@@ -105,9 +91,7 @@ export const updateParcelDeliveryStatus = async (
     }
     res.send(result);
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to update status." });
+    res.status(500).send({ success: false, message: 'Failed to update status.' });
   }
 };
 
@@ -117,9 +101,7 @@ export const getRiderReviews = async (req: Request, res: Response) => {
     const reviews = await RiderService.getRiderReviews(email);
     res.send({ success: true, count: reviews.length, data: reviews });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to fetch reviews." });
+    res.status(500).send({ success: false, message: 'Failed to fetch reviews.' });
   }
 };
 
@@ -129,7 +111,7 @@ export const getRiderStats = async (req: Request, res: Response) => {
     const stats = await RiderService.getRiderStats(email);
     res.send({ success: true, stats });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch stats." });
+    res.status(500).send({ success: false, message: 'Failed to fetch stats.' });
   }
 };
 
@@ -139,9 +121,7 @@ export const requestPayout = async (req: Request, res: Response) => {
     const { amount } = req.body;
 
     if (!amount || amount < 500) {
-      return res
-        .status(400)
-        .send({ success: false, message: "Minimum payout is 500 BDT." });
+      return res.status(400).send({ success: false, message: 'Minimum payout is 500 BDT.' });
     }
 
     const result = await RiderService.requestPayout(email, amount);
@@ -150,8 +130,6 @@ export const requestPayout = async (req: Request, res: Response) => {
     }
     res.send(result);
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to request payout" });
+    res.status(500).send({ success: false, message: 'Failed to request payout' });
   }
 };

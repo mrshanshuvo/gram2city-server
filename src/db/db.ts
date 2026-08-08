@@ -1,4 +1,4 @@
-import { MongoClient, ServerApiVersion } from "mongodb";
+import { MongoClient, ServerApiVersion } from 'mongodb';
 import type {
   User,
   Parcel,
@@ -21,9 +21,9 @@ import type {
   Avatar,
   Merchant,
   Address,
-} from "../types/types";
+} from '../types/types';
 
-import { config } from "../config";
+import { config } from '../config';
 
 // ─── MongoDB Client ───────────────────────────────────────────────────────────
 
@@ -39,35 +39,32 @@ const client = new MongoClient(config.MONGODB_URI, {
 
 const db = client.db(config.DB_NAME);
 
-export const usersCollection = db.collection<User>("users");
-export const parcelCollection = db.collection<Parcel>("parcels");
-export const paymentCollection = db.collection<Payment>("payments");
-export const ridersCollection = db.collection<Rider>("riders");
-export const cashoutsCollection = db.collection<Cashout>("cashouts");
-export const trackingCollection = db.collection<TrackingUpdate>("trackings");
-export const reviewsCollection = db.collection<Review>("reviews");
-export const notificationsCollection =
-  db.collection<Notification>("notifications");
-export const auditCollection = db.collection<any>("audit_logs");
-export const settingsCollection = db.collection<any>("system_settings");
-export const messagesCollection = db.collection<ChatMessage>("messages");
-export const feedbackCollection = db.collection<Feedback>("feedback");
-export const faqsCollection = db.collection<FAQ>("faqs");
-export const faqVotesCollection = db.collection<FAQVote>("faq_votes");
-export const bannersCollection = db.collection<BannerSlide>("banners");
-export const servicesCollection = db.collection<ServiceItem>("services");
-export const featuresCollection = db.collection<FeatureItem>("features");
-export const partnersCollection = db.collection<PartnerLogo>("partners");
-export const processStepsCollection =
-  db.collection<ProcessStep>("process_steps");
-export const landingConfigCollection =
-  db.collection<LandingConfig>("landing_config");
-export const avatarsCollection = db.collection<Avatar>("avatars");
-export const merchantsCollection = db.collection<Merchant>("merchants");
-export const warehousesCollection = db.collection("warehouses");
-export const newsletterCollection = db.collection("newsletter");
-export const testimonialsCollection = db.collection<any>("testimonials");
-export const addressesCollection = db.collection<Address>("addresses");
+export const usersCollection = db.collection<User>('users');
+export const parcelCollection = db.collection<Parcel>('parcels');
+export const paymentCollection = db.collection<Payment>('payments');
+export const ridersCollection = db.collection<Rider>('riders');
+export const cashoutsCollection = db.collection<Cashout>('cashouts');
+export const trackingCollection = db.collection<TrackingUpdate>('trackings');
+export const reviewsCollection = db.collection<Review>('reviews');
+export const notificationsCollection = db.collection<Notification>('notifications');
+export const auditCollection = db.collection<any>('audit_logs');
+export const settingsCollection = db.collection<any>('system_settings');
+export const messagesCollection = db.collection<ChatMessage>('messages');
+export const feedbackCollection = db.collection<Feedback>('feedback');
+export const faqsCollection = db.collection<FAQ>('faqs');
+export const faqVotesCollection = db.collection<FAQVote>('faq_votes');
+export const bannersCollection = db.collection<BannerSlide>('banners');
+export const servicesCollection = db.collection<ServiceItem>('services');
+export const featuresCollection = db.collection<FeatureItem>('features');
+export const partnersCollection = db.collection<PartnerLogo>('partners');
+export const processStepsCollection = db.collection<ProcessStep>('process_steps');
+export const landingConfigCollection = db.collection<LandingConfig>('landing_config');
+export const avatarsCollection = db.collection<Avatar>('avatars');
+export const merchantsCollection = db.collection<Merchant>('merchants');
+export const warehousesCollection = db.collection('warehouses');
+export const newsletterCollection = db.collection('newsletter');
+export const testimonialsCollection = db.collection<any>('testimonials');
+export const addressesCollection = db.collection<Address>('addresses');
 
 // ─── DB Initialization (Indexing) ─────────────────────────────────────────────
 export const initDB = async () => {
@@ -87,7 +84,7 @@ export const initDB = async () => {
             {
               $group: {
                 _id: `$${key}`,
-                ids: { $push: "$_id" },
+                ids: { $push: '$_id' },
                 count: { $sum: 1 },
               },
             },
@@ -111,14 +108,14 @@ export const initDB = async () => {
     };
 
     // Safely drop old non-unique indexes before replacing them with unique indexes
-    await dropIndexIfExists(usersCollection, "email_1");
-    await dropIndexIfExists(merchantsCollection, "email_1");
-    await dropIndexIfExists(ridersCollection, "email_1");
+    await dropIndexIfExists(usersCollection, 'email_1');
+    await dropIndexIfExists(merchantsCollection, 'email_1');
+    await dropIndexIfExists(ridersCollection, 'email_1');
 
     // Deduplicate collections to prevent DuplicateKey index build errors
-    await deduplicateCollection(usersCollection, "email");
-    await deduplicateCollection(merchantsCollection, "email");
-    await deduplicateCollection(ridersCollection, "email");
+    await deduplicateCollection(usersCollection, 'email');
+    await deduplicateCollection(merchantsCollection, 'email');
+    await deduplicateCollection(ridersCollection, 'email');
 
     // 1. usersCollection
     await usersCollection.createIndex({ email: 1 }, { unique: true });
@@ -177,14 +174,11 @@ export const initDB = async () => {
     await faqsCollection.createIndex({ category: 1, order: 1 });
 
     // 13. faqVotesCollection
-    await faqVotesCollection.createIndex(
-      { faqId: 1, identifier: 1 },
-      { unique: true },
-    );
+    await faqVotesCollection.createIndex({ faqId: 1, identifier: 1 }, { unique: true });
 
-    console.log("✅ Database indexes verified.");
+    console.log('✅ Database indexes verified.');
   } catch (error) {
-    console.error("❌ Database indexing failed:", error);
+    console.error('❌ Database indexing failed:', error);
   }
 };
 
@@ -192,7 +186,7 @@ export const addTrackingUpdate = async (
   trackingId: string,
   status: string,
   details: string,
-  location = "Primary Hub",
+  location = 'Primary Hub',
 ): Promise<void> => {
   try {
     await trackingCollection.insertOne({
@@ -203,6 +197,6 @@ export const addTrackingUpdate = async (
       time: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("Failed to add tracking update:", error);
+    console.error('Failed to add tracking update:', error);
   }
 };

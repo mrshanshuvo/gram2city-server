@@ -1,15 +1,15 @@
-import { Request, Response } from "express";
-import admin from "firebase-admin";
-import { SupportService } from "./support.service";
-import { FAQ, Review } from "./support.interface";
-import { usersCollection } from "../../db/db";
-import { uploadToCloudinary } from "../../utils/upload";
+import { Request, Response } from 'express';
+import admin from 'firebase-admin';
+import { SupportService } from './support.service';
+import { FAQ, Review } from './support.interface';
+import { usersCollection } from '../../db/db';
+import { uploadToCloudinary } from '../../utils/upload';
 
 // ─── FAQS CONTROLLERS ────────────────────────────────────────────────────────
 
 export const getFAQs = async (req: Request, res: Response) => {
   try {
-    const { page = 1, limit = 10, category, sortBy = "order" } = req.query;
+    const { page = 1, limit = 10, category, sortBy = 'order' } = req.query;
     const { faqs, total } = await SupportService.getFAQs(
       Number(page),
       Number(limit),
@@ -28,18 +28,18 @@ export const getFAQs = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch FAQs" });
+    res.status(500).send({ success: false, message: 'Failed to fetch FAQs' });
   }
 };
 
 export const voteFAQHelpful = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    let identifier: string = req.ip || "unknown";
+    let identifier: string = req.ip || 'unknown';
 
     const authHeader = req.headers.authorization;
     if (authHeader) {
-      const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
       if (token) {
         try {
           const decoded = await admin.auth().verifyIdToken(token);
@@ -50,18 +50,13 @@ export const voteFAQHelpful = async (req: Request, res: Response) => {
       }
     }
 
-    const result = await SupportService.voteFAQHelpful(
-      id as string,
-      identifier,
-    );
+    const result = await SupportService.voteFAQHelpful(id as string, identifier);
     if (!result.success) {
       return res.status(400).send(result);
     }
     res.send(result);
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to process feedback" });
+    res.status(500).send({ success: false, message: 'Failed to process feedback' });
   }
 };
 
@@ -70,9 +65,7 @@ export const getFAQCategories = async (_req: Request, res: Response) => {
     const categories = await SupportService.getFAQCategories();
     res.send({ success: true, data: categories });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to fetch categories" });
+    res.status(500).send({ success: false, message: 'Failed to fetch categories' });
   }
 };
 
@@ -81,7 +74,7 @@ export const getAllFAQsAdmin = async (_req: Request, res: Response) => {
     const faqs = await SupportService.getAllFAQsAdmin();
     res.send({ success: true, data: faqs });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to fetch FAQs" });
+    res.status(500).send({ success: false, message: 'Failed to fetch FAQs' });
   }
 };
 
@@ -92,17 +85,15 @@ export const createFAQ = async (req: Request, res: Response) => {
       question,
       answer,
       order: order ? Number(order) : 0,
-      category: category || "General",
+      category: category || 'General',
       isActive: true,
       helpfulCount: 0,
       createdAt: new Date().toISOString(),
     };
     const result = await SupportService.createFAQ(newFAQ);
-    res
-      .status(201)
-      .send({ success: true, data: { ...newFAQ, _id: result.insertedId } });
+    res.status(201).send({ success: true, data: { ...newFAQ, _id: result.insertedId } });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to create FAQ" });
+    res.status(500).send({ success: false, message: 'Failed to create FAQ' });
   }
 };
 
@@ -114,11 +105,11 @@ export const updateFAQ = async (req: Request, res: Response) => {
 
     const result = await SupportService.updateFAQ(id as string, updates);
     if (result.matchedCount === 0) {
-      return res.status(404).send({ success: false, message: "FAQ not found" });
+      return res.status(404).send({ success: false, message: 'FAQ not found' });
     }
-    res.send({ success: true, message: "FAQ updated successfully" });
+    res.send({ success: true, message: 'FAQ updated successfully' });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to update FAQ" });
+    res.status(500).send({ success: false, message: 'Failed to update FAQ' });
   }
 };
 
@@ -127,11 +118,11 @@ export const deleteFAQ = async (req: Request, res: Response) => {
     const { id } = req.params;
     const result = await SupportService.deleteFAQ(id as string);
     if (result.deletedCount === 0) {
-      return res.status(404).send({ success: false, message: "FAQ not found" });
+      return res.status(404).send({ success: false, message: 'FAQ not found' });
     }
-    res.send({ success: true, message: "FAQ deleted successfully" });
+    res.send({ success: true, message: 'FAQ deleted successfully' });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to delete FAQ" });
+    res.status(500).send({ success: false, message: 'Failed to delete FAQ' });
   }
 };
 
@@ -143,7 +134,7 @@ export const getRiderReviews = async (req: Request, res: Response) => {
     const reviews = await SupportService.getRiderReviews(email as string);
     res.send(reviews);
   } catch {
-    res.status(500).send({ error: "Failed to fetch reviews" });
+    res.status(500).send({ error: 'Failed to fetch reviews' });
   }
 };
 
@@ -154,7 +145,7 @@ export const submitReview = async (req: Request, res: Response) => {
     const result = await SupportService.submitReview(review);
     res.send({ success: true, data: result });
   } catch {
-    res.status(500).send({ error: "Failed to submit review" });
+    res.status(500).send({ error: 'Failed to submit review' });
   }
 };
 
@@ -172,9 +163,7 @@ export const submitFeedback = async (req: Request, res: Response) => {
     const result = await SupportService.submitFeedback(feedback);
     res.status(201).send({ success: true, insertedId: result.insertedId });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to submit feedback" });
+    res.status(500).send({ success: false, message: 'Failed to submit feedback' });
   }
 };
 
@@ -183,9 +172,7 @@ export const getAllFeedback = async (_req: Request, res: Response) => {
     const feedback = await SupportService.getAllFeedback();
     res.send({ success: true, data: feedback });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to fetch feedback" });
+    res.status(500).send({ success: false, message: 'Failed to fetch feedback' });
   }
 };
 
@@ -194,14 +181,12 @@ export const getAllFeedback = async (_req: Request, res: Response) => {
 export const getUnreadNotifications = async (req: Request, res: Response) => {
   const { email } = req.params;
   if (req.user?.email !== email)
-    return res.status(403).send({ success: false, message: "Unauthorized" });
+    return res.status(403).send({ success: false, message: 'Unauthorized' });
   try {
-    const notifications = await SupportService.getUnreadNotifications(
-      email as string,
-    );
+    const notifications = await SupportService.getUnreadNotifications(email as string);
     res.send(notifications);
   } catch {
-    res.status(500).send({ error: "Failed to fetch notifications" });
+    res.status(500).send({ error: 'Failed to fetch notifications' });
   }
 };
 
@@ -211,21 +196,19 @@ export const markNotificationRead = async (req: Request, res: Response) => {
     const result = await SupportService.markNotificationRead(id as string);
     res.send(result);
   } catch {
-    res.status(500).send({ error: "Failed to mark as read" });
+    res.status(500).send({ error: 'Failed to mark as read' });
   }
 };
 
 export const markAllNotificationsRead = async (req: Request, res: Response) => {
   const { email } = req.params;
   if ((req.user as any)?.email !== email)
-    return res.status(403).send({ success: false, message: "Unauthorized" });
+    return res.status(403).send({ success: false, message: 'Unauthorized' });
   try {
-    const result = await SupportService.markAllNotificationsRead(
-      email as string,
-    );
+    const result = await SupportService.markAllNotificationsRead(email as string);
     res.send(result);
   } catch {
-    res.status(500).send({ error: "Failed to mark all as read" });
+    res.status(500).send({ error: 'Failed to mark all as read' });
   }
 };
 
@@ -238,33 +221,29 @@ export const getChatHistory = async (req: Request, res: Response) => {
 
     if (!conversationId.includes(userEmail)) {
       const user = await usersCollection.findOne({ email: userEmail });
-      if (user?.role !== "admin" && user?.role !== "superAdmin") {
+      if (user?.role !== 'admin' && user?.role !== 'superAdmin') {
         return res.status(403).send({
           success: false,
-          message: "Unauthorized to view this conversation",
+          message: 'Unauthorized to view this conversation',
         });
       }
     }
 
-    const messages = await SupportService.getChatHistory(
-      conversationId as string,
-    );
+    const messages = await SupportService.getChatHistory(conversationId as string);
     res.send({ success: true, data: messages });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to fetch messages" });
+    res.status(500).send({ success: false, message: 'Failed to fetch messages' });
   }
 };
 
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from 'fs';
+import * as path from 'path';
 
 const logDebug = (msg: string) => {
   try {
     console.log(`[DEBUG] ${msg}`);
     fs.appendFileSync(
-      path.join(__dirname, "../../../debug.log"),
+      path.join(__dirname, '../../../debug.log'),
       `[${new Date().toISOString()}] ${msg}\n`,
     );
   } catch (err) {}
@@ -274,8 +253,8 @@ export const getUserConversations = async (req: Request, res: Response) => {
   try {
     const userEmail = req.user?.email as string;
     const user = await usersCollection.findOne({ email: userEmail });
-    const isAdmin = user?.role === "admin" || user?.role === "superAdmin";
-    const queryEmail = isAdmin ? "admin@gram2city.com" : userEmail;
+    const isAdmin = user?.role === 'admin' || user?.role === 'superAdmin';
+    const queryEmail = isAdmin ? 'admin@gram2city.com' : userEmail;
 
     logDebug(
       `getUserConversations: userEmail=${userEmail}, role=${user?.role}, queryEmail=${queryEmail}`,
@@ -288,9 +267,7 @@ export const getUserConversations = async (req: Request, res: Response) => {
     res.send({ success: true, data: conversations });
   } catch (error: any) {
     logDebug(`getUserConversations ERROR: ${error.message || error}`);
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to fetch conversations" });
+    res.status(500).send({ success: false, message: 'Failed to fetch conversations' });
   }
 };
 
@@ -300,14 +277,14 @@ export const uploadChatImage = async (req: Request, res: Response) => {
   if (!req.file) {
     return res.status(400).send({
       success: false,
-      message: "No file uploaded or file type not supported",
+      message: 'No file uploaded or file type not supported',
     });
   }
 
   try {
-    const url = await uploadToCloudinary(req.file, "gram2city/chat");
+    const url = await uploadToCloudinary(req.file, 'gram2city/chat');
     res.send({ success: true, url });
   } catch (error) {
-    res.status(500).send({ success: false, message: "Failed to upload image" });
+    res.status(500).send({ success: false, message: 'Failed to upload image' });
   }
 };

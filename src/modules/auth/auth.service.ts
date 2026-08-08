@@ -1,16 +1,16 @@
-import axios from "axios";
-import admin from "firebase-admin";
-import { usersCollection } from "../../db/db";
-import type { User } from "../../types/types";
-import { FirebaseAuthResponse } from "./auth.interface";
-import { uploadToCloudinary } from "../../utils/upload";
-import { config } from "../../config";
+import axios from 'axios';
+import admin from 'firebase-admin';
+import { usersCollection } from '../../db/db';
+import type { User } from '../../types/types';
+import { FirebaseAuthResponse } from './auth.interface';
+import { uploadToCloudinary } from '../../utils/upload';
+import { config } from '../../config';
 
 const API_KEY = config.FB_WEB_API_KEY;
 
 export class AuthService {
   static async uploadProfileImage(file: Express.Multer.File): Promise<string> {
-    return uploadToCloudinary(file, "gram2city/avatars");
+    return uploadToCloudinary(file, 'gram2city/avatars');
   }
 
   static async registerFirebaseUser(
@@ -31,10 +31,7 @@ export class AuthService {
     await usersCollection.insertOne(newUser);
   }
 
-  static async loginFirebaseUser(
-    email: string,
-    password: string,
-  ): Promise<FirebaseAuthResponse> {
+  static async loginFirebaseUser(email: string, password: string): Promise<FirebaseAuthResponse> {
     const fbRes = await axios.post(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}`,
       { email, password, returnSecureToken: true },
@@ -55,17 +52,14 @@ export class AuthService {
 
   static async updateLastLogin(email: string): Promise<string> {
     const lastLogin = new Date().toISOString();
-    await usersCollection.updateOne(
-      { email },
-      { $set: { last_login: lastLogin } },
-    );
+    await usersCollection.updateOne({ email }, { $set: { last_login: lastLogin } });
     return lastLogin;
   }
 
   static async sendFirebaseVerification(idToken: string): Promise<void> {
     await axios.post(
       `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${API_KEY}`,
-      { requestType: "VERIFY_EMAIL", idToken },
+      { requestType: 'VERIFY_EMAIL', idToken },
     );
   }
 
@@ -80,15 +74,11 @@ export class AuthService {
   static async sendFirebasePasswordReset(email: string): Promise<void> {
     await axios.post(
       `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${API_KEY}`,
-      { requestType: "PASSWORD_RESET", email },
+      { requestType: 'PASSWORD_RESET', email },
     );
   }
 
-  static async createFirebaseUserAdmin(
-    email: string,
-    password: string,
-    name: string,
-  ) {
+  static async createFirebaseUserAdmin(email: string, password: string, name: string) {
     return admin.auth().createUser({
       email,
       password,

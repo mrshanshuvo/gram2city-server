@@ -1,5 +1,5 @@
-import { v2 as cloudinary } from "cloudinary";
-import { config } from "../config";
+import { v2 as cloudinary } from 'cloudinary';
+import { config } from '../config';
 
 // Configure Cloudinary SDK once at module load
 cloudinary.config({
@@ -17,22 +17,20 @@ cloudinary.config({
  */
 export const uploadToCloudinary = (
   file: Express.Multer.File,
-  folder = "gram2city",
+  folder = 'gram2city',
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder,
-        resource_type: "image",
+        resource_type: 'image',
         // Auto-select best format (WebP/AVIF where browser supports it)
-        fetch_format: "auto",
-        quality: "auto",
+        fetch_format: 'auto',
+        quality: 'auto',
       },
       (error, result) => {
         if (error || !result) {
-          return reject(
-            error ?? new Error("Cloudinary upload returned no result"),
-          );
+          return reject(error ?? new Error('Cloudinary upload returned no result'));
         }
         resolve(result.secure_url);
       },

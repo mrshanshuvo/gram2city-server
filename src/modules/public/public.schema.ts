@@ -1,22 +1,22 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 const preprocessBoolean = z.preprocess((val) => {
-  if (typeof val === "string") {
-    if (val.toLowerCase() === "true") return true;
-    if (val.toLowerCase() === "false") return false;
+  if (typeof val === 'string') {
+    if (val.toLowerCase() === 'true') return true;
+    if (val.toLowerCase() === 'false') return false;
   }
   return val;
 }, z.boolean());
 
 export const newsletterSchema = z.object({
   body: z.object({
-    email: z.string().email("Invalid email address"),
+    email: z.string().email('Invalid email address'),
   }),
 });
 
 export const bannerSchema = z.object({
   body: z.object({
-    title: z.string().min(1, "Title is required"),
+    title: z.string().min(1, 'Title is required'),
     subtitle: z.string().optional(),
     // image comes from req.file (multipart upload) — not validated in body
     image: z.string().url().optional(),
@@ -31,8 +31,8 @@ export const bannerSchema = z.object({
 
 export const serviceSchema = z.object({
   body: z.object({
-    title: z.string().min(1, "Title is required"),
-    description: z.string().min(1, "Description is required"),
+    title: z.string().min(1, 'Title is required'),
+    description: z.string().min(1, 'Description is required'),
     icon: z.string().optional(),
     image: z.string().optional(),
     order: z.coerce.number().default(0),
@@ -42,8 +42,8 @@ export const serviceSchema = z.object({
 
 export const featureSchema = z.object({
   body: z.object({
-    title: z.string().min(1, "Title is required"),
-    description: z.string().min(1, "Description is required"),
+    title: z.string().min(1, 'Title is required'),
+    description: z.string().min(1, 'Description is required'),
     icon: z.string().optional(),
     image: z.string().optional(),
     order: z.coerce.number().default(0),
@@ -53,10 +53,10 @@ export const featureSchema = z.object({
 
 export const partnerSchema = z.object({
   body: z.object({
-    name: z.string().min(1, "Name is required"),
+    name: z.string().min(1, 'Name is required'),
     // logo comes from req.file (multipart upload) — not validated in body
     logo: z.string().url().optional(),
-    website: z.string().url().optional().or(z.literal("")),
+    website: z.string().url().optional().or(z.literal('')),
     order: z.coerce.number().default(0),
     isActive: preprocessBoolean.default(true),
   }),
@@ -64,9 +64,9 @@ export const partnerSchema = z.object({
 
 export const testimonialSchema = z.object({
   body: z.object({
-    name: z.string().min(1, "Name is required"),
+    name: z.string().min(1, 'Name is required'),
     title: z.string().optional(),
-    quote: z.string().min(1, "Quote is required"),
+    quote: z.string().min(1, 'Quote is required'),
     image: z.string().optional(),
     rating: z.coerce.number().min(1).max(5).default(5),
     isActive: preprocessBoolean.default(true),
@@ -75,8 +75,8 @@ export const testimonialSchema = z.object({
 
 export const processStepSchema = z.object({
   body: z.object({
-    title: z.string().min(1, "Title is required"),
-    description: z.string().min(1, "Description is required"),
+    title: z.string().min(1, 'Title is required'),
+    description: z.string().min(1, 'Description is required'),
     icon: z.string().optional(),
     steps: z.array(z.string()).optional(),
     order: z.coerce.number().default(0),
@@ -100,7 +100,7 @@ export const landingConfigUpdateSchema = z.object({
         address: z.string().optional(),
         phone: z.string().optional(),
         whatsapp: z.string().optional(),
-        email: z.string().email().optional().or(z.literal("")),
+        email: z.string().email().optional().or(z.literal('')),
       })
       .optional(),
     socialLinks: z
@@ -123,4 +123,3 @@ export const landingConfigUpdateSchema = z.object({
     howItWorksFooter: z.string().optional(),
   }),
 });
-

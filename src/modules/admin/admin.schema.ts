@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const adminSettingsSchema = z.object({
   body: z.object({
@@ -10,33 +10,33 @@ export const adminSettingsSchema = z.object({
 
 export const announceSchema = z.object({
   body: z.object({
-    message: z.string().min(5, "Announcement must be at least 5 characters"),
+    message: z.string().min(5, 'Announcement must be at least 5 characters'),
   }),
 });
 
 export const userStatusSchema = z.object({
   body: z.object({
-    status: z.enum(["active", "suspended"]),
+    status: z.enum(['active', 'suspended']),
   }),
 });
 
 export const assignRiderSchema = z.object({
   body: z.object({
-    riderId: z.string().min(1, "Rider ID is required"),
+    riderId: z.string().min(1, 'Rider ID is required'),
   }),
 });
 
 export const userRoleSchema = z.object({
   body: z.object({
-    role: z.enum(["user", "admin", "rider", "superAdmin"]),
+    role: z.enum(['user', 'admin', 'rider', 'superAdmin']),
   }),
 });
 
 export const adminCreateUserSchema = z.object({
   body: z.object({
-    email: z.string().email("Invalid email address"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
-    name: z.string().min(2, "Name must be at least 2 characters"),
-    role: z.enum(["user", "admin", "rider"]),
+    email: z.string().email('Invalid email address'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+    name: z.string().min(2, 'Name must be at least 2 characters'),
+    role: z.enum(['user', 'admin', 'rider']),
   }),
 });

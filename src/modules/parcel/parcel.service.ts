@@ -1,14 +1,14 @@
-import { ObjectId, UpdateResult, InsertOneResult, DeleteResult } from "mongodb";
-import { config } from "../../config";
+import { ObjectId, UpdateResult, InsertOneResult, DeleteResult } from 'mongodb';
+import { config } from '../../config';
 import {
   parcelCollection,
   trackingCollection,
   settingsCollection,
   auditCollection,
   addTrackingUpdate,
-} from "../../db/db";
-import { Parcel, TrackingUpdate } from "./parcel.interface";
-import { SystemSettings } from "../admin/admin.interface";
+} from '../../db/db';
+import { Parcel, TrackingUpdate } from './parcel.interface';
+import { SystemSettings } from '../admin/admin.interface';
 
 export class ParcelService {
   static async getMyParcels(
@@ -33,19 +33,19 @@ export class ParcelService {
         {
           $group: {
             _id: null,
-            totalSpent: { $sum: "$cost" },
+            totalSpent: { $sum: '$cost' },
             totalParcels: { $sum: 1 },
             delivered: {
               $sum: {
-                $cond: [{ $eq: ["$delivery_status", "delivered"] }, 1, 0],
+                $cond: [{ $eq: ['$delivery_status', 'delivered'] }, 1, 0],
               },
             },
             pending: {
-              $sum: { $cond: [{ $eq: ["$delivery_status", "pending"] }, 1, 0] },
+              $sum: { $cond: [{ $eq: ['$delivery_status', 'pending'] }, 1, 0] },
             },
             on_the_way: {
               $sum: {
-                $cond: [{ $eq: ["$delivery_status", "on_the_way"] }, 1, 0],
+                $cond: [{ $eq: ['$delivery_status', 'on_the_way'] }, 1, 0],
               },
             },
           },
@@ -64,10 +64,8 @@ export class ParcelService {
     );
   }
 
-  static async calculateCost(weight: number, requiredVehicle: string = "bike") {
-    const settings = (await settingsCollection.findOne(
-      {},
-    )) as unknown as SystemSettings;
+  static async calculateCost(weight: number, requiredVehicle: string = 'bike') {
+    const settings = (await settingsCollection.findOne({})) as unknown as SystemSettings;
     const baseFee = settings?.base_delivery_fee || 50;
     const costPerKg = settings?.cost_per_kg || 20;
     const riderCommissionPct = settings?.rider_commission_percentage || 15;
@@ -78,9 +76,7 @@ export class ParcelService {
       mini_pickup: 2.2,
       large_pickup: 3.5,
     };
-    const multiplier =
-      vehicleMultipliers[requiredVehicle as keyof typeof vehicleMultipliers] ||
-      1;
+    const multiplier = vehicleMultipliers[requiredVehicle as keyof typeof vehicleMultipliers] || 1;
 
     const baseCost = baseFee + (weight > 1 ? (weight - 1) * costPerKg : 0);
     const totalCost = baseCost * multiplier;
@@ -91,14 +87,12 @@ export class ParcelService {
     return { totalCost, riderEarning, adminProfit };
   }
 
-  static async bookParcel(
-    parcel: Omit<Parcel, "_id">,
-  ): Promise<InsertOneResult> {
+  static async bookParcel(parcel: Omit<Parcel, '_id'>): Promise<InsertOneResult> {
     const result = await parcelCollection.insertOne(parcel);
     await addTrackingUpdate(
       parcel.trackingId,
-      "booked",
-      "Your parcel has been booked and is awaiting collection.",
+      'booked',
+      'Your parcel has been booked and is awaiting collection.',
     );
     return result;
   }
@@ -109,14 +103,8 @@ export class ParcelService {
     })) as unknown as Parcel | null;
   }
 
-  static async updateParcel(
-    id: string,
-    updateData: Partial<Parcel>,
-  ): Promise<UpdateResult> {
-    return parcelCollection.updateOne(
-      { _id: new ObjectId(String(id)) },
-      { $set: updateData },
-    );
+  static async updateParcel(id: string, updateData: Partial<Parcel>): Promise<UpdateResult> {
+    return parcelCollection.updateOne({ _id: new ObjectId(String(id)) }, { $set: updateData });
   }
 
   static async deleteParcel(id: string): Promise<DeleteResult> {
@@ -128,7 +116,7 @@ export class ParcelService {
       { _id: new ObjectId(String(id)) },
       {
         $set: {
-          delivery_status: "on_the_way",
+          delivery_status: 'on_the_way',
           picked_at: new Date().toISOString(),
         },
       },
@@ -138,9 +126,9 @@ export class ParcelService {
     if (parcel) {
       await addTrackingUpdate(
         parcel.trackingId,
-        "on_the_way",
-        "Parcel has been picked up and is on the way.",
-        "Pickup Point",
+        'on_the_way',
+        'Parcel has been picked up and is on the way.',
+        'Pickup Point',
       );
     }
 
@@ -152,7 +140,7 @@ export class ParcelService {
       { _id: new ObjectId(String(id)) },
       {
         $set: {
-          delivery_status: "delivered",
+          delivery_status: 'delivered',
           delivered_at: new Date().toISOString(),
         },
       },
@@ -162,8 +150,8 @@ export class ParcelService {
     if (parcel) {
       await addTrackingUpdate(
         parcel.trackingId,
-        "delivered",
-        "Parcel has been successfully delivered to the recipient.",
+        'delivered',
+        'Parcel has been successfully delivered to the recipient.',
         parcel.receiverDistrict,
       );
     }
@@ -171,22 +159,17 @@ export class ParcelService {
     return result;
   }
 
-  static async bulkIngestParcels(
-    newParcels: Parcel[],
-    email: string,
-  ): Promise<void> {
+  static async bulkIngestParcels(newParcels: Parcel[], email: string): Promise<void> {
     await parcelCollection.insertMany(newParcels);
     await auditCollection.insertOne({
       admin_email: email,
-      action: "BULK_PARCEL_INGEST",
+      action: 'BULK_PARCEL_INGEST',
       details: `Merchant ${email} uploaded ${newParcels.length} parcels.`,
       timestamp: new Date().toISOString(),
     });
   }
 
-  static async getTrackingHistory(
-    trackingId: string,
-  ): Promise<TrackingUpdate[]> {
+  static async getTrackingHistory(trackingId: string): Promise<TrackingUpdate[]> {
     return (await trackingCollection
       .find({ trackingId })
       .sort({ time: -1 })
@@ -205,7 +188,7 @@ export class ParcelService {
     trackingId: string,
     status: string,
     details: string,
-    location: string = "Processing Center",
+    location: string = 'Processing Center',
   ): Promise<InsertOneResult> {
     const update = {
       trackingId,

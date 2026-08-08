@@ -1,5 +1,5 @@
-import { Request, Response } from "express";
-import { FinanceService } from "./finance.service";
+import { Request, Response } from 'express';
+import { FinanceService } from './finance.service';
 
 export const getPaymentHistory = async (req: Request, res: Response) => {
   try {
@@ -7,9 +7,7 @@ export const getPaymentHistory = async (req: Request, res: Response) => {
     const payments = await FinanceService.getPaymentHistory(email);
     res.send({ success: true, data: payments });
   } catch (error) {
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to fetch payment history" });
+    res.status(500).send({ success: false, message: 'Failed to fetch payment history' });
   }
 };
 
@@ -25,7 +23,7 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(500).json({
       success: false,
-      message: error.message || "Failed to create payment intent.",
+      message: error.message || 'Failed to create payment intent.',
     });
   }
 };
@@ -36,9 +34,7 @@ export const recordPayment = async (req: Request, res: Response) => {
     const email = req.user?.email as string;
 
     if (!parcelId || !transactionId || !amount) {
-      return res
-        .status(400)
-        .send({ success: false, message: "Missing payment information" });
+      return res.status(400).send({ success: false, message: 'Missing payment information' });
     }
 
     const result = await FinanceService.recordPayment(
@@ -52,21 +48,19 @@ export const recordPayment = async (req: Request, res: Response) => {
 
     res.send(result);
   } catch (error) {
-    res.status(500).send({ success: false, message: "Internal server error" });
+    res.status(500).send({ success: false, message: 'Internal server error' });
   }
 };
 
 export const getCashoutHistory = async (req: Request, res: Response) => {
   const rider_email = req.query.rider_email as string | undefined;
   if (!rider_email) {
-    return res
-      .status(400)
-      .send({ success: false, message: "Missing rider_email" });
+    return res.status(400).send({ success: false, message: 'Missing rider_email' });
   }
   try {
     const result = await FinanceService.getCashoutHistory(rider_email);
     res.send(result);
   } catch (err) {
-    res.status(500).send({ success: false, message: "Server error" });
+    res.status(500).send({ success: false, message: 'Server error' });
   }
 };
