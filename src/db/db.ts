@@ -107,10 +107,12 @@ export const initDB = async () => {
       }
     };
 
-    // Safely drop old non-unique indexes before replacing them with unique indexes
+    // Safely drop old non-unique or conflicting indexes before replacing them
     await dropIndexIfExists(usersCollection, 'email_1');
     await dropIndexIfExists(merchantsCollection, 'email_1');
+    await dropIndexIfExists(merchantsCollection, 'userId_1');
     await dropIndexIfExists(ridersCollection, 'email_1');
+
 
     // Deduplicate collections to prevent DuplicateKey index build errors
     await deduplicateCollection(usersCollection, 'email');
