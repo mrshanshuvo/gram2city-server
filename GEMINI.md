@@ -10,7 +10,6 @@ Handles auth, parcel management, rider assignment, payments, real-time chat, and
 **Package name**: `gram2city-server`  
 **Deployed to**: Vercel (`vercel.json` present)  
 **API version**: `2.3.0`  
-**Swagger docs**: `GET /swagger`
 
 ---
 
@@ -25,7 +24,6 @@ Handles auth, parcel management, rider assignment, payments, real-time chat, and
 | Real-time    | Socket.io v4                                         |
 | Payments     | Stripe v18                                           |
 | File uploads | Multer v2                                            |
-| API docs     | swagger-ui-express v5                                |
 | Security     | Helmet, CORS, express-rate-limit (1000 req / 15 min) |
 | Compression  | compression (gzip)                                   |
 | Logging      | Morgan (via custom `logger` middleware)              |
@@ -37,7 +35,7 @@ Handles auth, parcel management, rider assignment, payments, real-time chat, and
 
 ```
 src/
-├── app.ts                # Express app: middleware stack, routes, Swagger setup
+├── app.ts                # Express app: middleware stack, routes setup
 ├── server.ts             # HTTP server entry + Socket.io init
 ├── config/               # Env config (typed, validated)
 ├── db/                   # MongoDB connection helper
@@ -56,7 +54,6 @@ src/
 │   ├── support/          # Feedback / support tickets
 │   └── user/             # User profile, addresses
 ├── socket/               # Socket.io event handlers (chat, live updates)
-├── swagger/              # OpenAPI spec generation (`swaggerSpec`)
 ├── types/                # Shared server-side TypeScript types
 └── utils/                # Utility helpers
 ```
@@ -111,7 +108,6 @@ All routes mounted under `/` via `app.routes.ts`:
 | `/finance` | finance    | Admin role         |
 | `/support` | support    | Mixed              |
 | `/public`  | public     | None               |
-| `/swagger` | Swagger UI | None               |
 
 ---
 
