@@ -97,10 +97,8 @@ export const initDB = async () => {
           .toArray();
 
         for (const dup of duplicates) {
-          if (dup._id) {
-            const idsToDelete = dup.ids.slice(1);
-            await collection.deleteMany({ _id: { $in: idsToDelete } });
-          }
+          const idsToDelete = dup.ids.slice(1);
+          await collection.deleteMany({ _id: { $in: idsToDelete } });
         }
       } catch (err) {
         console.error(`Failed to deduplicate collection:`, err);
@@ -113,6 +111,8 @@ export const initDB = async () => {
     await dropIndexIfExists(merchantsCollection, 'userId_1');
     await dropIndexIfExists(ridersCollection, 'email_1');
 
+    // Clean up any invalid null/empty email rider records if present
+    await ridersCollection.deleteMany({ $or: [{ email: null }, { email: { $exists: false } }] });
 
     // Deduplicate collections to prevent DuplicateKey index build errors
     await deduplicateCollection(usersCollection, 'email');
@@ -127,7 +127,7 @@ export const initDB = async () => {
     await merchantsCollection.createIndex({ userId: 1 });
 
     // 3. ridersCollection
-    await ridersCollection.createIndex({ email: 1 }, { unique: true });
+    await ridersCollection.createIndex({ email: 1 }, { unique: true, sparse: true });
 
     // 4. parcelCollection
     await parcelCollection.createIndex({ trackingId: 1 }, { unique: true });
