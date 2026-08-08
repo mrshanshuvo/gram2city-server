@@ -91,7 +91,12 @@ export const createFAQ = async (req: Request, res: Response) => {
       createdAt: new Date().toISOString(),
     };
     const result = await SupportService.createFAQ(newFAQ);
-    res.status(201).send({ success: true, data: { ...newFAQ, _id: result.insertedId } });
+    res
+      .status(201)
+      .send({
+        success: true,
+        data: { ...newFAQ, _id: (result as any)._id || (result as any).insertedId },
+      });
   } catch (error) {
     res.status(500).send({ success: false, message: 'Failed to create FAQ' });
   }
@@ -161,7 +166,9 @@ export const submitFeedback = async (req: Request, res: Response) => {
     };
 
     const result = await SupportService.submitFeedback(feedback);
-    res.status(201).send({ success: true, insertedId: result.insertedId });
+    res
+      .status(201)
+      .send({ success: true, insertedId: (result as any)._id || (result as any).insertedId });
   } catch (error) {
     res.status(500).send({ success: false, message: 'Failed to submit feedback' });
   }
@@ -171,17 +178,20 @@ export const submitContactMessage = async (req: Request, res: Response) => {
   try {
     const { name, email, subject, message } = req.body;
     if (!name || !email || !message) {
-      return res.status(400).send({ success: false, message: 'Name, email and message are required' });
+      return res
+        .status(400)
+        .send({ success: false, message: 'Name, email and message are required' });
     }
     const result = await SupportService.submitContactMessage({ name, email, subject, message });
-    res.status(201).send({ success: true, insertedId: result.insertedId });
+    res
+      .status(201)
+      .send({ success: true, insertedId: (result as any)._id || (result as any).insertedId });
   } catch (error) {
     res.status(500).send({ success: false, message: 'Failed to send message' });
   }
 };
 
 export const getAllFeedback = async (_req: Request, res: Response) => {
-
   try {
     const feedback = await SupportService.getAllFeedback();
     res.send({ success: true, data: feedback });

@@ -21,7 +21,9 @@ export const submitApplication = async (req: Request, res: Response) => {
       });
     }
 
-    res.status(201).send({ success: true, insertedId: result.insertedId });
+    res
+      .status(201)
+      .send({ success: true, insertedId: (result as any)._id || (result as any).insertedId });
   } catch (error) {
     res.status(500).send({ success: false, message: 'Failed to submit application' });
   }

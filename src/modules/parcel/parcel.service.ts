@@ -1,12 +1,5 @@
-import { ObjectId, UpdateResult, InsertOneResult, DeleteResult } from 'mongodb';
-import { config } from '../../config';
-import {
-  parcelCollection,
-  trackingCollection,
-  settingsCollection,
-  auditCollection,
-  addTrackingUpdate,
-} from '../../db/db';
+import { ObjectId } from 'mongodb';
+import { ParcelModel, TrackingModel, SettingsModel, AuditModel } from '../../db/models';
 import { Parcel, TrackingUpdate } from './parcel.interface';
 import { SystemSettings } from '../admin/admin.interface';
 
@@ -20,38 +13,33 @@ export class ParcelService {
     if (payment_status) query.payment_status = payment_status;
     if (delivery_status) query.delivery_status = delivery_status;
 
-    return (await parcelCollection
-      .find(query)
-      .sort({ createdAt: -1 })
-      .toArray()) as unknown as Parcel[];
+    return ParcelModel.find(query).sort({ createdAt: -1 }).lean() as unknown as Parcel[];
   }
 
   static async getMyParcelStats(email: string) {
-    const stats = await parcelCollection
-      .aggregate([
-        { $match: { created_by: email } },
-        {
-          $group: {
-            _id: null,
-            totalSpent: { $sum: '$cost' },
-            totalParcels: { $sum: 1 },
-            delivered: {
-              $sum: {
-                $cond: [{ $eq: ['$delivery_status', 'delivered'] }, 1, 0],
-              },
+    const stats = await ParcelModel.aggregate([
+      { $match: { created_by: email } },
+      {
+        $group: {
+          _id: null,
+          totalSpent: { $sum: '$cost' },
+          totalParcels: { $sum: 1 },
+          delivered: {
+            $sum: {
+              $cond: [{ $eq: ['$delivery_status', 'delivered'] }, 1, 0],
             },
-            pending: {
-              $sum: { $cond: [{ $eq: ['$delivery_status', 'pending'] }, 1, 0] },
-            },
-            on_the_way: {
-              $sum: {
-                $cond: [{ $eq: ['$delivery_status', 'on_the_way'] }, 1, 0],
-              },
+          },
+          pending: {
+            $sum: { $cond: [{ $eq: ['$delivery_status', 'pending'] }, 1, 0] },
+          },
+          on_the_way: {
+            $sum: {
+              $cond: [{ $eq: ['$delivery_status', 'on_the_way'] }, 1, 0],
             },
           },
         },
-      ])
-      .toArray();
+      },
+    ]);
 
     return (
       stats[0] || {
@@ -65,7 +53,7 @@ export class ParcelService {
   }
 
   static async calculateCost(weight: number, requiredVehicle: string = 'bike') {
-    const settings = (await settingsCollection.findOne({})) as unknown as SystemSettings;
+    const settings = (await SettingsModel.findOne({}).lean()) as unknown as SystemSettings;
     const baseFee = settings?.base_delivery_fee || 50;
     const costPerKg = settings?.cost_per_kg || 20;
     const riderCommissionPct = settings?.rider_commission_percentage || 15;
@@ -87,32 +75,34 @@ export class ParcelService {
     return { totalCost, riderEarning, adminProfit };
   }
 
-  static async bookParcel(parcel: Omit<Parcel, '_id'>): Promise<InsertOneResult> {
-    const result = await parcelCollection.insertOne(parcel);
-    await addTrackingUpdate(
-      parcel.trackingId,
-      'booked',
-      'Your parcel has been booked and is awaiting collection.',
-    );
-    return result;
+  static async bookParcel(parcel: Omit<Parcel, '_id'>) {
+    const created = await ParcelModel.create(parcel);
+    await TrackingModel.create({
+      trackingId: parcel.trackingId,
+      status: 'booked',
+      details: 'Your parcel has been booked and is awaiting collection.',
+      location: 'Primary Hub',
+      time: new Date().toISOString(),
+    });
+    return { insertedId: created._id };
   }
 
   static async getParcelById(id: string): Promise<Parcel | null> {
-    return (await parcelCollection.findOne({
+    return ParcelModel.findOne({
       _id: new ObjectId(String(id)),
-    })) as unknown as Parcel | null;
+    }).lean() as unknown as Parcel | null;
   }
 
-  static async updateParcel(id: string, updateData: Partial<Parcel>): Promise<UpdateResult> {
-    return parcelCollection.updateOne({ _id: new ObjectId(String(id)) }, { $set: updateData });
+  static async updateParcel(id: string, updateData: Partial<Parcel>) {
+    return ParcelModel.updateOne({ _id: new ObjectId(String(id)) }, { $set: updateData });
   }
 
-  static async deleteParcel(id: string): Promise<DeleteResult> {
-    return parcelCollection.deleteOne({ _id: new ObjectId(String(id)) });
+  static async deleteParcel(id: string) {
+    return ParcelModel.deleteOne({ _id: new ObjectId(String(id)) });
   }
 
-  static async markPicked(id: string): Promise<UpdateResult> {
-    const result = await parcelCollection.updateOne(
+  static async markPicked(id: string) {
+    const result = await ParcelModel.updateOne(
       { _id: new ObjectId(String(id)) },
       {
         $set: {
@@ -124,19 +114,20 @@ export class ParcelService {
 
     const parcel = await this.getParcelById(id);
     if (parcel) {
-      await addTrackingUpdate(
-        parcel.trackingId,
-        'on_the_way',
-        'Parcel has been picked up and is on the way.',
-        'Pickup Point',
-      );
+      await TrackingModel.create({
+        trackingId: parcel.trackingId,
+        status: 'on_the_way',
+        details: 'Parcel has been picked up and is on the way.',
+        location: 'Pickup Point',
+        time: new Date().toISOString(),
+      });
     }
 
     return result;
   }
 
-  static async markDelivered(id: string): Promise<UpdateResult> {
-    const result = await parcelCollection.updateOne(
+  static async markDelivered(id: string) {
+    const result = await ParcelModel.updateOne(
       { _id: new ObjectId(String(id)) },
       {
         $set: {
@@ -148,20 +139,21 @@ export class ParcelService {
 
     const parcel = await this.getParcelById(id);
     if (parcel) {
-      await addTrackingUpdate(
-        parcel.trackingId,
-        'delivered',
-        'Parcel has been successfully delivered to the recipient.',
-        parcel.receiverDistrict,
-      );
+      await TrackingModel.create({
+        trackingId: parcel.trackingId,
+        status: 'delivered',
+        details: 'Parcel has been successfully delivered to the recipient.',
+        location: parcel.receiverDistrict || 'Destination',
+        time: new Date().toISOString(),
+      });
     }
 
     return result;
   }
 
   static async bulkIngestParcels(newParcels: Parcel[], email: string): Promise<void> {
-    await parcelCollection.insertMany(newParcels);
-    await auditCollection.insertOne({
+    await ParcelModel.insertMany(newParcels);
+    await AuditModel.create({
       admin_email: email,
       action: 'BULK_PARCEL_INGEST',
       details: `Merchant ${email} uploaded ${newParcels.length} parcels.`,
@@ -170,18 +162,16 @@ export class ParcelService {
   }
 
   static async getTrackingHistory(trackingId: string): Promise<TrackingUpdate[]> {
-    return (await trackingCollection
-      .find({ trackingId })
+    return TrackingModel.find({ trackingId })
       .sort({ time: -1 })
-      .toArray()) as unknown as TrackingUpdate[];
+      .lean() as unknown as TrackingUpdate[];
   }
 
   static async getRecentTrackings(): Promise<TrackingUpdate[]> {
-    return (await trackingCollection
-      .find({})
+    return TrackingModel.find({})
       .sort({ time: -1 })
       .limit(10)
-      .toArray()) as unknown as TrackingUpdate[];
+      .lean() as unknown as TrackingUpdate[];
   }
 
   static async addManualTrackingUpdate(
@@ -189,14 +179,13 @@ export class ParcelService {
     status: string,
     details: string,
     location: string = 'Processing Center',
-  ): Promise<InsertOneResult> {
-    const update = {
+  ) {
+    return TrackingModel.create({
       trackingId,
       status,
       details,
       location,
       time: new Date().toISOString(),
-    };
-    return trackingCollection.insertOne(update);
+    });
   }
 }

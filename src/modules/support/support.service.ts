@@ -1,12 +1,12 @@
-import { ObjectId, InsertOneResult, UpdateResult, DeleteResult } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import {
-  faqsCollection,
-  faqVotesCollection,
-  reviewsCollection,
-  feedbackCollection,
-  notificationsCollection,
-  messagesCollection,
-} from '../../db/db';
+  FAQModel,
+  FAQVoteModel,
+  ReviewModel,
+  FeedbackModel,
+  NotificationModel,
+  MessageModel,
+} from '../../db/models';
 import { FAQ, Review, Feedback, Notification, ChatMessage } from './support.interface';
 
 export class SupportService {
@@ -24,22 +24,21 @@ export class SupportService {
       sortObj.createdAt = -1;
     }
 
-    const faqs = (await faqsCollection
-      .find(query)
+    const faqs = (await FAQModel.find(query)
       .sort(sortObj)
       .skip(skip)
       .limit(limit)
-      .toArray()) as unknown as FAQ[];
+      .lean()) as unknown as FAQ[];
 
-    const total = await faqsCollection.countDocuments(query);
+    const total = await FAQModel.countDocuments(query);
     return { faqs, total };
   }
 
   static async voteFAQHelpful(faqId: string, identifier: string) {
-    const existingVote = await faqVotesCollection.findOne({
+    const existingVote = await FAQVoteModel.findOne({
       faqId: new ObjectId(faqId),
       identifier,
-    });
+    }).lean();
 
     if (existingVote) {
       return {
@@ -48,13 +47,13 @@ export class SupportService {
       };
     }
 
-    await faqVotesCollection.insertOne({
+    await FAQVoteModel.create({
       faqId: new ObjectId(faqId),
       identifier,
       timestamp: new Date().toISOString(),
     });
 
-    const result = await faqsCollection.updateOne(
+    const result = await FAQModel.updateOne(
       { _id: new ObjectId(faqId) },
       { $inc: { helpfulCount: 1 } },
     );
@@ -67,47 +66,48 @@ export class SupportService {
   }
 
   static async getFAQCategories(): Promise<string[]> {
-    return faqsCollection.distinct('category', { isActive: true }) as Promise<string[]>;
+    return FAQModel.distinct('category', { isActive: true });
   }
 
   static async getAllFAQsAdmin(): Promise<FAQ[]> {
-    return (await faqsCollection
-      .find()
-      .sort({ order: 1, createdAt: -1 })
-      .toArray()) as unknown as FAQ[];
+    return FAQModel.find().sort({ order: 1, createdAt: -1 }).lean() as unknown as FAQ[];
   }
 
-  static async createFAQ(faq: Omit<FAQ, '_id'>): Promise<InsertOneResult> {
-    return faqsCollection.insertOne(faq);
+  static async createFAQ(faq: Omit<FAQ, '_id'>) {
+    return FAQModel.create(faq);
   }
 
-  static async updateFAQ(faqId: string, updates: Partial<FAQ>): Promise<UpdateResult> {
-    return faqsCollection.updateOne({ _id: new ObjectId(faqId) }, { $set: updates });
+  static async updateFAQ(faqId: string, updates: Partial<FAQ>) {
+    return FAQModel.updateOne({ _id: new ObjectId(faqId) }, { $set: updates });
   }
 
-  static async deleteFAQ(faqId: string): Promise<DeleteResult> {
-    return faqsCollection.deleteOne({ _id: new ObjectId(faqId) });
+  static async deleteFAQ(faqId: string) {
+    return FAQModel.deleteOne({ _id: new ObjectId(faqId) });
   }
 
   // Reviews
   static async getRiderReviews(email: string): Promise<Review[]> {
-    return (await reviewsCollection
-      .find({ rider_email: email })
+    return ReviewModel.find({ rider_email: email })
       .sort({ date: -1 })
-      .toArray()) as unknown as Review[];
+      .lean() as unknown as Review[];
   }
 
-  static async submitReview(review: Review): Promise<InsertOneResult> {
-    return reviewsCollection.insertOne(review);
+  static async submitReview(review: Review) {
+    return ReviewModel.create(review);
   }
 
   // Feedback
-  static async submitFeedback(feedback: Omit<Feedback, '_id'>): Promise<InsertOneResult> {
-    return feedbackCollection.insertOne(feedback);
+  static async submitFeedback(feedback: Omit<Feedback, '_id'>) {
+    return FeedbackModel.create(feedback);
   }
 
-  static async submitContactMessage(data: { name: string; email: string; subject: string; message: string }) {
-    return feedbackCollection.insertOne({
+  static async submitContactMessage(data: {
+    name: string;
+    email: string;
+    subject: string;
+    message: string;
+  }) {
+    return FeedbackModel.create({
       ...data,
       type: 'contact_inquiry',
       timestamp: new Date().toISOString(),
@@ -115,65 +115,57 @@ export class SupportService {
   }
 
   static async getAllFeedback(): Promise<Feedback[]> {
-
-    return (await feedbackCollection
-      .find()
-      .sort({ timestamp: -1 })
-      .toArray()) as unknown as Feedback[];
+    return FeedbackModel.find().sort({ timestamp: -1 }).lean() as unknown as Feedback[];
   }
 
   // Notifications
   static async getUnreadNotifications(email: string): Promise<Notification[]> {
-    return (await notificationsCollection
-      .find({ email, isRead: false })
+    return NotificationModel.find({ email, isRead: false })
       .sort({ time: -1 })
-      .toArray()) as unknown as Notification[];
+      .lean() as unknown as Notification[];
   }
 
-  static async markNotificationRead(id: string): Promise<UpdateResult> {
-    return notificationsCollection.updateOne({ _id: new ObjectId(id) }, { $set: { isRead: true } });
+  static async markNotificationRead(id: string) {
+    return NotificationModel.updateOne({ _id: new ObjectId(id) }, { $set: { isRead: true } });
   }
 
-  static async markAllNotificationsRead(email: string): Promise<UpdateResult> {
-    return notificationsCollection.updateMany({ email, isRead: false }, { $set: { isRead: true } });
+  static async markAllNotificationsRead(email: string) {
+    return NotificationModel.updateMany({ email, isRead: false }, { $set: { isRead: true } });
   }
 
   // Messages
   static async getChatHistory(conversationId: string): Promise<ChatMessage[]> {
-    return (await messagesCollection
-      .find({ conversationId })
+    return MessageModel.find({ conversationId })
       .sort({ timestamp: 1 })
-      .toArray()) as unknown as ChatMessage[];
+      .lean() as unknown as ChatMessage[];
   }
 
   static async getUserConversations(email: string): Promise<any[]> {
-    return messagesCollection
-      .aggregate([
-        {
-          $match: {
-            $or: [{ senderEmail: email }, { receiverEmail: email }],
-          },
+    return MessageModel.aggregate([
+      {
+        $match: {
+          $or: [{ senderEmail: email }, { receiverEmail: email }],
         },
-        { $sort: { timestamp: -1 } },
-        {
-          $group: {
-            _id: '$conversationId',
-            lastMessage: { $first: '$$ROOT' },
-            unreadCount: {
-              $sum: {
-                $cond: [
-                  {
-                    $and: [{ $eq: ['$receiverEmail', email] }, { $eq: ['$isRead', false] }],
-                  },
-                  1,
-                  0,
-                ],
-              },
+      },
+      { $sort: { timestamp: -1 } },
+      {
+        $group: {
+          _id: '$conversationId',
+          lastMessage: { $first: '$$ROOT' },
+          unreadCount: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [{ $eq: ['$receiverEmail', email] }, { $eq: ['$isRead', false] }],
+                },
+                1,
+                0,
+              ],
             },
           },
         },
-        { $sort: { 'lastMessage.timestamp': -1 } },
-      ])
-      .toArray();
+      },
+      { $sort: { 'lastMessage.timestamp': -1 } },
+    ]);
   }
 }

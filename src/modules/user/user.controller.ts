@@ -102,7 +102,9 @@ export const registerUser = async (req: Request, res: Response) => {
 
   try {
     const result = await UserService.createUserRecord(newUser);
-    res.status(201).send({ success: true, insertedId: result.insertedId });
+    res
+      .status(201)
+      .send({ success: true, insertedId: (result as any)._id || (result as any).insertedId });
   } catch (error) {
     console.error('Error registering user:', error);
     res.status(500).send({ success: false, message: 'Internal Server Error' });
@@ -204,7 +206,7 @@ export const addAvatar = async (req: Request, res: Response) => {
     };
 
     const result = await UserService.addAvatar(newAvatar);
-    res.status(201).json({ ...newAvatar, _id: result.insertedId });
+    res.status(201).json({ ...newAvatar, _id: (result as any)._id || (result as any).insertedId });
   } catch (error) {
     res.status(500).json({ message: 'Error adding avatar' });
   }
@@ -225,7 +227,7 @@ export const magicGenerateAvatars = async (req: Request, res: Response) => {
     }));
 
     const result = await UserService.magicGenerateAvatars(newAvatars);
-    res.status(201).json({ count: result.insertedCount });
+    res.status(201).json({ count: (result as any).insertedCount ?? (result as any).length });
   } catch (error) {
     res.status(500).json({ message: 'Error generating avatars' });
   }
@@ -268,7 +270,7 @@ export const addAddress = async (req: Request, res: Response) => {
       } as any,
       req.user?.email as string,
     );
-    res.status(201).send({ success: true, id: result.insertedId });
+    res.status(201).send({ success: true, id: (result as any)._id || (result as any).insertedId });
   } catch (error) {
     res.status(500).send({ success: false, message: 'Failed to save address' });
   }

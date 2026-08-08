@@ -337,7 +337,7 @@ export const addManualTrackingUpdate = async (req: Request, res: Response) => {
     res.status(201).send({
       success: true,
       message: 'Tracking update added.',
-      id: result.insertedId,
+      id: (result as any)._id || (result as any).insertedId,
     });
   } catch (error) {
     res.status(500).send({ success: false, message: 'Server error' });

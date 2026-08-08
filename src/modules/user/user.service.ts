@@ -1,26 +1,19 @@
-import { ObjectId, UpdateResult, InsertOneResult, InsertManyResult, DeleteResult } from 'mongodb';
-import {
-  usersCollection,
-  parcelCollection,
-  avatarsCollection,
-  addressesCollection,
-} from '../../db/db';
+import { ObjectId } from 'mongodb';
+import { UserModel, ParcelModel, AvatarModel, AddressModel } from '../../db/models';
 import { User, Avatar, UserStats, Address } from './user.interface';
 
 export class UserService {
   static async searchUsers(emailQuery: string): Promise<User[]> {
-    return (await usersCollection
-      .find({ email: { $regex: emailQuery, $options: 'i' } })
-      .project({ email: 1, createdAt: 1, role: 1, name: 1, photoURL: 1 })
+    return UserModel.find({ email: { $regex: emailQuery, $options: 'i' } })
+      .select('email createdAt role name photoURL')
       .limit(10)
-      .toArray()) as unknown as User[];
+      .lean() as unknown as User[];
   }
 
   static async getStaffList(): Promise<User[]> {
-    return (await usersCollection
-      .find({ role: { $in: ['admin', 'superAdmin'] } })
-      .project({ email: 1, role: 1, name: 1, last_login: 1 })
-      .toArray()) as unknown as User[];
+    return UserModel.find({ role: { $in: ['admin', 'superAdmin'] } })
+      .select('email role name last_login')
+      .lean() as unknown as User[];
   }
 
   static async getUsersSummary() {
@@ -28,23 +21,21 @@ export class UserService {
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const startOfToday = new Date(now.setHours(0, 0, 0, 0));
 
-    const stats = await usersCollection
-      .aggregate([
-        {
-          $facet: {
-            roleCounts: [{ $group: { _id: '$role', count: { $sum: 1 } } }],
-            recentlyJoined: [
-              { $match: { created_at: { $gte: sevenDaysAgo.toISOString() } } },
-              { $count: 'count' },
-            ],
-            activeToday: [
-              { $match: { last_login: { $gte: startOfToday.toISOString() } } },
-              { $count: 'count' },
-            ],
-          },
+    const stats = await UserModel.aggregate([
+      {
+        $facet: {
+          roleCounts: [{ $group: { _id: '$role', count: { $sum: 1 } } }],
+          recentlyJoined: [
+            { $match: { created_at: { $gte: sevenDaysAgo.toISOString() } } },
+            { $count: 'count' },
+          ],
+          activeToday: [
+            { $match: { last_login: { $gte: startOfToday.toISOString() } } },
+            { $count: 'count' },
+          ],
         },
-      ])
-      .toArray();
+      },
+    ]);
 
     const roleMap = stats[0].roleCounts.reduce((acc: any, curr: any) => {
       acc[curr._id] = curr.count;
@@ -66,48 +57,46 @@ export class UserService {
     };
   }
 
-  static async updateUserRole(email: string, role: string): Promise<UpdateResult> {
-    return usersCollection.updateOne({ email }, { $set: { role: role as any } });
+  static async updateUserRole(email: string, role: string) {
+    return UserModel.updateOne({ email }, { $set: { role: role as any } });
   }
 
-  static async updateUserProfile(email: string, updateData: Partial<User>): Promise<UpdateResult> {
-    return usersCollection.updateOne({ email }, { $set: updateData });
+  static async updateUserProfile(email: string, updateData: Partial<User>) {
+    return UserModel.updateOne({ email }, { $set: updateData });
   }
 
   static async getUserByEmail(email: string): Promise<User | null> {
-    return (await usersCollection.findOne({ email })) as unknown as User | null;
+    return UserModel.findOne({ email }).lean() as unknown as User | null;
   }
 
-  static async createUserRecord(newUser: User): Promise<InsertOneResult> {
-    return usersCollection.insertOne(newUser);
+  static async createUserRecord(newUser: User) {
+    return UserModel.create(newUser);
   }
 
   static async syncUser(email: string, updateDoc: any): Promise<void> {
-    await usersCollection.updateOne({ email }, updateDoc, {
+    await UserModel.updateOne({ email }, updateDoc, {
       upsert: true,
     });
   }
 
   static async getUserStats(email: string): Promise<UserStats> {
-    const stats = await parcelCollection
-      .aggregate([
-        { $match: { created_by: email } },
-        {
-          $group: {
-            _id: null,
-            totalBooked: { $sum: 1 },
-            unpaidCount: {
-              $sum: { $cond: [{ $ne: ['$payment_status', 'paid'] }, 1, 0] },
-            },
-            totalSpent: {
-              $sum: {
-                $cond: [{ $eq: ['$payment_status', 'paid'] }, '$cost', 0],
-              },
+    const stats = await ParcelModel.aggregate([
+      { $match: { created_by: email } },
+      {
+        $group: {
+          _id: null,
+          totalBooked: { $sum: 1 },
+          unpaidCount: {
+            $sum: { $cond: [{ $ne: ['$payment_status', 'paid'] }, 1, 0] },
+          },
+          totalSpent: {
+            $sum: {
+              $cond: [{ $eq: ['$payment_status', 'paid'] }, '$cost', 0],
             },
           },
         },
-      ])
-      .toArray();
+      },
+    ]);
 
     return {
       totalBooked: stats[0]?.totalBooked || 0,
@@ -117,9 +106,7 @@ export class UserService {
   }
 
   static async getRandomAvatar(): Promise<Avatar | { url: string }> {
-    const avatars = (await avatarsCollection
-      .find({ isActive: true })
-      .toArray()) as unknown as Avatar[];
+    const avatars = (await AvatarModel.find({ isActive: true }).lean()) as unknown as Avatar[];
     if (avatars.length === 0) {
       return {
         url:
@@ -132,42 +119,41 @@ export class UserService {
   }
 
   static async getAllAvatars(): Promise<Avatar[]> {
-    return (await avatarsCollection.find({ isActive: true }).toArray()) as unknown as Avatar[];
+    return AvatarModel.find({ isActive: true }).lean() as unknown as Avatar[];
   }
 
-  static async addAvatar(avatar: Omit<Avatar, '_id'>): Promise<InsertOneResult> {
-    return avatarsCollection.insertOne(avatar);
+  static async addAvatar(avatar: Omit<Avatar, '_id'>) {
+    return AvatarModel.create(avatar);
   }
 
-  static async magicGenerateAvatars(newAvatars: Omit<Avatar, '_id'>[]): Promise<InsertManyResult> {
-    return avatarsCollection.insertMany(newAvatars);
+  static async magicGenerateAvatars(newAvatars: Omit<Avatar, '_id'>[]) {
+    return AvatarModel.insertMany(newAvatars);
   }
 
-  static async deleteAvatar(id: string): Promise<DeleteResult> {
-    return avatarsCollection.deleteOne({ _id: new ObjectId(id) });
+  static async deleteAvatar(id: string) {
+    return AvatarModel.deleteOne({ _id: new ObjectId(id) });
   }
 
   static async getAddresses(email: string): Promise<Address[]> {
-    return (await addressesCollection
-      .find({ userEmail: email })
+    return AddressModel.find({ userEmail: email })
       .sort({ isDefault: -1, createdAt: -1 })
-      .toArray()) as unknown as Address[];
+      .lean() as unknown as Address[];
   }
 
-  static async addAddress(address: Omit<Address, '_id'>, email: string): Promise<InsertOneResult> {
+  static async addAddress(address: Omit<Address, '_id'>, email: string) {
     if (address.isDefault) {
-      await addressesCollection.updateMany({ userEmail: email }, { $set: { isDefault: false } });
+      await AddressModel.updateMany({ userEmail: email }, { $set: { isDefault: false } });
     }
-    const newAddress: Address = {
+    const newAddress = {
       ...address,
       userEmail: email,
       createdAt: new Date().toISOString(),
     };
-    return addressesCollection.insertOne(newAddress);
+    return AddressModel.create(newAddress);
   }
 
-  static async deleteAddress(id: string, email: string): Promise<DeleteResult> {
-    return addressesCollection.deleteOne({
+  static async deleteAddress(id: string, email: string) {
+    return AddressModel.deleteOne({
       _id: new ObjectId(String(id)),
       userEmail: email,
     });

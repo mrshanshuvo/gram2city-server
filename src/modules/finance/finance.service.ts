@@ -2,24 +2,21 @@ import { ObjectId } from 'mongodb';
 import Stripe from 'stripe';
 import { config } from '../../config';
 import {
-  parcelCollection,
-  paymentCollection,
-  cashoutsCollection,
-  notificationsCollection,
-  addTrackingUpdate,
-} from '../../db/db';
+  ParcelModel,
+  PaymentModel,
+  CashoutModel,
+  NotificationModel,
+  TrackingModel,
+} from '../../db/models';
 import { Payment } from './finance.interface';
 
 const stripe = new Stripe(config.STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16' as any, // specify standard api version if needed or let it pick default
+  apiVersion: '2023-10-16' as any,
 });
 
 export class FinanceService {
   static async getPaymentHistory(email: string): Promise<Payment[]> {
-    return (await paymentCollection
-      .find({ email })
-      .sort({ payment_time: -1 })
-      .toArray()) as unknown as Payment[];
+    return PaymentModel.find({ email }).sort({ payment_time: -1 }).lean() as unknown as Payment[];
   }
 
   static async createPaymentIntent(
@@ -27,10 +24,10 @@ export class FinanceService {
     parcelId: string,
     email: string,
   ): Promise<string> {
-    const parcel = await parcelCollection.findOne({
+    const parcel = await ParcelModel.findOne({
       _id: new ObjectId(parcelId),
       created_by: email,
-    });
+    }).lean();
 
     if (!parcel) {
       throw new Error('Unauthorized: You do not own this parcel.');
@@ -64,10 +61,10 @@ export class FinanceService {
   ): Promise<{ success: boolean; message: string }> {
     const { parcelId, transactionId, amount, paymentMethod } = data;
 
-    const parcel = await parcelCollection.findOne({
+    const parcel = await ParcelModel.findOne({
       _id: new ObjectId(parcelId),
       created_by: email,
-    });
+    }).lean();
 
     if (!parcel) {
       return {
@@ -80,7 +77,7 @@ export class FinanceService {
       return { success: false, message: 'Parcel is already paid.' };
     }
 
-    await parcelCollection.updateOne(
+    await ParcelModel.updateOne(
       { _id: new ObjectId(parcelId) },
       { $set: { payment_status: 'paid' } },
     );
@@ -95,15 +92,17 @@ export class FinanceService {
       payment_time: new Date().toISOString(),
     };
 
-    await paymentCollection.insertOne(paymentRecord as any);
+    await PaymentModel.create(paymentRecord);
 
-    await addTrackingUpdate(
-      parcel.trackingId,
-      'paid',
-      `Payment received. Transaction ID: ${transactionId}`,
-    );
+    await TrackingModel.create({
+      trackingId: parcel.trackingId,
+      status: 'paid',
+      details: `Payment received. Transaction ID: ${transactionId}`,
+      location: 'Primary Hub',
+      time: new Date().toISOString(),
+    });
 
-    await notificationsCollection.insertOne({
+    await NotificationModel.create({
       email: email,
       message: `Payment Successful: Your parcel "${parcel.parcelName}" is now confirmed for delivery!`,
       time: new Date().toISOString(),
@@ -115,15 +114,8 @@ export class FinanceService {
   }
 
   static async getCashoutHistory(riderEmail: string): Promise<any[]> {
-    return cashoutsCollection
-      .find({ rider_email: riderEmail })
-      .project({
-        parcel_id: 1,
-        trackingId: 1,
-        earning: 1,
-        cashed_out_at: 1,
-        parcel_name: 1,
-      })
-      .toArray();
+    return CashoutModel.find({ rider_email: riderEmail })
+      .select('parcel_id trackingId earning cashed_out_at parcel_name')
+      .lean();
   }
 }

@@ -1,9 +1,8 @@
 import { Server } from 'socket.io';
 import type { Server as HttpServer } from 'http';
-import { messagesCollection, usersCollection } from '../db/db';
+import { MessageModel, UserModel } from '../db/models';
 import { ChatMessage } from '../types/types';
 import { config } from '../config';
-import { verifyFBToken } from '../middleware/auth';
 
 export let io: Server;
 
@@ -44,15 +43,15 @@ export const initSocket = (server: HttpServer) => {
             console.log(`👤 Socket ${socket.id} joined user room: ${decoded.email}`);
 
             // If the user has an admin or superAdmin role, join them to the shared 'admins' room
-            const dbUser = await usersCollection.findOne({
+            const dbUser = await UserModel.findOne({
               email: decoded.email,
-            });
+            }).lean();
             if (dbUser?.role === 'admin' || dbUser?.role === 'superAdmin') {
               socket.join('admins');
               console.log(`🛠️ Socket ${socket.id} joined admins room`);
             }
           }
-        } catch (err) {
+        } catch {
           socket.emit('message_error', {
             message: 'Unauthorized: invalid join token',
           });
@@ -77,7 +76,7 @@ export const initSocket = (server: HttpServer) => {
         let decoded;
         try {
           decoded = await verifyFBTokenInSocket(token);
-        } catch (err) {
+        } catch {
           socket.emit('message_error', {
             message: 'Unauthorized: invalid token',
           });
@@ -94,7 +93,7 @@ export const initSocket = (server: HttpServer) => {
         let senderEmail = decoded.email;
         let senderRole = data.senderRole ?? 'user';
 
-        const dbUser = await usersCollection.findOne({ email: decoded.email });
+        const dbUser = await UserModel.findOne({ email: decoded.email }).lean();
         if (dbUser?.role === 'admin' || dbUser?.role === 'superAdmin') {
           senderEmail = 'admin@gram2city.com';
           senderRole = dbUser.role;
@@ -112,7 +111,7 @@ export const initSocket = (server: HttpServer) => {
           conversationId: data.conversationId,
         };
 
-        await messagesCollection.insertOne(chatMessage);
+        await MessageModel.create(chatMessage);
         let broadcast = io.to(data.conversationId).to('admins');
         if (chatMessage.receiverEmail) {
           broadcast = broadcast.to(chatMessage.receiverEmail);
@@ -135,7 +134,7 @@ export const initSocket = (server: HttpServer) => {
           senderEmail: decoded.email,
           conversationId: data.conversationId,
         });
-      } catch (err) {
+      } catch {
         // ignore typing auth errors
       }
     });
@@ -152,7 +151,7 @@ export const initSocket = (server: HttpServer) => {
       let decoded;
       try {
         decoded = await verifyFBTokenInSocket(token);
-      } catch (err) {
+      } catch {
         socket.emit('message_error', {
           message: 'Unauthorized: invalid read token',
         });
@@ -161,12 +160,12 @@ export const initSocket = (server: HttpServer) => {
 
       try {
         let readByEmail = decoded.email ?? data.readByEmail;
-        const dbUser = await usersCollection.findOne({ email: readByEmail });
+        const dbUser = await UserModel.findOne({ email: readByEmail }).lean();
         if (dbUser?.role === 'admin' || dbUser?.role === 'superAdmin') {
           readByEmail = 'admin@gram2city.com';
         }
 
-        await messagesCollection.updateMany(
+        await MessageModel.updateMany(
           {
             conversationId: data.conversationId,
             receiverEmail: readByEmail,

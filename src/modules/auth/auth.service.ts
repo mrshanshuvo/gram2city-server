@@ -1,6 +1,6 @@
 import axios from 'axios';
 import admin from 'firebase-admin';
-import { usersCollection } from '../../db/db';
+import { UserModel } from '../../db/models';
 import type { User } from '../../types/types';
 import { FirebaseAuthResponse } from './auth.interface';
 import { uploadToCloudinary } from '../../utils/upload';
@@ -28,7 +28,7 @@ export class AuthService {
   }
 
   static async createUserRecord(newUser: User): Promise<void> {
-    await usersCollection.insertOne(newUser);
+    await UserModel.create(newUser);
   }
 
   static async loginFirebaseUser(email: string, password: string): Promise<FirebaseAuthResponse> {
@@ -43,7 +43,7 @@ export class AuthService {
   }
 
   static async getUserRecordByEmail(email: string): Promise<User | null> {
-    return usersCollection.findOne({ email });
+    return UserModel.findOne({ email }).lean() as unknown as User | null;
   }
 
   static async getFirebaseUserByEmail(email: string) {
@@ -52,7 +52,7 @@ export class AuthService {
 
   static async updateLastLogin(email: string): Promise<string> {
     const lastLogin = new Date().toISOString();
-    await usersCollection.updateOne({ email }, { $set: { last_login: lastLogin } });
+    await UserModel.updateOne({ email }, { $set: { last_login: lastLogin } });
     return lastLogin;
   }
 
@@ -68,7 +68,7 @@ export class AuthService {
   }
 
   static async deleteUserRecord(email: string): Promise<void> {
-    await usersCollection.deleteOne({ email });
+    await UserModel.deleteOne({ email });
   }
 
   static async sendFirebasePasswordReset(email: string): Promise<void> {

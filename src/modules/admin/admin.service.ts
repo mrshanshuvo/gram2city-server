@@ -1,71 +1,65 @@
 import { ObjectId } from 'mongodb';
 import {
-  usersCollection,
-  auditCollection,
-  settingsCollection,
-  merchantsCollection,
-  parcelCollection,
-  paymentCollection,
-  ridersCollection,
-  cashoutsCollection,
-  notificationsCollection,
-  addTrackingUpdate,
-} from '../../db/db';
+  UserModel,
+  AuditModel,
+  SettingsModel,
+  MerchantModel,
+  ParcelModel,
+  PaymentModel,
+  RiderModel,
+  CashoutModel,
+  NotificationModel,
+  TrackingModel,
+} from '../../db/models';
 import { AuditLog, SystemSettings } from './admin.interface';
 
 export class AdminService {
   static async getAuditLogs(): Promise<AuditLog[]> {
-    return (await auditCollection
-      .find()
-      .sort({ timestamp: -1 })
-      .limit(100)
-      .toArray()) as unknown as AuditLog[];
+    return AuditModel.find().sort({ timestamp: -1 }).limit(100).lean() as unknown as AuditLog[];
   }
 
   static async getStats() {
     // 1. Parcel Stats
-    const totalParcels = await parcelCollection.countDocuments();
-    const pendingParcels = await parcelCollection.countDocuments({
+    const totalParcels = await ParcelModel.countDocuments();
+    const pendingParcels = await ParcelModel.countDocuments({
       delivery_status: {
         $in: ['pending', 'assigned', 'not_collected', 'picked_up'],
       },
     });
-    const onTheWayParcels = await parcelCollection.countDocuments({
+    const onTheWayParcels = await ParcelModel.countDocuments({
       delivery_status: 'on_the_way',
     });
-    const deliveredParcels = await parcelCollection.countDocuments({
+    const deliveredParcels = await ParcelModel.countDocuments({
       delivery_status: 'delivered',
     });
-    const cancelledParcels = await parcelCollection.countDocuments({
+    const cancelledParcels = await ParcelModel.countDocuments({
       delivery_status: 'cancelled',
     });
-    const returnedParcels = await parcelCollection.countDocuments({
+    const returnedParcels = await ParcelModel.countDocuments({
       delivery_status: 'returned',
     });
 
     // 2. Financial Stats (Aggregation)
-    const revenueData = await paymentCollection
-      .aggregate([{ $group: { _id: null, totalRevenue: { $sum: '$amount' } } }])
-      .toArray();
+    const revenueData = await PaymentModel.aggregate([
+      { $group: { _id: null, totalRevenue: { $sum: '$amount' } } },
+    ]);
 
-    const profitData = await parcelCollection
-      .aggregate([
-        {
-          $group: {
-            _id: null,
-            totalProfit: {
-              $sum: {
-                $ifNull: ['$admin_profit', { $multiply: ['$cost', 0.85] }],
-              },
+    const profitData = await ParcelModel.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalProfit: {
+            $sum: {
+              $ifNull: ['$admin_profit', { $multiply: ['$cost', 0.85] }],
             },
           },
         },
-      ])
-      .toArray();
+      },
+    ]);
 
     // 3. User Stats
-    const totalUsers = await usersCollection.countDocuments({ role: 'user' });
-    const totalRiders = await ridersCollection.countDocuments();
+    const totalUsers = await UserModel.countDocuments({ role: 'user' });
+    const totalRiders = await RiderModel.countDocuments();
 
     // 4. Daily Bookings (Last 7 Days - Comprehensive)
     const last7Days = [];
@@ -79,27 +73,25 @@ export class AdminService {
     sevenDaysAgo.setHours(0, 0, 0, 0);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const bookingsRaw = await parcelCollection
-      .aggregate([
-        {
-          $match: {
-            $or: [
-              { creation_date: { $gte: sevenDaysAgo.toISOString() } },
-              { createdAt: { $gte: sevenDaysAgo.toISOString() } },
-            ],
-          },
+    const bookingsRaw = await ParcelModel.aggregate([
+      {
+        $match: {
+          $or: [
+            { creation_date: { $gte: sevenDaysAgo.toISOString() } },
+            { createdAt: { $gte: sevenDaysAgo.toISOString() } },
+          ],
         },
-        {
-          $group: {
-            _id: {
-              $substr: [{ $ifNull: ['$creation_date', '$createdAt'] }, 0, 10],
-            },
-            count: { $sum: 1 },
+      },
+      {
+        $group: {
+          _id: {
+            $substr: [{ $ifNull: ['$creation_date', '$createdAt'] }, 0, 10],
           },
+          count: { $sum: 1 },
         },
-        { $sort: { _id: 1 } },
-      ])
-      .toArray();
+      },
+      { $sort: { _id: 1 } },
+    ]);
 
     const dailyBookings = last7Days.map((date) => ({
       _id: date,
@@ -107,89 +99,83 @@ export class AdminService {
     }));
 
     // 5. Parcel Type Distribution
-    const typeDistribution = await parcelCollection
-      .aggregate([{ $group: { _id: '$parcelType', count: { $sum: 1 } } }])
-      .toArray();
+    const typeDistribution = await ParcelModel.aggregate([
+      { $group: { _id: '$parcelType', count: { $sum: 1 } } },
+    ]);
 
     // 6. Average Delivery Time (in hours)
-    const deliveryTimeData = await parcelCollection
-      .aggregate([
-        {
-          $match: {
-            delivery_status: 'delivered',
-            delivered_at: { $exists: true },
+    const deliveryTimeData = await ParcelModel.aggregate([
+      {
+        $match: {
+          delivery_status: 'delivered',
+          delivered_at: { $exists: true },
+        },
+      },
+      {
+        $project: {
+          duration: {
+            $divide: [
+              {
+                $subtract: [
+                  { $toDate: '$delivered_at' },
+                  { $toDate: { $ifNull: ['$creation_date', '$createdAt'] } },
+                ],
+              },
+              3600000, // Convert ms to hours
+            ],
           },
         },
-        {
-          $project: {
-            duration: {
-              $divide: [
-                {
-                  $subtract: [
-                    { $toDate: '$delivered_at' },
-                    { $toDate: { $ifNull: ['$creation_date', '$createdAt'] } },
-                  ],
-                },
-                3600000, // Convert ms to hours
-              ],
-            },
-          },
-        },
-        { $group: { _id: null, avgHours: { $avg: '$duration' } } },
-      ])
-      .toArray();
+      },
+      { $group: { _id: null, avgHours: { $avg: '$duration' } } },
+    ]);
 
     // 7. Rider Leaderboard (Top 5 by Deliveries)
-    const riderLeaderboard = await parcelCollection
-      .aggregate([
-        {
-          $match: {
-            delivery_status: 'delivered',
-            assigned_rider_id: { $exists: true },
-          },
+    const riderLeaderboard = await ParcelModel.aggregate([
+      {
+        $match: {
+          delivery_status: 'delivered',
+          assigned_rider_id: { $exists: true },
         },
-        {
-          $group: {
-            _id: '$assigned_rider_id',
-            deliveredCount: { $sum: 1 },
-            avgRating: { $first: '$assigned_rider_rating' },
-          },
+      },
+      {
+        $group: {
+          _id: '$assigned_rider_id',
+          deliveredCount: { $sum: 1 },
+          avgRating: { $first: '$assigned_rider_rating' },
         },
-        {
-          $lookup: {
-            from: 'riders',
-            localField: '_id',
-            foreignField: '_id',
-            as: 'riderDetails',
-          },
+      },
+      {
+        $lookup: {
+          from: 'riders',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'riderDetails',
         },
-        { $unwind: '$riderDetails' },
-        {
-          $project: {
-            name: '$riderDetails.name',
-            email: '$riderDetails.email',
-            deliveredCount: 1,
-            rating: { $ifNull: ['$riderDetails.average_rating', 0] },
-          },
+      },
+      { $unwind: '$riderDetails' },
+      {
+        $project: {
+          name: '$riderDetails.name',
+          email: '$riderDetails.email',
+          deliveredCount: 1,
+          rating: { $ifNull: ['$riderDetails.average_rating', 0] },
         },
-        { $sort: { deliveredCount: -1 } },
-        { $limit: 5 },
-      ])
-      .toArray();
+      },
+      { $sort: { deliveredCount: -1 } },
+      { $limit: 5 },
+    ]);
 
     // 8. Geographic Distribution (by District)
-    const districtDistribution = await parcelCollection
-      .aggregate([
-        { $group: { _id: '$receiverDistrict', count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 10 },
-      ])
-      .toArray();
+    const districtDistribution = await ParcelModel.aggregate([
+      { $group: { _id: '$receiverDistrict', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+    ]);
 
     // 9. Fleet Distribution (by Vehicle Type)
-    const fleetDistribution = await ridersCollection
-      .aggregate([{ $group: { _id: '$vehicleType', count: { $sum: 1 } } }])
-      .toArray();
+    const fleetDistribution = await RiderModel.aggregate([
+      { $group: { _id: '$vehicleType', count: { $sum: 1 } } },
+    ]);
 
     return {
       parcels: {
@@ -213,7 +199,7 @@ export class AdminService {
   }
 
   static async createAnnouncement(message: string, adminEmail: string): Promise<number> {
-    const users = await usersCollection.find({}, { projection: { email: 1 } }).toArray();
+    const users = await UserModel.find({}, 'email').lean();
 
     const notifications = users.map((u) => ({
       email: u.email,
@@ -224,10 +210,10 @@ export class AdminService {
     }));
 
     if (notifications.length > 0) {
-      await notificationsCollection.insertMany(notifications);
+      await NotificationModel.insertMany(notifications);
     }
 
-    await auditCollection.insertOne({
+    await AuditModel.create({
       admin_email: adminEmail,
       action: 'BULK_ANNOUNCEMENT',
       details: `Sent announcement: ${message}`,
@@ -238,18 +224,18 @@ export class AdminService {
   }
 
   static async getSettings(): Promise<SystemSettings> {
-    let settings = await settingsCollection.findOne({});
+    let settings = await SettingsModel.findOne({}).lean();
 
     if (!settings) {
-      const defaultSettings: SystemSettings = {
+      const defaultSettings = {
         base_delivery_fee: 50,
         cost_per_kg: 20,
         rider_commission_percentage: 15,
         updated_at: new Date().toISOString(),
         updated_by: 'system',
       };
-      await settingsCollection.insertOne(defaultSettings);
-      settings = defaultSettings;
+      await SettingsModel.create(defaultSettings);
+      settings = defaultSettings as any;
     }
 
     return settings as unknown as SystemSettings;
@@ -274,28 +260,26 @@ export class AdminService {
     if (data.rider_commission_percentage !== undefined)
       updateData.rider_commission_percentage = Number(data.rider_commission_percentage);
 
-    await settingsCollection.updateOne({}, { $set: updateData }, { upsert: true });
+    await SettingsModel.updateOne({}, { $set: updateData }, { upsert: true });
 
-    const log: AuditLog = {
+    await AuditModel.create({
       admin_email: adminEmail,
       action: 'UPDATE_SETTINGS',
       details: `Updated system settings: ${JSON.stringify(updateData)}`,
       timestamp: new Date().toISOString(),
-    };
-    await auditCollection.insertOne(log);
+    });
   }
 
   static async updateUserStatus(email: string, status: string, adminEmail: string): Promise<void> {
-    await usersCollection.updateOne({ email }, { $set: { status: status as any } });
+    await UserModel.updateOne({ email }, { $set: { status: status as any } });
 
-    const log: AuditLog = {
+    await AuditModel.create({
       admin_email: adminEmail,
       action: 'USER_STATUS_CHANGE',
       target_id: email,
       details: `Changed user ${email} status to ${status}`,
       timestamp: new Date().toISOString(),
-    };
-    await auditCollection.insertOne(log);
+    });
   }
 
   static async getAllParcels(
@@ -316,13 +300,12 @@ export class AdminService {
       if (filter.endDate) query.creation_date.$lte = new Date(filter.endDate).toISOString();
     }
 
-    const totalItems = await parcelCollection.countDocuments(query);
-    const parcels = await parcelCollection
-      .find(query)
+    const totalItems = await ParcelModel.countDocuments(query);
+    const parcels = await ParcelModel.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(size)
-      .toArray();
+      .lean();
 
     return { parcels, totalItems };
   }
@@ -332,16 +315,16 @@ export class AdminService {
     riderId: string,
     adminEmail: string,
   ): Promise<{ success: boolean; message: string }> {
-    const rider = await ridersCollection.findOne({
+    const rider = await RiderModel.findOne({
       _id: new ObjectId(String(riderId)),
-    });
+    }).lean();
     if (!rider) {
       return { success: false, message: 'Rider not found' };
     }
 
-    const parcel = await parcelCollection.findOne({
+    const parcel = await ParcelModel.findOne({
       _id: new ObjectId(String(parcelId)),
-    });
+    }).lean();
     if (!parcel) {
       return { success: false, message: 'Parcel not found' };
     }
@@ -357,7 +340,7 @@ export class AdminService {
       };
     }
 
-    const result = await parcelCollection.updateOne(
+    const result = await ParcelModel.updateOne(
       { _id: new ObjectId(String(parcelId)) },
       {
         $set: {
@@ -374,12 +357,13 @@ export class AdminService {
       return { success: false, message: 'Parcel not found or already updated' };
     }
 
-    await addTrackingUpdate(
-      parcel.trackingId,
-      'assigned',
-      `Parcel assigned to rider ${rider.name}`,
-      'Admin Dashboard',
-    );
+    await TrackingModel.create({
+      trackingId: parcel.trackingId,
+      status: 'assigned',
+      details: `Parcel assigned to rider ${rider.name}`,
+      location: 'Admin Dashboard',
+      time: new Date().toISOString(),
+    });
 
     return { success: true, message: 'Rider assigned successfully' };
   }
@@ -388,7 +372,7 @@ export class AdminService {
     const query: any = {};
     if (status) query.status = status;
 
-    return merchantsCollection.find(query).sort({ createdAt: -1 }).toArray();
+    return MerchantModel.find(query).sort({ createdAt: -1 }).lean();
   }
 
   static async updateMerchantStatus(
@@ -396,23 +380,23 @@ export class AdminService {
     status: string,
     adminEmail: string,
   ): Promise<{ success: boolean; message: string }> {
-    const merchant = await merchantsCollection.findOne({
+    const merchant = await MerchantModel.findOne({
       _id: new ObjectId(String(id)),
-    });
+    }).lean();
     if (!merchant) {
       return { success: false, message: 'Merchant not found' };
     }
 
-    await merchantsCollection.updateOne(
+    await MerchantModel.updateOne(
       { _id: new ObjectId(String(id)) },
       { $set: { status: status as any, updatedAt: new Date().toISOString() } },
     );
 
     if (status === 'approved') {
-      await usersCollection.updateOne({ email: merchant.email }, { $set: { role: 'merchant' } });
+      await UserModel.updateOne({ email: merchant.email }, { $set: { role: 'merchant' } });
     }
 
-    await auditCollection.insertOne({
+    await AuditModel.create({
       admin_email: adminEmail,
       action: 'MERCHANT_STATUS_CHANGE',
       target_id: id,
@@ -424,13 +408,11 @@ export class AdminService {
   }
 
   static async getFleetDistribution(): Promise<any[]> {
-    return ridersCollection
-      .aggregate([{ $group: { _id: '$vehicleType', count: { $sum: 1 } } }])
-      .toArray();
+    return RiderModel.aggregate([{ $group: { _id: '$vehicleType', count: { $sum: 1 } } }]);
   }
 
   static async getPayouts(): Promise<any[]> {
-    return cashoutsCollection.find().sort({ requested_at: -1 }).toArray();
+    return CashoutModel.find().sort({ requested_at: -1 }).lean();
   }
 
   static async updatePayoutStatus(
@@ -438,14 +420,14 @@ export class AdminService {
     status: string,
     adminEmail: string,
   ): Promise<{ success: boolean; message: string }> {
-    const payout = await cashoutsCollection.findOne({
+    const payout = await CashoutModel.findOne({
       _id: new ObjectId(String(id)),
-    });
+    }).lean();
     if (!payout) {
       return { success: false, message: 'Payout request not found' };
     }
 
-    await cashoutsCollection.updateOne(
+    await CashoutModel.updateOne(
       { _id: new ObjectId(String(id)) },
       {
         $set: {
@@ -456,7 +438,7 @@ export class AdminService {
       },
     );
 
-    await notificationsCollection.insertOne({
+    await NotificationModel.create({
       email: payout.rider_email,
       message: `Your payout request of ${payout.amount} BDT has been ${status}.`,
       time: new Date().toISOString(),
@@ -464,7 +446,7 @@ export class AdminService {
       type: 'payment',
     });
 
-    await auditCollection.insertOne({
+    await AuditModel.create({
       admin_email: adminEmail,
       action: 'PAYOUT_STATUS_CHANGE',
       target_id: id,
@@ -483,15 +465,9 @@ export class AdminService {
       query.email = { $regex: search, $options: 'i' };
     }
 
-    const totalItems = await usersCollection.countDocuments(query);
-    const users = await usersCollection
-      .find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(size)
-      .toArray();
+    const totalItems = await UserModel.countDocuments(query);
+    const users = await UserModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(size).lean();
 
     return { users, totalItems };
   }
 }
-

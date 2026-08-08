@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { MongoClient, ServerApiVersion } from 'mongodb';
 import type {
   User,
@@ -25,7 +26,10 @@ import type {
 
 import { config } from '../config';
 
-// ─── MongoDB Client ───────────────────────────────────────────────────────────
+// Re-export Mongoose Models
+export * from './models';
+
+// ─── MongoDB Client & Mongoose Connection ────────────────────────────────────
 
 const client = new MongoClient(config.MONGODB_URI, {
   serverApi: {
@@ -35,10 +39,9 @@ const client = new MongoClient(config.MONGODB_URI, {
   },
 });
 
-// ─── Typed Collections ────────────────────────────────────────────────────────
-
 const db = client.db(config.DB_NAME);
 
+// Native Collection Exports (for compatibility)
 export const usersCollection = db.collection<User>('users');
 export const parcelCollection = db.collection<Parcel>('parcels');
 export const paymentCollection = db.collection<Payment>('payments');
@@ -66,14 +69,22 @@ export const newsletterCollection = db.collection('newsletter');
 export const testimonialsCollection = db.collection<any>('testimonials');
 export const addressesCollection = db.collection<Address>('addresses');
 
-// ─── DB Initialization (Indexing) ─────────────────────────────────────────────
+// ─── DB Initialization (Mongoose + Indexing) ──────────────────────────────────
 export const initDB = async () => {
   try {
+    // Connect Mongoose ODM
+    if (mongoose.connection.readyState === 0) {
+      await mongoose.connect(config.MONGODB_URI, {
+        dbName: config.DB_NAME,
+      });
+      console.log('✅ Mongoose ODM connected successfully');
+    }
+
     const dropIndexIfExists = async (collection: any, indexName: string) => {
       try {
         await collection.dropIndex(indexName);
-      } catch (err) {
-        // Ignore if index doesn't exist or cannot be dropped
+      } catch {
+        // Ignore if index doesn't exist
       }
     };
 
@@ -105,6 +116,25 @@ export const initDB = async () => {
       }
     };
 
+    const safeCreateIndex = async (collection: any, keys: any, options?: any) => {
+      try {
+        await collection.createIndex(keys, options);
+      } catch (err: any) {
+        if (err?.code === 86 || err?.codeName === 'IndexKeySpecsConflict') {
+          // If index spec conflicts, drop existing index and recreate
+          try {
+            const indexName = Object.keys(keys)
+              .map((k) => `${k}_1`)
+              .join('_');
+            await collection.dropIndex(indexName);
+            await collection.createIndex(keys, options);
+          } catch {
+            // ignore fallback error
+          }
+        }
+      }
+    };
+
     // Safely drop old non-unique or conflicting indexes before replacing them
     await dropIndexIfExists(usersCollection, 'email_1');
     await dropIndexIfExists(merchantsCollection, 'email_1');
@@ -112,7 +142,9 @@ export const initDB = async () => {
     await dropIndexIfExists(ridersCollection, 'email_1');
 
     // Clean up any invalid null/empty email rider records if present
-    await ridersCollection.deleteMany({ $or: [{ email: null }, { email: { $exists: false } }] });
+    await ridersCollection.deleteMany({
+      $or: [{ email: null as any }, { email: { $exists: false } }],
+    });
 
     // Deduplicate collections to prevent DuplicateKey index build errors
     await deduplicateCollection(usersCollection, 'email');
@@ -120,14 +152,14 @@ export const initDB = async () => {
     await deduplicateCollection(ridersCollection, 'email');
 
     // 1. usersCollection
-    await usersCollection.createIndex({ email: 1 }, { unique: true });
+    await safeCreateIndex(usersCollection, { email: 1 }, { unique: true });
 
     // 2. merchantsCollection
-    await merchantsCollection.createIndex({ email: 1 }, { unique: true });
-    await merchantsCollection.createIndex({ userId: 1 });
+    await safeCreateIndex(merchantsCollection, { email: 1 }, { unique: true });
+    await safeCreateIndex(merchantsCollection, { userId: 1 });
 
     // 3. ridersCollection
-    await ridersCollection.createIndex({ email: 1 }, { unique: true, sparse: true });
+    await safeCreateIndex(ridersCollection, { email: 1 }, { unique: true, sparse: true });
 
     // 4. parcelCollection
     await parcelCollection.createIndex({ trackingId: 1 }, { unique: true });
@@ -140,65 +172,29 @@ export const initDB = async () => {
       delivery_status: 1,
     });
     await parcelCollection.createIndex({ created_by: 1, payment_status: 1 });
-    await parcelCollection.createIndex({
-      delivery_status: 1,
-      creation_date: -1,
-    });
 
     // 5. trackingCollection
-    await trackingCollection.createIndex({ trackingId: 1, time: -1 });
+    await trackingCollection.createIndex({ trackingId: 1 });
 
-    // 6. auditCollection
-    await auditCollection.createIndex({ timestamp: -1 });
+    // 6. payments & cashouts
+    await paymentCollection.createIndex({ parcelId: 1 });
+    await paymentCollection.createIndex({ email: 1 });
+    await cashoutsCollection.createIndex({ rider_email: 1, status: 1 });
 
-    // 7. messagesCollection
+    // 7. reviews & notifications
+    await reviewsCollection.createIndex({ rider_email: 1 });
+    await notificationsCollection.createIndex({ email: 1, isRead: 1 });
+
+    // 8. messages
     await messagesCollection.createIndex({ conversationId: 1, timestamp: 1 });
-    await messagesCollection.createIndex({ senderEmail: 1, timestamp: -1 });
-    await messagesCollection.createIndex({ receiverEmail: 1, timestamp: -1 });
+    await messagesCollection.createIndex({ senderEmail: 1 });
+    await messagesCollection.createIndex({ receiverEmail: 1 });
 
-    // 8. notificationsCollection
-    await notificationsCollection.createIndex({
-      email: 1,
-      isRead: 1,
-      time: -1,
-    });
+    // 9. addresses
+    await addressesCollection.createIndex({ userEmail: 1 });
 
-    // 9. reviewsCollection
-    await reviewsCollection.createIndex({ rider_email: 1, date: -1 });
-
-    // 10. addressesCollection
-    await addressesCollection.createIndex({ userEmail: 1, isDefault: 1 });
-
-    // 11. cashoutsCollection
-    await cashoutsCollection.createIndex({ rider_email: 1, requested_at: -1 });
-
-    // 12. faqsCollection
-    await faqsCollection.createIndex({ category: 1, order: 1 });
-
-    // 13. faqVotesCollection
-    await faqVotesCollection.createIndex({ faqId: 1, identifier: 1 }, { unique: true });
-
-    console.log('✅ Database indexes verified.');
+    console.log('✅ Database indexes & Mongoose models initialized smoothly');
   } catch (error) {
-    console.error('❌ Database indexing failed:', error);
-  }
-};
-
-export const addTrackingUpdate = async (
-  trackingId: string,
-  status: string,
-  details: string,
-  location = 'Primary Hub',
-): Promise<void> => {
-  try {
-    await trackingCollection.insertOne({
-      trackingId,
-      status,
-      details,
-      location,
-      time: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error('Failed to add tracking update:', error);
+    console.error('❌ Database indexing / Mongoose initialization failed:', error);
   }
 };
