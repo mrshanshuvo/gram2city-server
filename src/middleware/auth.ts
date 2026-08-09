@@ -26,11 +26,18 @@ export const verifyFBToken = async (
     return;
   }
   try {
-    const decoded = await admin.auth().verifyIdToken(token);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    res.status(401).send({ success: false, message: 'Unauthorized' });
+    const { verifyJWT } = await import('../utils/jwt');
+    const decodedJwt = verifyJWT(token);
+    req.user = decodedJwt as any;
+    return next();
+  } catch (jwtErr) {
+    try {
+      const decoded = await admin.auth().verifyIdToken(token);
+      req.user = decoded;
+      return next();
+    } catch (error) {
+      res.status(401).send({ success: false, message: 'Unauthorized' });
+    }
   }
 };
 

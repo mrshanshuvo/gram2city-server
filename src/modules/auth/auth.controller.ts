@@ -7,68 +7,50 @@ export const register = async (req: Request, res: Response) => {
   let photoURL = '';
 
   try {
-    // 1. Image Upload Phase
+    const existingUser = await AuthService.getUserRecordByEmail(email);
+    if (existingUser) {
+      return res.status(400).send({
+        success: false,
+        message: 'This email is already registered.',
+      });
+    }
+
     if (req.file) {
       try {
         photoURL = await AuthService.uploadProfileImage(req.file);
       } catch (imgError) {
         console.error('Profile image upload error:', imgError);
-        return res.status(400).send({
-          success: false,
-          message: 'Failed to upload profile image. Please try a different file.',
-        });
       }
     }
 
-    // 2. Firebase Registration Phase
-    let idToken = '';
-    let expiresIn = '';
-    try {
-      const fbReg = await AuthService.registerFirebaseUser(email, password);
-      idToken = fbReg.idToken;
-      expiresIn = fbReg.expiresIn;
-    } catch (fbError: any) {
-      const fbErrMsg = fbError.response?.data?.error?.message || '';
-      console.error('Firebase Registration Error Raw:', fbErrMsg);
+    const hashedPassword = await AuthService.hashPassword(password);
 
-      let message = 'Authentication failed.';
+    const newUser: User = {
+      email,
+      password: hashedPassword,
+      name,
+      photoURL: photoURL || `https://api.dicebear.com/7.x/lorelei/svg?seed=${email}`,
+      role: 'user',
+      created_at: new Date().toISOString(),
+      last_login: new Date().toISOString(),
+    };
+    await AuthService.createUserRecord(newUser);
 
-      if (fbErrMsg.includes('EMAIL_EXISTS')) message = 'This email is already registered.';
-      else if (fbErrMsg.includes('INVALID_EMAIL'))
-        message = 'Please provide a valid email address.';
-      else if (fbErrMsg.includes('WEAK_PASSWORD'))
-        message = 'Password should be at least 6 characters.';
-      else if (fbErrMsg.includes('TOO_MANY_ATTEMPTS'))
-        message = 'Too many attempts. Please try again later.';
+    const { generateJWT } = await import('../../utils/jwt');
+    const token = generateJWT({ email: newUser.email, role: 'user' });
 
-      return res.status(400).send({ success: false, message });
-    }
-
-    // 3. Database Save Phase
-    try {
-      const newUser: User = {
-        email,
-        name,
-        photoURL,
-        role: 'user',
-        created_at: new Date().toISOString(),
-        last_login: new Date().toISOString(),
-      };
-      await AuthService.createUserRecord(newUser);
-      res.status(201).send({
-        success: true,
-        message: 'Registration successful! Welcome to Gram2City.',
-        token: idToken,
+    res.status(201).send({
+      success: true,
+      message: 'Registration successful! Welcome to Gram2City.',
+      token,
+      role: newUser.role,
+      user: {
+        email: newUser.email,
+        name: newUser.name,
+        photoURL: newUser.photoURL,
         role: newUser.role,
-        expiresIn,
-      });
-    } catch (dbError) {
-      console.error('MongoDB Save Error:', dbError);
-      res.status(500).send({
-        success: false,
-        message: 'Account created in Firebase, but failed to save profile to database.',
-      });
-    }
+      },
+    });
   } catch (error: any) {
     console.error('Unexpected Register Error:', error);
     res.status(500).send({
@@ -82,46 +64,58 @@ export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   try {
-    // 1. Login to Firebase
-    const fbLogin = await AuthService.loginFirebaseUser(email, password);
-    const { idToken, expiresIn } = fbLogin;
-
-    // 2. Fetch User from MongoDB
     const user = await AuthService.getUserRecordByEmail(email);
 
     if (!user) {
-      return res.status(404).send({
-        success: false,
-        message: 'Authenticated in Firebase, but user record not found in database.',
-      });
+      // Fallback: Check if Firebase user exists
+      try {
+        const fbLogin = await AuthService.loginFirebaseUser(email, password);
+        const { idToken, expiresIn } = fbLogin;
+        return res.send({
+          success: true,
+          message: 'Login successful',
+          token: idToken,
+          role: 'user',
+          expiresIn,
+        });
+      } catch {
+        return res.status(401).send({
+          success: false,
+          message: 'Invalid email or password.',
+        });
+      }
     }
 
-    // 3. Fetch detailed user info from Firebase to get emailVerified status
-    const fbUser = await AuthService.getFirebaseUserByEmail(email);
+    if (user.password) {
+      const isMatch = await AuthService.comparePassword(password, user.password);
+      if (!isMatch) {
+        return res.status(401).send({
+          success: false,
+          message: 'Invalid email or password.',
+        });
+      }
+    }
 
-    // 4. Update last login in MongoDB
+    const { generateJWT } = await import('../../utils/jwt');
+    const token = generateJWT({ email: user.email, role: user.role || 'user' });
     const lastLogin = await AuthService.updateLastLogin(email);
 
     res.send({
       success: true,
       message: 'Login successful',
-      token: idToken,
-      role: user.role,
+      token,
+      role: user.role || 'user',
       lastLogin,
-      expiresIn,
-      emailVerified: fbUser.emailVerified,
+      user: {
+        email: user.email,
+        name: user.name,
+        photoURL: user.photoURL,
+        role: user.role,
+      },
     });
   } catch (error: any) {
-    const fbErrMsg = error.response?.data?.error?.message || '';
-    let message = 'Login failed.';
-
-    if (fbErrMsg.includes('EMAIL_NOT_FOUND') || fbErrMsg.includes('INVALID_PASSWORD')) {
-      message = 'Invalid email or password.';
-    } else if (fbErrMsg.includes('USER_DISABLED')) {
-      message = 'This account has been disabled.';
-    }
-
-    res.status(401).send({ success: false, message });
+    console.error('Login Error:', error);
+    res.status(401).send({ success: false, message: 'Login failed.' });
   }
 };
 

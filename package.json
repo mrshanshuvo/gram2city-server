@@ -5,6 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "seed": "ts-node-dev --transpile-only src/scripts/seed.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "lint": "eslint src",
@@ -19,7 +20,10 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "axios": "^1.16.0",
+    "bcryptjs": "^3.0.3",
     "cloudinary": "^2.10.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
@@ -29,6 +33,7 @@
     "firebase-admin": "^13.8.0",
     "form-data": "^4.0.5",
     "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
     "mongodb": "^6.17.0",
     "mongoose": "^9.9.1",
     "morgan": "^1.10.1",
@@ -67,4 +72,3 @@
     ]
   }
 }
-

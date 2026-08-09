@@ -6,6 +6,7 @@ import type * as admin from 'firebase-admin';
 export interface User {
   _id?: ObjectId;
   email: string;
+  password?: string;
   name?: string;
   photoURL?: string;
   role?: 'user' | 'admin' | 'rider' | 'merchant' | 'superAdmin';
